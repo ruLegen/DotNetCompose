@@ -1,6 +1,8 @@
 ﻿using DotNetCompose.Runtime;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,7 +16,7 @@ namespace DotNetCompose.Playground
         {
             int i = 0;
             ComposableNoArg();
-            ComposableArg(i, () => { }, ComposableNoArg);
+            ComposableArg(i, content2: () => { }, content: ComposableNoArg);
         }
         //[Composable]
         //public static void ComposableGenericTest<T, K>(T arg)
@@ -43,7 +45,7 @@ namespace DotNetCompose.Playground
         //            }
         //        });
         //    }
-        //}
+        //}new Digit(b);
 
         //[Composable]
         //public static void ComposableTest()
@@ -67,8 +69,8 @@ namespace DotNetCompose.Playground
         //    ComposableArg(NotComposable);
         //}
 
-        [Composable]
-        public static void ComposableArg(int r, ComposableAction content, ComposableAction content2)
+        [Composable]                  
+        public static void ComposableArg(int r, ComposableAction content, ComposableAction content2, ComposableAction? defautAction=null)
         {
             int i = 0;
             ComposableLambdaWrapper composableLambdaWrapper = new ComposableLambdaWrapper(() =>
@@ -80,13 +82,5 @@ namespace DotNetCompose.Playground
         public static void ComposableNoArg()
         {
         }
-        //[Composable]
-        //public static void SomeOtherComposable() { }
-
-
-        //public static void NotComposable()
-        //{
-
-        //}
-    }
+      }
 }
