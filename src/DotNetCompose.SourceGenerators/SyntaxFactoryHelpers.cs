@@ -122,5 +122,6 @@ namespace DotNetCompose.SourceGenerators
             return SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList<ArgumentSyntax>(args));
         }
+
     }
 }

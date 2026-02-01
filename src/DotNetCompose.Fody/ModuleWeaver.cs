@@ -9,6 +9,10 @@ using System.Linq;
 
 namespace DotNetCompose.Runtime
 {
+    class ModuleWeaverContext
+    {
+        public MethodReference ComposableLambdaWrapperImplicitConvertionFromComposableAction { get; set; }
+    }
     public class ModuleWeaver : BaseModuleWeaver
     {
         private const string AttributeFullName = "DotNetCompose.Runtime.ComposableAttribute";
@@ -16,6 +20,7 @@ namespace DotNetCompose.Runtime
 
         public override IEnumerable<string> GetAssembliesForScanning()
         {
+            yield return "DotNetCompose.Runtime";
             yield return "mscorlib";
             yield return "System";
             yield return "System.Runtime";
@@ -24,62 +29,93 @@ namespace DotNetCompose.Runtime
 
         public override void Execute()
         {
-            IEnumerable<MethodDefinition> methods = GetMatchingTypes();
-
-            Log("================================");
-            foreach (var type in methods.ToList())
+#if DEBUG
+            if (!Debugger.IsAttached)
             {
-                ProcessMethod(type);
+               // Debugger.Launch();
+            }
+#endif
+            TypeDefinition labmdaWrapperType = FindTypeDefinition("DotNetCompose.Runtime.ComposableLambdaWrapper");
+            string implicitOperatorMethodName = string.Format("op_Implicit({0})", ComposableContentActionFullName);
+            MethodDefinition implicitConvertionOperator = labmdaWrapperType.Methods.FirstOrDefault(m => m.FullName.Contains(implicitOperatorMethodName));
+            MethodReference reference = ModuleDefinition.ImportReference(implicitConvertionOperator);
+            ModuleWeaverContext ctx = new ModuleWeaverContext()
+            {
+                ComposableLambdaWrapperImplicitConvertionFromComposableAction = reference,
+            };
+
+            IEnumerable<MethodDefinition> methods = GetMatchingTypes();
+            foreach (MethodDefinition type in methods.ToList())
+            {
+                ProcessMethod(ctx, type);
             }
         }
 
-        private void ProcessMethod(MethodDefinition method)
+        private void ProcessMethod(ModuleWeaverContext ctx, MethodDefinition method)
         {
-            Log("{0}", method);
-            foreach (var param in method.Parameters)
-            {
-                Log("\tParam {0} - {1} - Generic={2}", param.ParameterType.FullName, param.Name, param.ParameterType.IsGenericParameter);
-            }
 
             MethodBody methodBody = method.Body;
-            var instructions = methodBody.Instructions;
-            var m = new MethodDefinition(method.Name + "Gen",
-                MethodAttributes.Public | MethodAttributes.Static,
-                method.ReturnType);
+            method.Body = new MethodBody(method);
+            var processor = method.Body.GetILProcessor();
 
-            foreach(var p in method.Parameters)
+            processor.Emit(OpCodes.Nop);
+            int paramStartIndex = method.IsStatic ? 0 : 1;
+
+
+            // Load 'this' for instance methods
+            if (!method.IsStatic)
             {
-                m.Parameters.Add(p);
+                processor.Emit(OpCodes.Ldarg_0);
             }
-            foreach (var p in method.GenericParameters)
-            {
-                var gp = new GenericParameter(p.Name, m);
-                m.GenericParameters.Add(gp);
-            }
-            var bIlProc = m.Body.GetILProcessor();
-            foreach (var item in instructions)
-            {
-                bIlProc.Append(item.GetPrototype());
-                if (item.OpCode != OpCodes.Call)
-                    continue;
 
-                if (!(item.Operand is MethodDefinition) && !(item.Operand is GenericInstanceMethod))
-                    continue;
+            for (int i = 0; i < method.Parameters.Count; i++)
+            {
+                int argIndex = i + paramStartIndex;
 
-                bool isComposable = false;
-                if (item.Operand is MethodDefinition methodDef)
+                switch (argIndex)
                 {
-                    isComposable = IsComposable(methodDef.CustomAttributes);
+                    case 0:
+                        processor.Emit(OpCodes.Ldarg_0);
+                        ConvertArgumentIfComposableAction(ctx, processor, method, argIndex);
+                        break;
+                    case 1:
+                        processor.Emit(OpCodes.Ldarg_1);
+                        ConvertArgumentIfComposableAction(ctx, processor, method, argIndex);
+                        break;
+                    case 2:
+                        processor.Emit(OpCodes.Ldarg_2);
+                        ConvertArgumentIfComposableAction(ctx, processor, method, argIndex);
+                        break;
+                    case 3:
+                        processor.Emit(OpCodes.Ldarg_3);
+                        ConvertArgumentIfComposableAction(ctx, processor, method, argIndex);
+                        break;
+                    default:
+                        processor.Emit(OpCodes.Ldarg_S, method.Parameters[i]);
+                        ConvertArgumentIfComposableAction(ctx, processor, method, argIndex);
+                        break;
                 }
-                else if (item.Operand is GenericInstanceMethod genericInstanceMethod)
-                {
-                    isComposable = IsComposable(genericInstanceMethod.ElementMethod.Resolve().CustomAttributes);
-                }
-
-                Log("{0} - {1} {2} {3}", item.OpCode, item.Operand, item.Operand?.GetType(), isComposable);
             }
 
-            method.DeclaringType.Methods.Add(m);
+            // Check if method already exists
+            var existingMethod = method.DeclaringType.Methods.FirstOrDefault(m => m.Name == method.Name + "_Generated");
+            // Call the generated method
+            processor.Emit(OpCodes.Call, existingMethod);
+
+            // Return
+            processor.Emit(OpCodes.Ret);
+        }
+
+        private void ConvertArgumentIfComposableAction(ModuleWeaverContext ctx, ILProcessor processor, MethodDefinition method, int argIndex)
+        {
+            if (!method.IsStatic && argIndex == 0)
+                return;
+
+            ParameterDefinition arg = method.Parameters[argIndex];
+            bool isComposable = arg.ParameterType.FullName == ComposableContentActionFullName;
+            if (!isComposable)
+                return;
+            processor.Emit(OpCodes.Call, ctx.ComposableLambdaWrapperImplicitConvertionFromComposableAction);
         }
 
         public IEnumerable<MethodDefinition> GetMatchingTypes()

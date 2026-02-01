@@ -25,9 +25,10 @@ namespace DotNetCompose.Runtime
         {
             var previous = _currentContext.Value;
             _currentContext.Value = newContext;
-
+            newContext.StartRoot();
             return new DisposableScope(() =>
             {
+                newContext.EndRoot();
                 _currentContext.Value = previous;
             });
         }

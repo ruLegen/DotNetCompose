@@ -9,10 +9,21 @@ namespace DotNetCompose.Runtime
         }
         private ComposableAction? _action;
 
-        public void Invoke(int groupId) => _action?.Invoke();
+        public void Invoke(int groupId)
+        {
+            if(_action != null)
+            {
+                IComposeContext? ctx = ComposeScope.GetCurrentContext();
+                ctx?.StartGroup(groupId);
+                _action?.Invoke();
+                ctx?.EndGroup(groupId);
+            }
+        }
 
         public static implicit operator ComposableLambdaWrapper(ComposableAction? b) 
             => new ComposableLambdaWrapper(b);
+        public static ComposableLambdaWrapper FromComposableAction(ComposableAction action) 
+            => new ComposableLambdaWrapper(action);
 
     }
 }

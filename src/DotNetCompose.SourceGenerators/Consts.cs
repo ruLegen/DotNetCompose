@@ -9,7 +9,6 @@ namespace DotNetCompose.SourceGenerators
         public const string ComposableActionFullTypeName = "DotNetCompose.Runtime.ComposableAction";
         public const string ComposeGeneratedAttributeFullTypeName = "DotNetCompose.Runtime.ComposeGeneratedAttribute";
 
-        public const string ComposableLambdaFullTypeName = "DotNetCompose.Runtime.ComposableLambdaWrapper";
 
         public const string ComposableAttributeFullName = "DotNetCompose.Runtime.ComposableAttribute";
 
@@ -25,6 +24,11 @@ namespace DotNetCompose.SourceGenerators
         {
             public const string StartGroupMethod  = "StartGroup";
             public const string EndGroupMethod  = "EndGroup";
+        }
+        public static class ComposableLabmdaWrapper
+        {
+            public const string FullName = "DotNetCompose.Runtime.ComposableLambdaWrapper";
+            public const string InvokeMethod = "Invoke";
         }
     }
 }

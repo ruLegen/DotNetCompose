@@ -6,6 +6,8 @@ namespace DotNetCompose.Runtime
 {
     public interface IComposeContext
     {
+        void StartRoot();
+        void EndRoot();
         void StartGroup(int v);
         void EndGroup(int v);
     }

@@ -23,9 +23,10 @@ namespace DotNetCompose.SourceGenerators
 #if DEBUG
             if (!Debugger.IsAttached)
             {
-                Debugger.Launch();
+                //Debugger.Launch();
             }
-#endif             // определяем генерируемый код
+#endif       
+            // определяем генерируемый код
             IncrementalValuesProvider<MethodDeclarationSyntax> methodDeclarations = context
                 .SyntaxProvider
                 .ForAttributeWithMetadataName(Consts.ComposableAttributeFullName,
@@ -35,7 +36,6 @@ namespace DotNetCompose.SourceGenerators
 
             var compilationAndMethods = context.CompilationProvider.Combine(methodDeclarations.Collect());
 
-            // Step 3: Generate source code
             context.RegisterSourceOutput(compilationAndMethods,
                 static (spc, source) => Execute(source.Left, source.Right, spc));
         }
@@ -44,7 +44,6 @@ namespace DotNetCompose.SourceGenerators
             ImmutableArray<MethodDeclarationSyntax> methods,
             SourceProductionContext context)
         {
-            // Group methods by containing type
             IEnumerable<IGrouping<string, MethodDeclarationSyntax>> methodsByType = methods
                 .GroupBy(m => m.GetFullTypeName(compilation))
                 .Where(g => !string.IsNullOrEmpty(g.Key));
@@ -95,7 +94,7 @@ namespace DotNetCompose.SourceGenerators
             sourceBuilder.AppendLine();
             sourceBuilder.AppendLine($"namespace {namespaceName}");
             sourceBuilder.AppendLine("{");
-            sourceBuilder.AppendLine($" partial {containingType.DeclaredAccessibility.ToString().ToLower()} class {typeName}");
+            sourceBuilder.AppendLine($"{containingType.DeclaredAccessibility.ToString().ToLower()} partial class {typeName}");
             sourceBuilder.AppendLine("    {");
 
             foreach (MethodDeclarationSyntax method in typeMethods)
@@ -178,7 +177,7 @@ namespace DotNetCompose.SourceGenerators
                     SyntaxFactory.Parameter(oldParam.Syntax.AttributeLists,
                     oldParam.Syntax.Modifiers,
                     oldParam.IsComposable
-                        ? SyntaxFactory.ParseTypeName(Consts.NameWithWhiteSpace(Consts.ComposableLambdaFullTypeName))
+                        ? SyntaxFactory.ParseTypeName(Consts.NameWithWhiteSpace(Consts.ComposableLabmdaWrapper.FullName))
                         : oldParam.Syntax.Type,
                     oldParam.Syntax.Identifier,
                     ReplaceDefaultArgumentValue(oldParam.Syntax.Default, oldParam.IsComposable)
@@ -215,7 +214,7 @@ namespace DotNetCompose.SourceGenerators
 
             foreach (StatementSyntax statement in block.Statements)
             {
-                TransformStatement(statement, semanticModel, statements);
+                TransformStatement(statement, semanticModel, statements, composableContext);
             }
 
             statements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
@@ -227,12 +226,12 @@ namespace DotNetCompose.SourceGenerators
         }
 
 
-        private static void TransformStatement(StatementSyntax statement, SemanticModel semanticModel, IList<StatementSyntax> outStatements)
+        private static void TransformStatement(StatementSyntax statement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext composableContext)
         {
             switch (statement)
             {
                 case ExpressionStatementSyntax exprStatement:
-                    TransformExpressionStatement(exprStatement, semanticModel, outStatements);
+                    TransformExpressionStatement(exprStatement, semanticModel, outStatements, composableContext);
                     break;
 
                 //IfStatementSyntax ifStatement => TransformIfStatement(ifStatement),
@@ -249,63 +248,130 @@ namespace DotNetCompose.SourceGenerators
             ;
         }
 
-        private static void TransformExpressionStatement(ExpressionStatementSyntax exprStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements)
+        private static void TransformExpressionStatement(ExpressionStatementSyntax exprStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext ctx)
         {
             ExpressionSyntax expression = exprStatement.Expression;
 
-            if (expression is not InvocationExpressionSyntax invocation)
+            bool isComposableArgumentCall = false;
+            switch (expression)
             {
-                outStatements.Add(exprStatement.WithExpression(expression));
-                return;
-            }
-
-
-            IMethodSymbol? methodSymbol = semanticModel.GetSymbolInfo(expression).Symbol as IMethodSymbol;
-            if (methodSymbol == null)
-            {
-                outStatements.Add(exprStatement.WithExpression(invocation.Expression));
-                return;
-            }
-
-            bool hasAnyComposablesArgs = methodSymbol.HasAnyComposablesArguments();
-            if (!hasAnyComposablesArgs)
-            {
-                outStatements.Add(exprStatement.WithExpression(expression));
-                return;
-            }
-
-            List<(string Name, bool)> argumentInfos = methodSymbol
-                .Parameters
-                .Select(p => (p.Name, p.Type.IsComposableAction()))
-                .ToList();
-
-            ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList<ArgumentSyntax>(
-                    invocation.ArgumentList.Arguments.Select((arg, index) =>
+                case InvocationExpressionSyntax invocationExpression:
+                    IMethodSymbol? methodSymbol = semanticModel.GetSymbolInfo(invocationExpression).Symbol as IMethodSymbol;
+                    if (methodSymbol == null)
                     {
-                        bool isComposable = false;
-                        if (arg.NameColon != null)
+                        writeAndBypass();
+                        return;
+                    }
+                    // Process composable argument function call
+                    // Replace regular ComposableAction call to ComposableLambdaWrapper.Invoke
+                    isComposableArgumentCall = methodSymbol.ReceiverType?.GetFullMetadataName() == Consts.ComposableActionFullTypeName;
+                    if (isComposableArgumentCall)
+                    {
+                        string? recieverObjectName = string.Empty;
+                        switch (invocationExpression.Expression)
                         {
-                            (string Name, bool)? argInfo = argumentInfos.FirstOrDefault(a => a.Name == arg.NameColon.Name.Identifier.ValueText);
-                            isComposable = argInfo?.Item2 ?? false;
+                            case IdentifierNameSyntax identifierNameSyntax:
+                                recieverObjectName = identifierNameSyntax.Identifier.Text;
+                                break;
+                            case MemberAccessExpressionSyntax memberAccessExpressionSyntax:
+                                recieverObjectName = (memberAccessExpressionSyntax.Expression as IdentifierNameSyntax)?.Identifier.Text;
+                                break;
                         }
-                        else
-                        {
-                            isComposable = argumentInfos[index].Item2;
-                        }
-                        if (!isComposable)
-                            return arg;
 
-                        return SyntaxFactory.Argument(
-                                SyntaxFactory.ParenthesizedExpression(
-                                    SyntaxFactory.CastExpression(
-                                        SyntaxFactory.ParseTypeName(Consts.ComposableActionFullTypeName),
-                                        SyntaxFactory.ParenthesizedExpression(arg.Expression)))
-                                ).WithNameColon(arg.NameColon);
-                    })
-                )
-            );
-            outStatements.Add(exprStatement.WithExpression(invocation.WithArgumentList(newArgs)));
+                        if (string.IsNullOrEmpty(recieverObjectName))
+                            throw new NotSupportedException();
+                        ExpressionStatementSyntax composeActionCallSyntax = SyntaxFactoryHelpers.CreateMethodCallOnVariableWithArgs(
+                            recieverObjectName,
+                            Consts.ComposableLabmdaWrapper.InvokeMethod,
+                            SyntaxFactoryHelpers.CreateIntLiteral(ctx.GetNextGroupId()));
+                        outStatements.Add(exprStatement.WithExpression(composeActionCallSyntax.Expression));
+                        return;
+                    }
+
+                    if (expression is InvocationExpressionSyntax invocation)
+                    {
+                        bool isComposableFunctionCall = methodSymbol.HasAnyComposablesArguments();
+                        if (!isComposableFunctionCall)
+                        {
+                            outStatements.Add(exprStatement.WithExpression(expression));
+                            return;
+                        }
+
+                        List<(string Name, bool)> argumentInfos = methodSymbol
+                            .Parameters
+                            .Select(p => (p.Name, p.Type.IsComposableAction()))
+                            .ToList();
+
+                        ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SeparatedList<ArgumentSyntax>(
+                                invocation.ArgumentList.Arguments.Select((arg, index) =>
+                                {
+                                    bool isComposable = false;
+                                    if (arg.NameColon != null)
+                                    {
+                                        (string Name, bool)? argInfo = argumentInfos.FirstOrDefault(a => a.Name == arg.NameColon.Name.Identifier.ValueText);
+                                        isComposable = argInfo?.Item2 ?? false;
+                                    }
+                                    else
+                                    {
+                                        isComposable = argumentInfos[index].Item2;
+                                    }
+                                    if (!isComposable)
+                                        return arg;
+
+                                    return SyntaxFactory.Argument(
+                                            SyntaxFactory.ParenthesizedExpression(
+                                                SyntaxFactory.CastExpression(
+                                                    SyntaxFactory.ParseTypeName(Consts.ComposableActionFullTypeName),
+                                                    SyntaxFactory.ParenthesizedExpression(arg.Expression)))
+                                            ).WithNameColon(arg.NameColon);
+                                })
+                            )
+                        );
+                        outStatements.Add(exprStatement.WithExpression(invocation.WithArgumentList(newArgs)));
+                    }
+                    break;
+                case ConditionalAccessExpressionSyntax conditionalAccessExpression:
+                    IParameterSymbol? symbol = semanticModel.GetSymbolInfo(conditionalAccessExpression.Expression).Symbol as IParameterSymbol;
+                    if(symbol == null)
+                    {
+                        writeAndBypass();
+                        return;
+                    }
+                    // Process composable argument function call
+                    // Replace regular ComposableAction call to ComposableLambdaWrapper.Invoke
+                    isComposableArgumentCall = symbol.Type?.GetFullMetadataName() == Consts.ComposableActionFullTypeName;
+                    if (isComposableArgumentCall)
+                    {
+                        string? recieverObjectName = string.Empty;
+                        switch (conditionalAccessExpression.Expression)
+                        {
+                            case IdentifierNameSyntax identifierNameSyntax:
+                                recieverObjectName = identifierNameSyntax.Identifier.Text;
+                                break;
+                        }
+
+                        if (string.IsNullOrEmpty(recieverObjectName))
+                            throw new NotSupportedException();
+
+                        ExpressionStatementSyntax composeActionCallSyntax = SyntaxFactoryHelpers.CreateMethodCallOnVariableWithArgs(
+                            recieverObjectName,
+                            Consts.ComposableLabmdaWrapper.InvokeMethod,
+                            SyntaxFactoryHelpers.CreateIntLiteral(ctx.GetNextGroupId()));
+                        outStatements.Add(exprStatement.WithExpression(composeActionCallSyntax.Expression));
+                        return;
+                    }
+                    break;
+                default:
+                    writeAndBypass();
+                    break;
+            }
+
+
+            void writeAndBypass()
+            {
+                outStatements.Add(exprStatement.WithExpression(expression));
+            }
         }
 
         private static void TODO(string v)
