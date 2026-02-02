@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using DotNetCompose.SourceGenerators.Extensions;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
@@ -48,7 +49,7 @@ namespace DotNetCompose.SourceGenerators
                         )
                     )
                 )
-            ).WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+            ).WithTrailingNewLine();
         }
 
         public static AttributeSyntax CreateEditorNotVisibleAttribute()
@@ -83,7 +84,7 @@ namespace DotNetCompose.SourceGenerators
                     )
                 )
                 .WithArgumentList(CreateArgumentList(arguments))
-            ).WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+            ).WithTrailingNewLine();
         }
         public static ExpressionStatementSyntax CreateSafeMethodCallOnVariableWithArgs(
            string variableName,
@@ -98,7 +99,7 @@ namespace DotNetCompose.SourceGenerators
                         )
                 .WithArgumentList(CreateArgumentList(arguments))
             )
-            ).WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+            ).WithTrailingNewLine();
         }
         public static ExpressionSyntax CreateIntLiteral(int value)
         {

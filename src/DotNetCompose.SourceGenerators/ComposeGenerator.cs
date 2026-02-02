@@ -23,7 +23,7 @@ namespace DotNetCompose.SourceGenerators
 #if DEBUG
             if (!Debugger.IsAttached)
             {
-                //Debugger.Launch();
+                Debugger.Launch();
             }
 #endif       
             // определяем генерируемый код
@@ -129,7 +129,7 @@ namespace DotNetCompose.SourceGenerators
 
             if (method.Body != null)
             {
-                BlockSyntax transformedBody = TransformBlock(method.Identifier.Text, method.Body, semanticModel);
+                BlockSyntax transformedBody = TransformMethodBlock(method.Identifier.Text, method.Body, semanticModel);
                 newMethod = newMethod.WithBody(transformedBody);
             }
             else if (method.ExpressionBody != null)
@@ -198,10 +198,10 @@ namespace DotNetCompose.SourceGenerators
                             ));
         }
 
-        private static BlockSyntax TransformBlock(string methodName, BlockSyntax block, SemanticModel semanticModel)
+        private static BlockSyntax TransformMethodBlock(string methodName, BlockSyntax block, SemanticModel semanticModel)
         {
             ComposableMethodGeneratorContext composableContext = new ComposableMethodGeneratorContext();
-            string contextVarName = "var0";
+            string contextVarName = composableContext.ContextVarName;
             List<StatementSyntax> statements = new List<StatementSyntax>();
             statements.Add(SyntaxFactoryHelpers.CreateStaticCallWithVar(
                     Consts.ComposeScope.FullName,
@@ -233,8 +233,9 @@ namespace DotNetCompose.SourceGenerators
                 case ExpressionStatementSyntax exprStatement:
                     TransformExpressionStatement(exprStatement, semanticModel, outStatements, composableContext);
                     break;
-
-                //IfStatementSyntax ifStatement => TransformIfStatement(ifStatement),
+                case IfStatementSyntax ifStatement:
+                    TransformIfStatement(ifStatement, semanticModel, outStatements, composableContext);
+                    break;
                 //SwitchStatementSyntax switchStatement => TransformSwitchStatement(switchStatement),
                 //ForStatementSyntax forStatement => TransformForStatement(forStatement),
                 //WhileStatementSyntax whileStatement => TransformWhileStatement(whileStatement),
@@ -246,6 +247,106 @@ namespace DotNetCompose.SourceGenerators
                     break;
             }
             ;
+        }
+
+        private static void TransformIfStatement(IfStatementSyntax ifStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext ctx)
+        {
+            ctx.StartIfProcessing();
+            IEnumerable<StatementSyntax> ifStatementsToProcesss = null;
+            if (ifStatement.Statement is BlockSyntax blockSyntax)
+            {
+                ifStatementsToProcesss = blockSyntax.Statements;
+            }
+            else if (ifStatement.Statement is ExpressionStatementSyntax expressionStatementSyntax)
+            {
+                ifStatementsToProcesss = new StatementSyntax[] { expressionStatementSyntax };
+            }
+            if (ifStatementsToProcesss != null)
+            {
+                IList<StatementSyntax> ifOutStatements = new List<StatementSyntax>();
+                foreach (StatementSyntax statement in ifStatementsToProcesss)
+                {
+                    TransformStatement(statement, semanticModel, ifOutStatements, ctx);
+                }
+
+                IEnumerable<StatementSyntax> elseStatementsToProcesss = null;
+                if (ifStatement.Else?.Statement is BlockSyntax elseBlockSyntax)
+                {
+                    elseStatementsToProcesss = elseBlockSyntax.Statements;
+                }
+                else if (ifStatement.Else?.Statement is ExpressionStatementSyntax elseExpressionStatementSyntax)
+                {
+                    elseStatementsToProcesss = new StatementSyntax[] { elseExpressionStatementSyntax };
+                }
+
+                IList<StatementSyntax> elseOutStatements = null;
+                if (elseStatementsToProcesss != null)
+                {
+                    elseOutStatements = new List<StatementSyntax>();
+                    foreach (var statements in elseStatementsToProcesss)
+                    {
+                        TransformStatement(statements, semanticModel, elseOutStatements, ctx);
+                    }
+                }
+
+                if (ctx.WasGeneratedComposableFunctionWithinConditionalBlocks)
+                {
+                    int ifGroupId = ctx.GetNextGroupId();
+                    ElseClauseSyntax? newElseClauseSyntax = ifStatement.Else;
+                    if (elseOutStatements != null && elseOutStatements.Any())
+                    {
+                        int elseGroupId = ctx.GetNextGroupId();
+                        ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(ctx.ContextVarName,
+                            Consts.ComposeContext.StartRestartableGroupMethod,
+                            SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId))
+                            .WithTrailingNewLine();
+                        ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(ctx.ContextVarName,
+                            Consts.ComposeContext.EndRestartableGroupMethod,
+                            SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId));
+
+                        newElseClauseSyntax = ifStatement.Else.WithStatement(SyntaxFactory.Block(
+                                WrapStatementsWithGroupStartAndEndMethods(elseGroupStartStatement, elseOutStatements, elseGroupEndStatement)))
+                            .WithTrailingNewLine();
+                    }
+                    IfStatementSyntax newIfStatement = ifStatement.WithElse(newElseClauseSyntax);
+
+                    if (ifOutStatements?.Any() ?? false)
+                    {
+                        ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(ctx.ContextVarName,
+                                Consts.ComposeContext.StartRestartableGroupMethod,
+                                SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId))
+                            .WithTrailingNewLine();
+
+                        ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(ctx.ContextVarName,
+                            Consts.ComposeContext.EndRestartableGroupMethod,
+                            SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId));
+
+                        newIfStatement = ifStatement.WithStatement(SyntaxFactory.Block(
+                                WrapStatementsWithGroupStartAndEndMethods(ifGroupStartStatement, ifOutStatements, ifGroupEndStatement)))
+                            .WithElse(newElseClauseSyntax)
+                            .WithTrailingNewLine();
+                    }
+
+                    outStatements.Add(newIfStatement);
+                }
+                else
+                {
+                    outStatements.Add(ifStatement);
+                }
+            }
+            ctx.EndIfProcessing();
+        }
+
+        private static IEnumerable<StatementSyntax> WrapStatementsWithGroupStartAndEndMethods(ExpressionStatementSyntax groupStart,
+            IList<StatementSyntax> statements,
+            ExpressionStatementSyntax groupEnd)
+        {
+            yield return groupStart;
+            foreach (var statement in statements)
+            {
+                yield return statement;
+            }
+            yield return groupEnd;
         }
 
         private static void TransformExpressionStatement(ExpressionStatementSyntax exprStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext ctx)
@@ -285,6 +386,7 @@ namespace DotNetCompose.SourceGenerators
                             Consts.ComposableLabmdaWrapper.InvokeMethod,
                             SyntaxFactoryHelpers.CreateIntLiteral(ctx.GetNextGroupId()));
                         outStatements.Add(exprStatement.WithExpression(composeActionCallSyntax.Expression));
+                        ctx.ComposableProcessed();
                         return;
                     }
 
@@ -329,11 +431,12 @@ namespace DotNetCompose.SourceGenerators
                             )
                         );
                         outStatements.Add(exprStatement.WithExpression(invocation.WithArgumentList(newArgs)));
+                        ctx.ComposableProcessed();
                     }
                     break;
                 case ConditionalAccessExpressionSyntax conditionalAccessExpression:
                     IParameterSymbol? symbol = semanticModel.GetSymbolInfo(conditionalAccessExpression.Expression).Symbol as IParameterSymbol;
-                    if(symbol == null)
+                    if (symbol == null)
                     {
                         writeAndBypass();
                         return;
@@ -359,6 +462,7 @@ namespace DotNetCompose.SourceGenerators
                             Consts.ComposableLabmdaWrapper.InvokeMethod,
                             SyntaxFactoryHelpers.CreateIntLiteral(ctx.GetNextGroupId()));
                         outStatements.Add(exprStatement.WithExpression(composeActionCallSyntax.Expression));
+                        ctx.ComposableProcessed();
                         return;
                     }
                     break;

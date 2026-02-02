@@ -8,7 +8,9 @@ namespace DotNetCompose.Runtime
     {
         void StartRoot();
         void EndRoot();
-        void StartGroup(int v);
-        void EndGroup(int v);
+        void StartGroup(int groupId);
+        void EndGroup(int groupId);
+        void StartRestartableGroup(int groupId);
+        void EndRestartableGroup(int groupId);
     }
 }

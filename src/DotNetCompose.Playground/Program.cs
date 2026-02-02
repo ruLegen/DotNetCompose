@@ -8,12 +8,15 @@ namespace DotNetCompose.Playground
         static void Main(string[] args)
         {
             ComposeContext context1 = new ComposeContext();
-            using (var r = ComposeScope.CreateScope(context1))
+            for (int i = 0; i < 2; i++)
             {
-                TestClass.App();
+                using (var r = ComposeScope.CreateScope(context1))
+                {
+                    TestClass.App(i);
+                }
+                context1.Tree();
             }
 
-            context1.Tree();
         }
 
 
@@ -24,7 +27,7 @@ namespace DotNetCompose.Playground
     {
         private const int ROOT_KEY = -1000;
 
-        record Group(int ID, Group? Parent);
+        record Group(int ID, Group? Parent, bool Restartable);
         private List<Group> Groups { get; } = new List<Group>();
         private Stack<int> GroupStackIndecies { get; } = new Stack<int>();
 
@@ -40,13 +43,11 @@ namespace DotNetCompose.Playground
 
         public void StartGroup(int v)
         {
-            Group parent = null;
-            if (GroupStackIndecies.TryPeek(out int index))
-            {
-                parent = Groups[index];
-            }
-            Groups.Add(new Group(v, parent));
-            GroupStackIndecies.Push(Groups.Count - 1);
+            Start(v, false);
+        }
+        public void StartRestartableGroup(int groupId)
+        {
+            Start(groupId,true);
         }
 
         public void EndGroup(int v)
@@ -54,10 +55,26 @@ namespace DotNetCompose.Playground
             GroupStackIndecies.Pop();
         }
 
+        public void EndRestartableGroup(int groupId)
+        {
+            EndGroup(groupId);
+        }
+
+        private void Start(int id, bool restartable = false)
+        {
+            Group parent = null;
+            if (GroupStackIndecies.TryPeek(out int index))
+            {
+                parent = Groups[index];
+            }
+            Groups.Add(new Group(id, parent,restartable));
+            GroupStackIndecies.Push(Groups.Count - 1);
+        }
 
         public void Tree()
         {
-            var g= Groups.GroupBy(g => g.Parent);
+            var g = Groups.GroupBy(g => g.Parent);
         }
+
     }
 }

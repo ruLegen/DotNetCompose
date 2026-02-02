@@ -22,6 +22,8 @@ namespace DotNetCompose.SourceGenerators
 
         public static class ComposeContext
         {
+            public const string StartRestartableGroupMethod  = "StartRestartableGroup";
+            public const string EndRestartableGroupMethod  = "EndRestartableGroup";
             public const string StartGroupMethod  = "StartGroup";
             public const string EndGroupMethod  = "EndGroup";
         }
