@@ -236,6 +236,13 @@ namespace DotNetCompose.SourceGenerators
                 case IfStatementSyntax ifStatement:
                     TransformIfStatement(ifStatement, semanticModel, outStatements, composableContext);
                     break;
+                //case ForEachStatementSyntax forEachStatement:
+                //    TransformForeachStatement(forEachStatement, semanticModel, outStatements, composableContext);
+                //    break;
+                //case ForStatementSyntax forStatement:
+                //    TransformForStatement(forStatement, semanticModel, outStatements, composableContext);
+                //    break;
+
                 //SwitchStatementSyntax switchStatement => TransformSwitchStatement(switchStatement),
                 //ForStatementSyntax forStatement => TransformForStatement(forStatement),
                 //WhileStatementSyntax whileStatement => TransformWhileStatement(whileStatement),
@@ -247,6 +254,16 @@ namespace DotNetCompose.SourceGenerators
                     break;
             }
             ;
+        }
+
+        private static void TransformForStatement(ForStatementSyntax forStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext composableContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void TransformForeachStatement(ForEachStatementSyntax forEachStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext composableContext)
+        {
+            throw new NotImplementedException();
         }
 
         private static void TransformIfStatement(IfStatementSyntax ifStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext ctx)
@@ -270,6 +287,7 @@ namespace DotNetCompose.SourceGenerators
                 }
 
                 IEnumerable<StatementSyntax> elseStatementsToProcesss = null;
+                bool isElseIfBlock = false;
                 if (ifStatement.Else?.Statement is BlockSyntax elseBlockSyntax)
                 {
                     elseStatementsToProcesss = elseBlockSyntax.Statements;
@@ -277,6 +295,11 @@ namespace DotNetCompose.SourceGenerators
                 else if (ifStatement.Else?.Statement is ExpressionStatementSyntax elseExpressionStatementSyntax)
                 {
                     elseStatementsToProcesss = new StatementSyntax[] { elseExpressionStatementSyntax };
+                }
+                else if (ifStatement.Else?.Statement is IfStatementSyntax innerIfStatements)
+                {
+                    elseStatementsToProcesss = new StatementSyntax[] { innerIfStatements };
+                    isElseIfBlock = true;
                 }
 
                 IList<StatementSyntax> elseOutStatements = null;
@@ -304,9 +327,24 @@ namespace DotNetCompose.SourceGenerators
                             Consts.ComposeContext.EndRestartableGroupMethod,
                             SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId));
 
-                        newElseClauseSyntax = ifStatement.Else.WithStatement(SyntaxFactory.Block(
-                                WrapStatementsWithGroupStartAndEndMethods(elseGroupStartStatement, elseOutStatements, elseGroupEndStatement)))
-                            .WithTrailingNewLine();
+                        if (isElseIfBlock)
+                        {
+                            StatementSyntax statementSyntax = default;
+                            if (elseOutStatements.Count == 1)
+                                statementSyntax = elseOutStatements[0];
+                            else
+                                statementSyntax = SyntaxFactory.Block(elseOutStatements);
+
+                            newElseClauseSyntax = ifStatement.Else
+                                    .WithStatement(statementSyntax)
+                                    .WithTrailingNewLine();
+                        }
+                        else
+                        {
+                            newElseClauseSyntax = ifStatement.Else.WithStatement(SyntaxFactory.Block(
+                                    WrapStatementsWithGroupStartAndEndMethods(elseGroupStartStatement, elseOutStatements, elseGroupEndStatement)))
+                                .WithTrailingNewLine();
+                        }
                     }
                     IfStatementSyntax newIfStatement = ifStatement.WithElse(newElseClauseSyntax);
 
