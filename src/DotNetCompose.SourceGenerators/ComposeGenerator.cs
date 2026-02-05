@@ -202,27 +202,30 @@ namespace DotNetCompose.SourceGenerators
         {
             ComposableMethodGeneratorContext composableContext = new ComposableMethodGeneratorContext();
             string contextVarName = composableContext.ContextVarName;
-            List<StatementSyntax> statements = new List<StatementSyntax>();
-            statements.Add(SyntaxFactoryHelpers.CreateStaticCallWithVar(
-                    Consts.ComposeScope.FullName,
-                    Consts.ComposeScope.GetCurrentContextMethodName,
-                   contextVarName));
-            statements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
-                contextVarName,
-                Consts.ComposeContext.StartGroupMethod,
-                SyntaxFactoryHelpers.CreateIntLiteral(composableContext.InitialGroupId)));
-
-            foreach (StatementSyntax statement in block.Statements)
+            using (ListPoolObject<StatementSyntax> outStatementPoolObj = ListPool<StatementSyntax>.Get())
             {
-                TransformStatement(statement, semanticModel, statements, composableContext);
+                List<StatementSyntax> statements = outStatementPoolObj.List;
+                statements.Add(SyntaxFactoryHelpers.CreateStaticCallWithVar(
+                        Consts.ComposeScope.FullName,
+                        Consts.ComposeScope.GetCurrentContextMethodName,
+                       contextVarName));
+                statements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+                    contextVarName,
+                    Consts.ComposeContext.StartGroupMethod,
+                    SyntaxFactoryHelpers.CreateIntLiteral(composableContext.InitialGroupId)));
+
+                foreach (StatementSyntax statement in block.Statements)
+                {
+                    TransformStatement(statement, semanticModel, statements, composableContext);
+                }
+
+                statements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+                    contextVarName,
+                    Consts.ComposeContext.EndGroupMethod,
+                    SyntaxFactoryHelpers.CreateIntLiteral(composableContext.InitialGroupId)));
+
+                return block.WithStatements(SyntaxFactory.List(statements));
             }
-
-            statements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
-                contextVarName,
-                Consts.ComposeContext.EndGroupMethod,
-                SyntaxFactoryHelpers.CreateIntLiteral(composableContext.InitialGroupId)));
-
-            return block.WithStatements(SyntaxFactory.List(statements));
         }
 
 
@@ -280,7 +283,8 @@ namespace DotNetCompose.SourceGenerators
             }
             if (ifStatementsToProcesss != null)
             {
-                IList<StatementSyntax> ifOutStatements = new List<StatementSyntax>();
+                using ListPoolObject<StatementSyntax> ifOutStatementsPoolObj = ListPool<StatementSyntax>.Get();
+                IList<StatementSyntax> ifOutStatements = ifOutStatementsPoolObj.List;
                 foreach (StatementSyntax statement in ifStatementsToProcesss)
                 {
                     TransformStatement(statement, semanticModel, ifOutStatements, ctx);
@@ -302,10 +306,11 @@ namespace DotNetCompose.SourceGenerators
                     isElseIfBlock = true;
                 }
 
+                using ListPoolObject<StatementSyntax> elseOutStatementsPoolObj = ListPool<StatementSyntax>.Get();
                 IList<StatementSyntax> elseOutStatements = null;
                 if (elseStatementsToProcesss != null)
                 {
-                    elseOutStatements = new List<StatementSyntax>();
+                    elseOutStatements = elseOutStatementsPoolObj.List;
                     foreach (var statements in elseStatementsToProcesss)
                     {
                         TransformStatement(statements, semanticModel, elseOutStatements, ctx);

@@ -32,7 +32,7 @@ namespace DotNetCompose.Runtime
 #if DEBUG
             if (!Debugger.IsAttached)
             {
-               // Debugger.Launch();
+                //Debugger.Launch();
             }
 #endif
             TypeDefinition labmdaWrapperType = FindTypeDefinition("DotNetCompose.Runtime.ComposableLambdaWrapper");

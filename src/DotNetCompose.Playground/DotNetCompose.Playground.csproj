@@ -13,14 +13,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DotNetCompose.Fody\DotNetCompose.Fody.csproj" />
     <ProjectReference Include="..\DotNetCompose.Runtime\DotNetCompose.Runtime.csproj" />
-    <ProjectReference Include="..\DotNetCompose.SourceGenerators\DotNetCompose.SourceGenerators.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false"/>
+    <ProjectReference Include="..\DotNetCompose.SourceGenerators\DotNetCompose.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 
     <WeaverFiles Include="$(SolutionDir)src\DotNetCompose.Fody\bin\$(Configuration)\netstandard2.0\DotNetCompose.Fody.dll" />
   </ItemGroup>
