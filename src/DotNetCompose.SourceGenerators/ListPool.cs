@@ -21,7 +21,7 @@ namespace DotNetCompose.SourceGenerators
             if (_disposed)
                 return;
             _disposed = true;
-            
+            ListPool<T>.Return(this);
         }
     }
     internal static class ListPool<T>
