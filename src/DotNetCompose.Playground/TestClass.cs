@@ -14,21 +14,23 @@ namespace DotNetCompose.Playground
         [Composable]
         public static void App(int someVal)
         {
-            if (someVal == 0)
+            for (int i = 0; i < someVal; i++)
             {
-                SomeNonComposableFunction();
+                Add1AndCallIfEven(i, () => { });
+                if(i == 0)
+                {
+                    Add1AndCallIfOdd(i, () => { });
+                }else if(i == 1)
+                {
+                    Add1AndCallIfOdd(i, () => { });
+                }
             }
-            else if (someVal == 1)
+
+            foreach (var i in Enumerable.Range(0,10))
             {
-                Add1AndCallIfEven(1, null);
-            }
-            else if (someVal == 2)
-            {
-                Add1AndCallIfEven(2, null);
-            }
-            else
-            {
-                Add1AndCallIfEven(3, null);
+                Add1AndCallIfEven(i, () => { });
+                if(i == 0)
+                    Add1AndCallIfOdd(i, () => { });
             }
         }
 

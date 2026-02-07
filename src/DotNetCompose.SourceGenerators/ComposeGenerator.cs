@@ -239,12 +239,12 @@ namespace DotNetCompose.SourceGenerators
                 case IfStatementSyntax ifStatement:
                     TransformIfStatement(ifStatement, semanticModel, outStatements, composableContext);
                     break;
-                //case ForEachStatementSyntax forEachStatement:
-                //    TransformForeachStatement(forEachStatement, semanticModel, outStatements, composableContext);
-                //    break;
-                //case ForStatementSyntax forStatement:
-                //    TransformForStatement(forStatement, semanticModel, outStatements, composableContext);
-                //    break;
+                case ForStatementSyntax forStatement:
+                    TransformForStatement(forStatement, semanticModel, outStatements, composableContext);
+                    break;
+                case ForEachStatementSyntax forEachStatement:
+                    TransformForeachStatement(forEachStatement, semanticModel, outStatements, composableContext);
+                    break;
 
                 //SwitchStatementSyntax switchStatement => TransformSwitchStatement(switchStatement),
                 //ForStatementSyntax forStatement => TransformForStatement(forStatement),
@@ -261,12 +261,56 @@ namespace DotNetCompose.SourceGenerators
 
         private static void TransformForStatement(ForStatementSyntax forStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext composableContext)
         {
-            throw new NotImplementedException();
+            IEnumerable<StatementSyntax> statementsToProcess = null;
+            if (forStatement.Statement is BlockSyntax block)
+            {
+                statementsToProcess = block.Statements;
+            }
+            else
+                throw new NotSupportedException();
+            if (statementsToProcess != null)
+            {
+                using ListPoolObject<StatementSyntax> outForStatements = ListPool<StatementSyntax>.Get();
+                foreach (StatementSyntax processingStatement in statementsToProcess)
+                {
+                    TransformStatement(processingStatement, semanticModel, outForStatements.List, composableContext);
+                }
+                outStatements.Add(
+                    forStatement.WithStatement(
+                        SyntaxFactory.Block(outForStatements.List))
+                    .WithTrailingNewLine());
+            }
+            else
+            {
+                outStatements.Add(forStatement);
+            }
         }
 
         private static void TransformForeachStatement(ForEachStatementSyntax forEachStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext composableContext)
         {
-            throw new NotImplementedException();
+            IEnumerable<StatementSyntax> statementsToProcess = null;
+            if (forEachStatement.Statement is BlockSyntax block)
+            {
+                statementsToProcess = block.Statements;
+            }
+            else
+                throw new NotSupportedException();
+            if (statementsToProcess != null)
+            {
+                using ListPoolObject<StatementSyntax> outForEachStatements = ListPool<StatementSyntax>.Get();
+                foreach (StatementSyntax processingStatement in statementsToProcess)
+                {
+                    TransformStatement(processingStatement, semanticModel, outForEachStatements.List, composableContext);
+                }
+                outStatements.Add(
+                    forEachStatement.WithStatement(
+                        SyntaxFactory.Block(outForEachStatements.List))
+                    .WithTrailingNewLine());
+            }
+            else
+            {
+                outStatements.Add(forEachStatement);
+            }
         }
 
         private static void TransformIfStatement(IfStatementSyntax ifStatement, SemanticModel semanticModel, IList<StatementSyntax> outStatements, ComposableMethodGeneratorContext ctx)
