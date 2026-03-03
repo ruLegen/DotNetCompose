@@ -60,6 +60,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             return base.VisitBlock(node);
         }
 
+        /* 
+         * TReturnType FunctionName(ARGS)
+         * {
+         *     STATEMENTS
+         * }
+         */
         private SyntaxNode VisitMethodDeclarationBlock(BlockSyntax node)
         {
             string contextVarName = _ctx.ContextVarName;
@@ -210,107 +216,98 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             {
                 ifStatementsToProcesss = new StatementSyntax[] { expressionStatementSyntax };
             }
-            if (ifStatementsToProcesss != null)
+            if (ifStatementsToProcesss == null)
+                throw new NotSupportedException();
+            using ListPoolObject<StatementSyntax> ifOutStatements = ListPool<StatementSyntax>.Get();
+            foreach (StatementSyntax statement in ifStatementsToProcesss)
             {
-                using ListPoolObject<StatementSyntax> ifOutStatements = ListPool<StatementSyntax>.Get();
-                foreach (StatementSyntax statement in ifStatementsToProcesss)
+                StatementSyntax? newStatement = base.Visit(statement) as StatementSyntax;
+                if (newStatement != null)
+                    ifOutStatements.Add(newStatement);
+            }
+
+            IEnumerable<StatementSyntax> elseStatementsToProcesss = null;
+            bool isElseIfBlock = false;
+            if (node.Else?.Statement is BlockSyntax elseBlockSyntax)
+            {
+                elseStatementsToProcesss = elseBlockSyntax.Statements;
+            }
+            else if (node.Else?.Statement is ExpressionStatementSyntax elseExpressionStatementSyntax)
+            {
+                elseStatementsToProcesss = new StatementSyntax[] { elseExpressionStatementSyntax };
+            }
+            else if (node.Else?.Statement is IfStatementSyntax innerIfStatements)
+            {
+                elseStatementsToProcesss = new StatementSyntax[] { innerIfStatements };
+                isElseIfBlock = true;
+            }
+
+            using ListPoolObject<StatementSyntax> elseOutStatements = ListPool<StatementSyntax>.Get();
+            if (elseStatementsToProcesss != null)
+            {
+                foreach (StatementSyntax statements in elseStatementsToProcesss)
                 {
-                    StatementSyntax? newStatement = base.Visit(statement) as StatementSyntax;
+                    StatementSyntax? newStatement = base.Visit(statements) as StatementSyntax;
                     if (newStatement != null)
-                        ifOutStatements.Add(newStatement);
+                        elseOutStatements.Add(newStatement);
                 }
+            }
 
-                IEnumerable<StatementSyntax> elseStatementsToProcesss = null;
-                bool isElseIfBlock = false;
-                if (node.Else?.Statement is BlockSyntax elseBlockSyntax)
-                {
-                    elseStatementsToProcesss = elseBlockSyntax.Statements;
-                }
-                else if (node.Else?.Statement is ExpressionStatementSyntax elseExpressionStatementSyntax)
-                {
-                    elseStatementsToProcesss = new StatementSyntax[] { elseExpressionStatementSyntax };
-                }
-                else if (node.Else?.Statement is IfStatementSyntax innerIfStatements)
-                {
-                    elseStatementsToProcesss = new StatementSyntax[] { innerIfStatements };
-                    isElseIfBlock = true;
-                }
+            if (!_ctx.WasGeneratedComposableFunctionWithinConditionalBlocks)
+                return base.VisitIfStatement(node);
 
-                using ListPoolObject<StatementSyntax> elseOutStatements = ListPool<StatementSyntax>.Get();
-                if (elseStatementsToProcesss != null)
-                {
-                    foreach (StatementSyntax statements in elseStatementsToProcesss)
-                    {
-                        StatementSyntax? newStatement = base.Visit(statements) as StatementSyntax;
-                        if (newStatement != null)
-                            elseOutStatements.Add(newStatement);
-                    }
-                }
+            int ifGroupId = _ctx.GetNextGroupId();
+            ElseClauseSyntax? newElseClauseSyntax = node.Else;
+            if (elseOutStatements.Any())
+            {
+                int elseGroupId = _ctx.GetNextGroupId();
+                ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+                    Consts.ComposeContext.StartRestartableGroupMethod,
+                    SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId))
+                    .WithTrailingNewLine();
+                ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+                    Consts.ComposeContext.EndRestartableGroupMethod,
+                    SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId));
 
-                if (_ctx.WasGeneratedComposableFunctionWithinConditionalBlocks)
+                if (isElseIfBlock)
                 {
-                    int ifGroupId = _ctx.GetNextGroupId();
-                    ElseClauseSyntax? newElseClauseSyntax = node.Else;
-                    if (elseOutStatements.Any())
-                    {
-                        int elseGroupId = _ctx.GetNextGroupId();
-                        ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                            Consts.ComposeContext.StartRestartableGroupMethod,
-                            SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId))
+                    StatementSyntax statementSyntax = default;
+                    if (elseOutStatements.Count == 1)
+                        statementSyntax = elseOutStatements[0];
+                    else
+                        statementSyntax = SyntaxFactory.Block(elseOutStatements);
+
+                    newElseClauseSyntax = node.Else
+                            .WithStatement(statementSyntax)
                             .WithTrailingNewLine();
-                        ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                            Consts.ComposeContext.EndRestartableGroupMethod,
-                            SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId));
-
-                        if (isElseIfBlock)
-                        {
-                            StatementSyntax statementSyntax = default;
-                            if (elseOutStatements.Count == 1)
-                                statementSyntax = elseOutStatements[0];
-                            else
-                                statementSyntax = SyntaxFactory.Block(elseOutStatements);
-
-                            newElseClauseSyntax = node.Else
-                                    .WithStatement(statementSyntax)
-                                    .WithTrailingNewLine();
-                        }
-                        else
-                        {
-                            newElseClauseSyntax = node.Else.WithStatement(SyntaxFactory.Block(
-                                    WrapStatementsWithGroupStartAndEndMethods(elseGroupStartStatement, elseOutStatements, elseGroupEndStatement)))
-                                .WithTrailingNewLine();
-                        }
-                    }
-                    IfStatementSyntax newIfStatement = node.WithElse(newElseClauseSyntax);
-
-                    if (ifOutStatements.Any())
-                    {
-                        ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                                Consts.ComposeContext.StartRestartableGroupMethod,
-                                SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId))
-                            .WithTrailingNewLine();
-
-                        ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                            Consts.ComposeContext.EndRestartableGroupMethod,
-                            SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId));
-
-                        newIfStatement = node.WithStatement(SyntaxFactory.Block(
-                                WrapStatementsWithGroupStartAndEndMethods(ifGroupStartStatement, ifOutStatements, ifGroupEndStatement)))
-                            .WithElse(newElseClauseSyntax)
-                            .WithTrailingNewLine();
-                    }
-
-                    return newIfStatement;
                 }
                 else
                 {
-                    return base.VisitIfStatement(node);
+                    newElseClauseSyntax = node.Else.WithStatement(SyntaxFactory.Block(
+                            WrapStatementsWithGroupStartAndEndMethods(elseGroupStartStatement, elseOutStatements, elseGroupEndStatement)))
+                        .WithTrailingNewLine();
                 }
             }
-            else
+            IfStatementSyntax newIfStatement = node.WithElse(newElseClauseSyntax);
+
+            if (ifOutStatements.Any())
             {
-                throw new NotSupportedException();
+                ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+                        Consts.ComposeContext.StartRestartableGroupMethod,
+                        SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId))
+                    .WithTrailingNewLine();
+
+                ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+                    Consts.ComposeContext.EndRestartableGroupMethod,
+                    SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId));
+
+                newIfStatement = node.WithStatement(SyntaxFactory.Block(
+                        WrapStatementsWithGroupStartAndEndMethods(ifGroupStartStatement, ifOutStatements, ifGroupEndStatement)))
+                    .WithElse(newElseClauseSyntax)
+                    .WithTrailingNewLine();
             }
+
+            return newIfStatement;
         }
         public override SyntaxNode VisitForStatement(ForStatementSyntax forStatement)
         {
@@ -350,7 +347,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             if (statementsToProcess != null)
             {
                 using ListPoolObject<StatementSyntax> outForEachStatements = ListPool<StatementSyntax>.Get();
-                 foreach (StatementSyntax processingStatement in statementsToProcess)
+                foreach (StatementSyntax processingStatement in statementsToProcess)
                 {
                     SyntaxNode st = base.Visit(processingStatement);
 
