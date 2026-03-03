@@ -12,12 +12,13 @@ namespace DotNetCompose.Playground
             {
                 using (var r = ComposeScope.CreateScope(context1))
                 {
-                    TestClass.App(i);
+                    TestClass.App(i, 0);
                 }
                 context1.Tree();
             }
 
         }
+
 
 
     }

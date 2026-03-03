@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DotNetCompose.SourceGenerators.Helpers;
+using System;
 using System.Threading;
 
 namespace DotNetCompose.SourceGenerators
@@ -36,6 +37,12 @@ namespace DotNetCompose.SourceGenerators
                 WasGeneratedComposableFunctionWithinConditionalBlocks = false;
         }
 
+        internal IDisposable WithIfProcessing()
+        {
+            StartIfProcessing();
+            return new ActionDisposable(() => EndIfProcessing());
+        }
+
         internal void EndIfProcessing()
         {
             _conditionalProccessingDepth--;
@@ -48,5 +55,7 @@ namespace DotNetCompose.SourceGenerators
             if (_conditionalProccessingDepth > 0)
                 WasGeneratedComposableFunctionWithinConditionalBlocks = true;
         }
+
+
     }
 }

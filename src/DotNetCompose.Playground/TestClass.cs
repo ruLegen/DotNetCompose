@@ -11,9 +11,43 @@ namespace DotNetCompose.Playground
 {
     internal partial class TestClass
     {
+
         [Composable]
-        public static void App(int someVal)
+        public static void NestedIfs(int i, ComposableAction action)
         {
+            if (i == 0)
+            {
+                int t = 0;
+                if(i  == 1)
+                {
+                    t = 1;
+                    SomeNonComposableFunction();
+                }
+            }
+            else if (i == 2)
+            {
+                if (i == 3)
+                {
+                    i = 3;
+                }
+            }
+            else
+            {
+
+            }
+        }
+        [Composable]
+        public static void Add1AndCallIfEven(int i, ComposableAction action)
+        {
+            if ((i + 1) % 2 == 0)
+                action?.Invoke();
+        }
+
+
+        [Composable]
+        public static void App(int someVal, int o)
+        {
+            int d = o;
             for (int i = 0; i < someVal; i++)
             {
                 Add1AndCallIfEven(i, () => { });
@@ -39,13 +73,6 @@ namespace DotNetCompose.Playground
         }
 
         [Composable]
-        public static void Add1AndCallIfEven(int i, ComposableAction action)
-        {
-            if ((i + 1) % 2 == 0)
-                action?.Invoke();
-        }
-
-        [Composable]
         public static void Add1AndCallIfOdd(int i, ComposableAction action)
         {
             if ((i + 1) % 2 != 0)
@@ -66,5 +93,9 @@ namespace DotNetCompose.Playground
             Debug.WriteLine("Inner2");
             action.Invoke();
         }
+
+
+
+
     }
 }
