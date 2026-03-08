@@ -70,22 +70,28 @@ namespace DotNetCompose.SourceGenerators
                        )));
         }
 
-        public static ExpressionStatementSyntax CreateMethodCallOnVariableWithArgs(
+        public static ExpressionStatementSyntax CreateMethodCallOnIdentifierWithArgs(
             string variableName,
             string methodName,
             params ExpressionSyntax[] arguments)
         {
             return SyntaxFactory.ExpressionStatement(
-                SyntaxFactory.InvocationExpression(
-                    SyntaxFactory.MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.IdentifierName(variableName),
-                        SyntaxFactory.IdentifierName(methodName)
-                    )
-                )
-                .WithArgumentList(CreateArgumentList(arguments))
+                    CreateMethodCallSyntaxWithArgs(variableName, methodName, arguments)
             ).WithTrailingNewLine();
         }
+
+        public static InvocationExpressionSyntax CreateMethodCallSyntaxWithArgs(string variableName, string methodName, params ExpressionSyntax[] arguments)
+        {
+            return SyntaxFactory.InvocationExpression(
+                                SyntaxFactory.MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    SyntaxFactory.IdentifierName(variableName),
+                                    SyntaxFactory.IdentifierName(methodName)
+                                )
+                            )
+                            .WithArgumentList(CreateArgumentList(arguments));
+        }
+
         public static ExpressionStatementSyntax CreateSafeMethodCallOnVariableWithArgs(
            string variableName,
            string methodName,

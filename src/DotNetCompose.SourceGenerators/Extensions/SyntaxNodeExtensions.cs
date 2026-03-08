@@ -16,6 +16,13 @@ namespace DotNetCompose.SourceGenerators.Extensions
         {
             return node.WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
         }
-
+        /// <summary>
+        /// Creates a new node from this node with the trailing trivia replaced.
+        /// </summary>
+        public static TSyntax WithTrailingSpace<TSyntax>(
+            this TSyntax node) where TSyntax : SyntaxNode
+        {
+            return node.WithTrailingTrivia(SyntaxFactory.Space);
+        }
     }
 }

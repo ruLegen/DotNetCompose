@@ -1,6 +1,9 @@
-﻿using DotNetCompose.SourceGenerators.Helpers;
+﻿using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Helpers;
 using System;
+using System.Collections.Immutable;
 using System.Threading;
+using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
 
 namespace DotNetCompose.SourceGenerators
 {
@@ -11,17 +14,21 @@ namespace DotNetCompose.SourceGenerators
         {
             _initialGroupId = Interlocked.Increment(ref GlobalInitialGroupId);
             _currentGroupId = _initialGroupId;
-            _contextVarName = "var0";
+            _contextVarName = "__ctx";
+            _changedVarName = "__changed";
         }
         public int InitialGroupId => _initialGroupId;
         public string ContextVarName => _contextVarName;
+        public string ChangedVarName => _changedVarName;
 
         public bool WasGeneratedComposableFunctionWithinConditionalBlocks { get; private set; }
+        public ImmutableArray<MethodParameterInfo> MethodParameters { get; internal set; } = ImmutableArray<MethodParameterInfo>.Empty;
 
         private int _initialGroupId = 0;
         private int _currentGroupId;
         private int _conditionalProccessingDepth;
         private readonly string _contextVarName;
+        private readonly string _changedVarName;
 
         public int GetNextGroupId()
         {
@@ -56,6 +63,9 @@ namespace DotNetCompose.SourceGenerators
                 WasGeneratedComposableFunctionWithinConditionalBlocks = true;
         }
 
-
+        internal int GetNextLambdaKey()
+        {
+            return DateTime.Now.GetHashCode();
+        }
     }
 }
