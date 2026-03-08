@@ -1,6 +1,6 @@
 ﻿using DotNetCompose.Runtime;
 using System.Diagnostics;
-
+using static DotNetCompose.Runtime.Composables;
 namespace DotNetCompose.Playground
 {
     internal class Program
@@ -10,9 +10,10 @@ namespace DotNetCompose.Playground
             ComposeContext context1 = new ComposeContext();
             for (int i = 0; i < 2; i++)
             {
+                //Composables.CurrentContext?.StartGroup(3);
                 using (var r = ComposeScope.CreateScope(context1))
                 {
-                    TestClass.App(i, 0);
+                    //TestClass.App(i, 0);
                 }
                 context1.Tree();
             }
