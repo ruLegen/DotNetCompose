@@ -82,6 +82,11 @@ namespace DotNetCompose.SourceGenerators
 
         public static InvocationExpressionSyntax CreateMethodCallSyntaxWithArgs(string variableName, string methodName, params ExpressionSyntax[] arguments)
         {
+            return CreateMethodCallSyntaxWithArgs(variableName,methodName, CreateArgumentList(arguments));
+        }
+
+        public static InvocationExpressionSyntax CreateMethodCallSyntaxWithArgs(string variableName, string methodName, ArgumentListSyntax arguments)
+        {
             return SyntaxFactory.InvocationExpression(
                                 SyntaxFactory.MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
@@ -89,9 +94,8 @@ namespace DotNetCompose.SourceGenerators
                                     SyntaxFactory.IdentifierName(methodName)
                                 )
                             )
-                            .WithArgumentList(CreateArgumentList(arguments));
+                            .WithArgumentList(arguments);
         }
-
         public static ExpressionStatementSyntax CreateSafeMethodCallOnVariableWithArgs(
            string variableName,
            string methodName,

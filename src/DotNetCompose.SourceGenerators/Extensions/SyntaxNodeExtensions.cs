@@ -11,18 +11,26 @@ namespace DotNetCompose.SourceGenerators.Extensions
         /// <summary>
         /// Creates a new node from this node with the trailing trivia replaced.
         /// </summary>
-        public static TSyntax WithTrailingNewLine<TSyntax>(
-            this TSyntax node) where TSyntax : SyntaxNode
+        public static TSyntax WithTrailingNewLine<TSyntax>(this TSyntax node) where TSyntax : SyntaxNode
         {
             return node.WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed);
         }
+        public static TSyntax WithLeadingNewLine<TSyntax>(this TSyntax node) where TSyntax : SyntaxNode
+        {
+            return node.WithLeadingTrivia(SyntaxFactory.CarriageReturnLineFeed);
+        }
+
         /// <summary>
         /// Creates a new node from this node with the trailing trivia replaced.
         /// </summary>
-        public static TSyntax WithTrailingSpace<TSyntax>(
-            this TSyntax node) where TSyntax : SyntaxNode
+        public static TSyntax WithTrailingSpace<TSyntax>(this TSyntax node) where TSyntax : SyntaxNode
         {
             return node.WithTrailingTrivia(SyntaxFactory.Space);
         }
+        public static TSyntax WithLeadingSpace<TSyntax>(this TSyntax node) where TSyntax : SyntaxNode
+        {
+            return node.WithLeadingTrivia(SyntaxFactory.Space);
+        }
+
     }
 }

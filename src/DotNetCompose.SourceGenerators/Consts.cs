@@ -14,6 +14,13 @@ namespace DotNetCompose.SourceGenerators
 
         public const string ComposableAttributeFullName = "DotNetCompose.Runtime.ComposableAttribute";
 
+        public static class Rewriter
+        {
+            public const string ContextParamName = "__ctx";
+            public const string ChangedParamName = "__changed";
+            public const string StoredLambdaClassName = "__StoredLambda";
+            public const string BuildersClassName = "Builders";
+        }
 
         public static string NameWithWhiteSpace(string s) => string.Format("{0} ", s);
         public static class ComposeScope

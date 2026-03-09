@@ -9,16 +9,18 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Xml.Linq;
+using static DotNetCompose.SourceGenerators.ComposableMethodGeneratorContext;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
 
 namespace DotNetCompose.SourceGenerators.Rewriters
 {
     internal class ComposeMethodRewriter : CSharpSyntaxRewriter
     {
-        public ComposeMethodRewriter(SemanticModel semanticModel)
+        private ComposeMethodRewriter(ComposableMethodGeneratorContext ctx, SemanticModel semanticModel)
         {
             _semanticModel = semanticModel;
-            _ctx = new ComposableMethodGeneratorContext();
+            _ctx = ctx;
         }
 
         private SemanticModel _semanticModel;
@@ -27,8 +29,8 @@ namespace DotNetCompose.SourceGenerators.Rewriters
         public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax method)
         {
             _ctx.MethodParameters = method.GetParametersInfos(_semanticModel);
-
-            string newName = string.Format("{0}_{1}", method.Identifier.Text, _suffix);
+            _ctx.MethodModifiers = method.Modifiers;
+            //string newName = string.Format("{0}_{1}", method.Identifier.Text, _suffix);
             bool hasAnyComposables = _ctx.MethodParameters.Any(p => p.IsComposable);
 
             ParameterListSyntax newParameterList = method.ParameterList;
@@ -39,7 +41,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             newParameterList = AppendComposableContextrelatedParameters(newParameterList, _semanticModel);
 
             MethodDeclarationSyntax newMethod = method
-                .WithIdentifier(SyntaxFactory.Identifier(newName))
+                //.WithIdentifier(SyntaxFactory.Identifier(newName))
                 .WithParameterList(newParameterList)
                 .WithAttributeLists(ReplaceComposableAttribute(method.AttributeLists, _semanticModel));
 
@@ -369,56 +371,71 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                     {
                         lambdaParameters = ImmutableArray.Create<ParameterSyntax>(simpleLambdaExpression.Parameter);
                         DataFlowAnalysis analizeInfo = _semanticModel.AnalyzeDataFlow(simpleLambdaExpression.Body);
-                        isCaptureAnything = analizeInfo.Captured.Length > 0;
+                        isCaptureAnything = analizeInfo.CapturedInside.Length > 0;
                         newBody = base.Visit(simpleLambdaExpression.Body) as CSharpSyntaxNode;
                     }
                     else if (arg.Expression is ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression)
                     {
                         lambdaParameters = parenthesizedLambdaExpression.ParameterList.Parameters.ToImmutableArray();
                         DataFlowAnalysis analizeInfo = _semanticModel.AnalyzeDataFlow(parenthesizedLambdaExpression.Body);
-                        isCaptureAnything = analizeInfo.Captured.Length > 0;
+                        isCaptureAnything = analizeInfo.CapturedInside.Length > 0;
                         newBody = base.Visit(parenthesizedLambdaExpression.Body) as CSharpSyntaxNode;
                     }
                     else
                         throw new NotSupportedException();
 
-                    if (isCaptureAnything)
+                    ImmutableArray<(string Type, string Name)> argTypes = lambdaParameters.Select(item =>
                     {
-                        ImmutableArray<(string Type, string Name)> argTypes = lambdaParameters.Select(item =>
-                        {
-                            IParameterSymbol s = _semanticModel.GetDeclaredSymbol(item);
-                            return (Type: s.Type.GetFullMetadataName(), Name: s.Name);
-                        }).ToImmutableArray();
+                        IParameterSymbol s = _semanticModel.GetDeclaredSymbol(item);
+                        return (Type: s.Type.GetFullMetadataName(), Name: s.Name);
+                    }).ToImmutableArray();
 
-                        var newArgs = argTypes.Concat(new (string Type, string Name)[] {
+                    ImmutableArray<(string Type, string Name)> newArgs = argTypes.AddRange(new (string Type, string Name)[] {
                             (Consts.ComposeContext.FullName, _ctx.ContextVarName),
                             ("int", _ctx.ChangedVarName),
                         });
 
-                        var newParamList = SyntaxFactory.ParameterList(
-                            SyntaxFactory.SeparatedList(newArgs.Select(item =>
-                                SyntaxFactory.Parameter(
-                                    default,
-                                    default,
-                                     SyntaxFactory.ParseTypeName(item.Type).WithTrailingSpace(),
-                                     SyntaxFactory.Identifier(item.Name),
-                                     null)
-                                ))
-                        );
-                        using ListPoolObject<StatementSyntax> statements = ListPool<StatementSyntax>.Get();
+                    var newParamList = SyntaxFactory.ParameterList(
+                        SyntaxFactory.SeparatedList(newArgs.Select(item =>
+                            SyntaxFactory.Parameter(
+                                default,
+                                default,
+                                 SyntaxFactory.ParseTypeName(item.Type).WithTrailingSpace(),
+                                 SyntaxFactory.Identifier(item.Name),
+                                 null)
+                            ))
+                    );
+
+                    if (isCaptureAnything)
+                    {
+                        TypeSyntax variableType = default;
+                        if (argTypes.Length == 0)
+                        {
+                            variableType = SyntaxFactory.IdentifierName(Consts.ComposableAction.FullName);
+                        }
+                        else
+                        {
+                            variableType = SyntaxFactory.GenericName(
+                                            SyntaxFactory.Identifier(Consts.ComposableAction.FullName),
+                                            SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(argTypes.Select(t => SyntaxFactory.ParseTypeName(t.Type)))));
+                        }
+                        variableType = variableType.WithTrailingSpace();
+
                         var wrappedLambdaExpression = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs("ComposeHelpers", "GetLambda",
                             SyntaxFactory.IdentifierName(_ctx.ContextVarName),
                             SyntaxFactoryHelpers.CreateIntLiteral(_ctx.GetNextLambdaKey()),
                             SyntaxFactory.ParenthesizedLambdaExpression(
                                 SyntaxFactory.ParameterList(),
                                 SyntaxFactory.Block(
-                                    SyntaxFactory.ReturnStatement(
-                                        SyntaxFactory.ParenthesizedLambdaExpression(newParamList, newBody)
-                                    )
+                                    SyntaxFactory.LocalDeclarationStatement(
+                                        SyntaxFactory.VariableDeclaration(variableType).AddVariables(
+                                            SyntaxFactory.VariableDeclarator("a").WithInitializer(
+                                                SyntaxFactory.EqualsValueClause(SyntaxFactory.ParenthesizedLambdaExpression(newParamList, newBody))).WithLeadingSpace())
+                                    ),
+                                    SyntaxFactory.ReturnStatement(SyntaxFactory.IdentifierName("a").WithLeadingSpace())
+                                                .WithLeadingNewLine()
                                )
                             ));
-
-
                         MemberAccessExpressionSyntax newLambdaExpression = default;
                         if (argTypes.Length == 0)
                         {
@@ -443,8 +460,36 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                     }
                     else
                     {
-                        // TODO
-                        // __StoredLambdas.Lambda123123;
+                        string name = _ctx.GetNextLambdaName();
+
+                        SyntaxTokenList lamdaModifiers = default(SyntaxTokenList).AddRange(new SyntaxToken[]
+                        {
+                            SyntaxFactory.Token(SyntaxKind.PublicKeyword),
+                            SyntaxFactory.Token(SyntaxKind.StaticKeyword),
+                        });
+                        BlockSyntax newBodyBlockSyntax = newBody switch
+                        {
+                            BlockSyntax block => block,
+                            ArrowExpressionClauseSyntax arrowExpression => SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(arrowExpression.Expression)),
+                            _ => throw new NotSupportedException(),
+                        };
+                        MethodDeclarationSyntax lambdaMethodDeclaration = SyntaxFactory.MethodDeclaration(default,
+                             lamdaModifiers,
+                             SyntaxFactory.ParseTypeName("void").WithTrailingSpace(),
+                             default,
+                             SyntaxFactory.Identifier(name),
+                             default,
+                             newParamList.WithTrailingNewLine(),
+                             default,
+                             newBodyBlockSyntax.WithTrailingNewLine(),
+                             default(SyntaxToken));
+
+                        _ctx.AddStoredLambda(new StoredLambda(name, newArgs, lambdaMethodDeclaration));
+
+
+                        return arg.WithExpression(SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                                            SyntaxFactory.IdentifierName(_ctx.StoredLambdaIdentifierName),
+                                                            SyntaxFactory.IdentifierName(name)));
                     }
                     return arg;
                 });
@@ -458,19 +503,131 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             );
             _ctx.ComposableProcessed();
 
+            invocationExpression = ReplaceWithFullQualifiedName(invocationExpression);
+            MemberAccessExpressionSyntax? lastmemberAccess = invocationExpression.DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
+            if (lastmemberAccess != null)
+            {
+                string lastAccessedMemberName = lastmemberAccess.Name.ToFullString();
+                string newAccessMemberName = $"{_ctx.BuildersClassName}.{lastAccessedMemberName}";
+                invocationExpression = (InvocationExpressionSyntax)ReplaceLastMemberAccess(invocationExpression, lastAccessedMemberName, newAccessMemberName);
+                return invocationExpression.WithArgumentList(newArgs);
+            }
+            throw new NotSupportedException();
+            // TODo replace mwthod call with Full Qualified Name
             if (invocationExpression.Expression is IdentifierNameSyntax identifierName)
             {
                 SyntaxToken identifierToken = identifierName.Identifier;
                 string methodName = identifierToken.Text;
-                invocationExpression = invocationExpression.WithExpression(SyntaxFactory.IdentifierName(methodName+"_Generated"));
+                return SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
+                    _ctx.BuildersClassName,
+                    methodName,
+                    newArgs);
             }
             // if the expression is a member access (e.g., "obj.DoSomething()")
             else if (invocationExpression.Expression is MemberAccessExpressionSyntax memberAccess)
             {
                 SyntaxToken identifierToken = memberAccess.Name.Identifier;
                 string methodName = identifierToken.Text;
+
+                //var builderMethodAccess = memberAccess.WithExpression(SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression));
+                //invocationExpression = invocationExpression.WithExpression(builderMethodAccess);
+                return invocationExpression.WithArgumentList(newArgs);
             }
             return invocationExpression.WithArgumentList(newArgs);
+        }
+
+        private InvocationExpressionSyntax ReplaceWithFullQualifiedName(InvocationExpressionSyntax node)
+        {
+            // Get semantic information about the invoked method
+            var symbolInfo = _semanticModel.GetSymbolInfo(node);
+            var symbol = symbolInfo.Symbol;
+
+            if (symbol is IMethodSymbol methodSymbol)
+            {
+                // Get the fully qualified name (e.g., "global::System.Console.WriteLine")
+                var fullyQualifiedName = methodSymbol.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
+
+                // Create a new NameSyntax from the qualified name string
+                NameSyntax fullyQualifiedNameSyntax;
+
+                // This part might be tricky if the method is static and called directly, 
+                // but we want to replace the expression that leads to the method.
+                // For a method call like `Console.WriteLine()`, the expression is `Console.WriteLine`.
+
+                // A more robust way is often to rebuild the expression part:
+                var typeName = methodSymbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
+                var newIdentifierName = SyntaxFactory.IdentifierName(methodSymbol.Name);
+                var newQualifiedName = SyntaxFactory.ParseName(typeName);
+
+                // Reconstruct the expression that the method is called on (the part before the parentheses)
+                ExpressionSyntax newExpression;
+                if (newQualifiedName is QualifiedNameSyntax qns)
+                {
+                    newExpression = SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        qns.Left,
+                        (IdentifierNameSyntax)qns.Right);
+                }
+                else // It is likely a SimpleNameSyntax if it's the root of the type name
+                {
+                    newExpression = SyntaxFactory.IdentifierName(typeName);
+                }
+
+                newExpression = SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    newExpression,
+                    newIdentifierName);
+
+                // Replace the expression part of the invocation
+                return node.WithExpression(newExpression);
+            }
+
+            return node;
+        }
+        public static SyntaxNode ReplaceLastMemberAccess(SyntaxNode root, string oldMemberName, string newMemberPath)
+        {
+            // Find all member access expressions
+            var memberAccesses = root.DescendantNodes()
+                .OfType<MemberAccessExpressionSyntax>()
+                .Where(m => m.Name.Identifier.Text == oldMemberName)
+                .ToList();
+
+            // Filter to only those that are the last in their chain
+            var lastMemberAccesses = memberAccesses
+                .Where(m => !(m.Parent is MemberAccessExpressionSyntax))
+                .ToList();
+
+            if (!lastMemberAccesses.Any())
+                return root;
+
+            // Replace each occurrence
+            var newRoot = root;
+            foreach (var memberAccess in lastMemberAccesses)
+            {
+                var newExpression = BuildNewMemberAccess(memberAccess.Expression, newMemberPath)
+                    .WithTriviaFrom(memberAccess);
+
+                newRoot = newRoot.ReplaceNode(memberAccess, newExpression);
+            }
+
+            return newRoot;
+        }
+
+        private static ExpressionSyntax BuildNewMemberAccess(ExpressionSyntax leftmost, string newPath)
+        {
+            var parts = newPath.Split('.');
+            ExpressionSyntax current = leftmost;
+
+            foreach (var part in parts)
+            {
+                current = SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    current,
+                    SyntaxFactory.IdentifierName(part));
+            }
+
+            return current;
         }
         private ExpressionSyntax VisitComposableArgumentCall(ExpressionSyntax expression, DelegateMethodCallInfo delegateMethodCallInfo)
         {
@@ -660,6 +817,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
             return new DelegateMethodCallInfo(recieverObjectName, isSimpleMemberAccess, isDirectCall, isNullSafeCall);
 
+        }
+
+        internal static SyntaxNode? Rewrite(ComposableMethodGeneratorContext ctx, SemanticModel semanticModel, MethodDeclarationSyntax method)
+        {
+            ComposeMethodRewriter rewriter = new ComposeMethodRewriter(ctx, semanticModel);
+            return rewriter.Visit(method);
         }
     }
 }

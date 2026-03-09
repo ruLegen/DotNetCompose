@@ -24,7 +24,7 @@ namespace DotNetCompose.SourceGenerators
 #if DEBUG
             if (!Debugger.IsAttached)
             {
-                Debugger.Launch();
+               // Debugger.Launch();
             }
 #endif       
             // определяем генерируемый код
@@ -37,8 +37,11 @@ namespace DotNetCompose.SourceGenerators
 
             var compilationAndMethods = context.CompilationProvider.Combine(methodDeclarations.Collect());
 
-            context.RegisterImplementationSourceOutput(compilationAndMethods,
-                static (spc, source) => Execute(source.Left, source.Right, spc));
+            //context.RegisterImplementationSourceOutput(compilationAndMethods,
+            //    static (spc, source) => Execute(source.Left, source.Right, spc));
+
+            context.RegisterSourceOutput(compilationAndMethods,
+              static (spc, source) => Execute(source.Left, source.Right, spc));
         }
 
         private static void Execute(Compilation compilation,
@@ -98,13 +101,34 @@ namespace DotNetCompose.SourceGenerators
             sourceBuilder.AppendLine("    {");
 
 
-            foreach (MethodDeclarationSyntax method in typeMethods)
+            var rewrittenMethods = typeMethods.Select(m => (Method: m,
+                                    Context: new ComposableMethodGeneratorContext(Consts.Rewriter.ContextParamName,
+                                                 Consts.Rewriter.ChangedParamName,
+                                                 Consts.Rewriter.StoredLambdaClassName,
+                                                 Consts.Rewriter.BuildersClassName)))
+                                   .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method)))
+                                   .ToImmutableArray();
+
+            sourceBuilder.AppendLine($"         public class {Consts.Rewriter.BuildersClassName} {{");
+            foreach (MethodDeclarationSyntax method in rewrittenMethods.Select(pair=> pair.MethodBody))
             {
-                var newMethod = new ComposeMethodRewriter(semanticModel).Visit(method);
-                sourceBuilder.AppendLine("        " + newMethod.NormalizeWhitespace().ToFullString());
+                sourceBuilder.AppendLine("        " + method.NormalizeWhitespace().ToFullString());
             }
 
-            sourceBuilder.AppendLine("    }");
+            sourceBuilder.AppendLine($"             static class {Consts.Rewriter.StoredLambdaClassName} {{");
+            foreach (ComposableMethodGeneratorContext ctx in rewrittenMethods.Select(pair => pair.Context))
+            {
+                foreach (var storedLambda in ctx.StoredLambdas)
+                {
+                    sourceBuilder.AppendLine("           " + storedLambda.MethodDeclaration.NormalizeWhitespace().ToFullString());
+                }
+            }
+            sourceBuilder.AppendLine("               }");
+
+            sourceBuilder.AppendLine("           }");
+
+
+            sourceBuilder.AppendLine("      }");
             sourceBuilder.AppendLine("}");
             return sourceBuilder.ToString();
         }
