@@ -13,6 +13,7 @@ namespace DotNetCompose.Playground
                 //Composables.CurrentContext?.StartGroup(3);
                 using (var r = ComposeScope.CreateScope(context1))
                 {
+                    TestClass.Builders.EmptyComposable(3,context1, 0);
                     //TestClass.App(i, 0);
                 }
                 context1.Tree();
