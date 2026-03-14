@@ -124,7 +124,8 @@ namespace DotNetCompose.SourceGenerators
             sourceBuilder.AppendLine($"         public partial class {Consts.Rewriter.BuildersClassName} {{");
             foreach (MethodDeclarationSyntax method in rewrittenMethods.Select(pair => pair.MethodBody))
             {
-                sourceBuilder.AppendLine("        " + method.NormalizeWhitespace().ToFullString());
+                var rewrittenLines = new DebugLineNumberSyntaxTreeWriter().VisitMethodDeclaration(method);
+                sourceBuilder.AppendLine("        " + rewrittenLines.NormalizeWhitespace().ToFullString());
             }
 
             sourceBuilder.AppendLine($"             static class {Consts.Rewriter.StoredLambdaClassName} {{");
@@ -132,7 +133,8 @@ namespace DotNetCompose.SourceGenerators
             {
                 foreach (var storedLambda in ctx.StoredLambdas)
                 {
-                    sourceBuilder.AppendLine("           " + storedLambda.MethodDeclaration.NormalizeWhitespace().ToFullString());
+                    var rewrittenLines = new DebugLineNumberSyntaxTreeWriter().Visit(storedLambda.MethodDeclaration);
+                    sourceBuilder.AppendLine("           " + rewrittenLines.NormalizeWhitespace().ToFullString());
                 }
             }
             sourceBuilder.AppendLine("               }");

@@ -29,6 +29,8 @@ namespace DotNetCompose.SourceGenerators.Rewriters
         private string _suffix = "Generated";
         public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax method)
         {
+            var sourceLocationAnnotation = method.CreateLocationSyntaxAnnotation();
+
             _ctx.MethodParameters = method.GetParametersInfos(_semanticModel);
             _ctx.MethodModifiers = method.Modifiers;
             //string newName = string.Format("{0}_{1}", method.Identifier.Text, _suffix);
@@ -56,6 +58,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                 // ArrowExpressionClauseSyntax not supported
                 throw new NotSupportedException();
             }
+
+            if (sourceLocationAnnotation != null)
+                newMethod = newMethod.WithAdditionalAnnotations(sourceLocationAnnotation);
 
             return newMethod;
         }
@@ -330,7 +335,22 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             }
         }
 
-
+        public override SyntaxNode? VisitExpressionStatement(ExpressionStatementSyntax node)
+        {
+            var locationAnnotation = node.CreateLocationSyntaxAnnotation();
+            var processed = base.VisitExpressionStatement(node);
+            if (locationAnnotation != null && processed != null)
+                processed = processed.WithAdditionalAnnotations(locationAnnotation);
+            return processed;
+        }
+        public override SyntaxNode? VisitVariableDeclaration(VariableDeclarationSyntax node)
+        {
+            var locationAnnotation = node.CreateLocationSyntaxAnnotation();
+            var processed = base.VisitVariableDeclaration(node);
+            if (locationAnnotation != null && processed != null)
+                processed = processed.WithAdditionalAnnotations(locationAnnotation);
+            return processed;
+        }
 
         private ExpressionSyntax VisitComposableMethodCall(InvocationExpressionSyntax invocationExpression)
         {
