@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace DotNetCompose.SourceGenerators.Extensions
@@ -30,6 +31,22 @@ namespace DotNetCompose.SourceGenerators.Extensions
         public static TSyntax WithLeadingSpace<TSyntax>(this TSyntax node) where TSyntax : SyntaxNode
         {
             return node.WithLeadingTrivia(SyntaxFactory.Space);
+        }
+
+        public static SyntaxAnnotation? CreateLocationSyntaxAnnotation<TSyntax>(this TSyntax node) where TSyntax : SyntaxNode
+        {
+            Location oldLocation = node.GetLocation();
+            if (oldLocation != Location.None)
+            {
+                var lineSpanned = oldLocation.GetMappedLineSpan();
+                string lineDirectiveLocation = string.Format("{0} {1} {2} {3} {4}", lineSpanned.StartLinePosition.Line,
+                    lineSpanned.StartLinePosition.Character,
+                    lineSpanned.EndLinePosition.Line,
+                    lineSpanned.EndLinePosition.Character,
+                    lineSpanned.Path);
+                return new SyntaxAnnotation("location", lineDirectiveLocation);
+            }
+            return null;
         }
 
     }

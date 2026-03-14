@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static DotNetCompose.Playground.TestClass2;
+using static DotNetCompose.Runtime.Composables;
 namespace DotNetCompose.Playground
 {
     public static partial class TestClass
@@ -15,6 +16,12 @@ namespace DotNetCompose.Playground
         public static void EmptyComposable(int argInt)
         {
             int localInt = 3;
+            //Composables.CurrentContext();
+
+            int rememberedFromStaticUsings = Remember<int>(0, () => 3);
+
+            int rememberedInt = Composables.Remember(0, () => 3);
+            string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
             ComposableTest(3, i =>
             {
                 int nonCaptured = i;
@@ -23,7 +30,7 @@ namespace DotNetCompose.Playground
             ComposableTest(3, i =>
             {
                 int nonCaptured = i;
-                
+
 
                 ComposableTest2(123, (i) =>
                 {
@@ -36,8 +43,8 @@ namespace DotNetCompose.Playground
                 ComposableTest(123123);
             });
 
-            //ComposableTest(3,);
-            //ComposableTest(3, ComposableTest);
+            ComposableTest(3);
+           // ComposableTest(3, ComposableTest);
 
         }
         private static void SomeNonComposableFunction()
@@ -49,6 +56,7 @@ namespace DotNetCompose.Playground
         {
 
         }
+
         [Composable]
         private static void ComposableTest2(int i, [Composable] Action<int> action)
         {

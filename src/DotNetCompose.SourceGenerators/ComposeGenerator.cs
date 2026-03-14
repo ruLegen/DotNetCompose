@@ -16,6 +16,8 @@ using System.Text;
 
 namespace DotNetCompose.SourceGenerators
 {
+    record ClassAndComposablesMethods(string ClassName, ImmutableArray<MethodDeclarationSyntax> Methods);
+
     [Generator(LanguageNames.CSharp)]
     public partial class ComposeGenerator : IIncrementalGenerator
     {
@@ -24,10 +26,10 @@ namespace DotNetCompose.SourceGenerators
 #if DEBUG
             if (!Debugger.IsAttached)
             {
-               // Debugger.Launch();
+               Debugger.Launch();
             }
 #endif       
-            // определяем генерируемый код
+
             IncrementalValuesProvider<MethodDeclarationSyntax> methodDeclarations = context
                 .SyntaxProvider
                 .ForAttributeWithMetadataName(Consts.ComposableAttributeFullName,
@@ -35,41 +37,51 @@ namespace DotNetCompose.SourceGenerators
                     static (ctx, token) => ctx.TargetNode as MethodDeclarationSyntax)
                 .Where(m => m != null);
 
-            var compilationAndMethods = context.CompilationProvider.Combine(methodDeclarations.Collect());
+            IncrementalValueProvider<(Compilation Left, ImmutableArray<MethodDeclarationSyntax> Right)> compilationAndMethods
+                = context.CompilationProvider.Combine(methodDeclarations.Collect());
 
+            IncrementalValuesProvider<ClassAndComposablesMethods> classAndComposablesMethods = compilationAndMethods.SelectMany(
+                static (tuple, token) =>
+                {
+                    (Compilation compilation, ImmutableArray<MethodDeclarationSyntax> methods) = tuple;
+
+                    IEnumerable<ClassAndComposablesMethods> methodsByType = methods
+                        .GroupBy(m => m.GetFullTypeName(compilation))
+                        .Where(static g => !string.IsNullOrEmpty(g.Key))
+                        .Select(static g => new ClassAndComposablesMethods(g.Key, g.ToImmutableArray()));
+
+                    return methodsByType.ToImmutableArray();
+                });
+
+
+            IncrementalValuesProvider<(ClassAndComposablesMethods ClassAndMethods, Compilation Compilation)> executeValueProvider
+                = classAndComposablesMethods.Combine(context.CompilationProvider);
             //context.RegisterImplementationSourceOutput(compilationAndMethods,
             //    static (spc, source) => Execute(source.Left, source.Right, spc));
 
-            context.RegisterSourceOutput(compilationAndMethods,
-              static (spc, source) => Execute(source.Left, source.Right, spc));
+            context.RegisterSourceOutput(executeValueProvider,
+              static (spc, source) => Execute(source.Compilation, source.ClassAndMethods, spc));
         }
 
         private static void Execute(Compilation compilation,
-            ImmutableArray<MethodDeclarationSyntax> methods,
+            ClassAndComposablesMethods classAndComposablesMethods,
             SourceProductionContext context)
         {
-            IEnumerable<IGrouping<string, MethodDeclarationSyntax>> methodsByType = methods
-                .GroupBy(m => m.GetFullTypeName(compilation))
-                .Where(g => !string.IsNullOrEmpty(g.Key));
+            string typeName = classAndComposablesMethods.ClassName;
+            string sourceCode = GenerateTypeWithDuplicatedMethods(classAndComposablesMethods, compilation);
 
-
-            foreach (IGrouping<string, MethodDeclarationSyntax> typeGroup in methodsByType)
+            if (!string.IsNullOrEmpty(sourceCode))
             {
-                string typeName = typeGroup.Key;
-                string sourceCode = GenerateTypeWithDuplicatedMethods(typeGroup, compilation);
-
-                if (!string.IsNullOrEmpty(sourceCode))
-                {
-                    context.AddSource($"{typeName.Replace('.', '_')}.DuplicatedMethods.g.cs",
-                        SourceText.From(sourceCode, Encoding.UTF8));
-                }
+                context.AddSource($"{typeName.Replace('.', '_')}.DuplicatedMethods.g.cs",
+                    SourceText.From(sourceCode, Encoding.UTF8));
             }
         }
 
         private static string GenerateTypeWithDuplicatedMethods(
-            IGrouping<string, MethodDeclarationSyntax> typeMethods,
+            ClassAndComposablesMethods classAndComposablesMethods,
             Compilation compilation)
         {
+            var typeMethods = classAndComposablesMethods.Methods;
             if (!typeMethods.Any())
                 return string.Empty;
 
@@ -109,8 +121,8 @@ namespace DotNetCompose.SourceGenerators
                                    .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method)))
                                    .ToImmutableArray();
 
-            sourceBuilder.AppendLine($"         public class {Consts.Rewriter.BuildersClassName} {{");
-            foreach (MethodDeclarationSyntax method in rewrittenMethods.Select(pair=> pair.MethodBody))
+            sourceBuilder.AppendLine($"         public partial class {Consts.Rewriter.BuildersClassName} {{");
+            foreach (MethodDeclarationSyntax method in rewrittenMethods.Select(pair => pair.MethodBody))
             {
                 sourceBuilder.AppendLine("        " + method.NormalizeWhitespace().ToFullString());
             }

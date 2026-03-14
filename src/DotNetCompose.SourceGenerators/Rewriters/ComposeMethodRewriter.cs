@@ -12,9 +12,10 @@ using System.Text;
 using System.Xml.Linq;
 using static DotNetCompose.SourceGenerators.ComposableMethodGeneratorContext;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
-
+#nullable enable
 namespace DotNetCompose.SourceGenerators.Rewriters
 {
+
     internal class ComposeMethodRewriter : CSharpSyntaxRewriter
     {
         private ComposeMethodRewriter(ComposableMethodGeneratorContext ctx, SemanticModel semanticModel)
@@ -116,57 +117,65 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             return newBlock.WithStatements(SyntaxFactory.List(syntaxList));
         }
 
-        record DelegateMethodCallInfo(string RecieverObjectName, bool IsSimpleMemberAccessCall, bool IsDirectCall, bool IsNullSafeCall);
-        public override SyntaxNode VisitExpressionStatement(ExpressionStatementSyntax exprStatement)
+
+
+        public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax node)
         {
-            //return base.VisitExpressionStatement(node);
-            ExpressionSyntax expression = exprStatement.Expression;
-
-            if (expression is not InvocationExpressionSyntax && expression is not ConditionalAccessExpressionSyntax)
-                return exprStatement;
-
-            IMethodSymbol? methodSymbol = expression switch
-            {
-                ConditionalAccessExpressionSyntax conditionalAccessExpression => _semanticModel.GetSymbolInfo(conditionalAccessExpression.WhenNotNull).Symbol as IMethodSymbol,
-                _ => _semanticModel.GetSymbolInfo(expression).Symbol as IMethodSymbol
-            };
+            IMethodSymbol? methodSymbol = _semanticModel.GetSymbolInfo(node).Symbol as IMethodSymbol;
             if (methodSymbol == null)
-                return exprStatement;
+                return base.VisitInvocationExpression(node);
 
+            ExpressionSyntax processedMethodCall = ProcessInvokeMethodExpression(node, methodSymbol);
+            if (processedMethodCall != null)
+                return processedMethodCall;
+            else
+                return base.VisitInvocationExpression(node);
+        }
+        public override SyntaxNode? VisitConditionalAccessExpression(ConditionalAccessExpressionSyntax node)
+        {
+            IMethodSymbol? methodSymbol = _semanticModel.GetSymbolInfo(node.WhenNotNull).Symbol as IMethodSymbol;
+            if (methodSymbol == null)
+                return base.VisitConditionalAccessExpression(node);
+            ExpressionSyntax processedMethodCall = ProcessInvokeMethodExpression(node, methodSymbol);
+            if (processedMethodCall != null)
+                return processedMethodCall;
+            else
+                return base.VisitConditionalAccessExpression(node);
+        }
+
+        private ExpressionSyntax? ProcessInvokeMethodExpression(ExpressionSyntax expression, IMethodSymbol methodSymbol)
+        {
             if (methodSymbol.MethodKind == MethodKind.Ordinary)
             {
                 if (!methodSymbol.IsComposableFunction())
-                    return exprStatement;
+                    return null;
                 if (expression is not InvocationExpressionSyntax invocationExpression)
                     throw new NotSupportedException();
 
-                return exprStatement.WithExpression(VisitComposableMethodCall(invocationExpression));
+                return VisitComposableMethodCall(invocationExpression);
             }
             else if (methodSymbol.MethodKind == MethodKind.DelegateInvoke)
             {
                 DelegateMethodCallInfo? delegateMethodCallInfo = GetDelegateMethodCallInfo(expression, methodSymbol);
                 if (delegateMethodCallInfo == null)
-                    return exprStatement;
+                    return null;
 
                 bool isComposableArgumentCall = _ctx.MethodParameters.FirstOrDefault(p => p.Name == delegateMethodCallInfo.RecieverObjectName)?.IsComposable ?? false;
                 if (!isComposableArgumentCall)
-                    return exprStatement;
+                    return null;
 
-                return exprStatement.WithExpression(VisitComposableArgumentCall(expression, delegateMethodCallInfo));
+                return VisitComposableArgumentCall(expression, delegateMethodCallInfo);
             }
             else
             {
-                return exprStatement;
+                return null;
             }
-
         }
-
-
 
         public override SyntaxNode VisitIfStatement(IfStatementSyntax node)
         {
             using var ifProcessingHanler = _ctx.WithIfProcessing();
-            IEnumerable<StatementSyntax> ifStatementsToProcesss = null;
+            IEnumerable<StatementSyntax>? ifStatementsToProcesss = null;
             if (node.Statement is BlockSyntax blockSyntax)
             {
                 ifStatementsToProcesss = blockSyntax.Statements;
@@ -544,20 +553,27 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
             if (symbol is IMethodSymbol methodSymbol)
             {
-                // Get the fully qualified name (e.g., "global::System.Console.WriteLine")
-                var fullyQualifiedName = methodSymbol.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
-
-                // Create a new NameSyntax from the qualified name string
-                NameSyntax fullyQualifiedNameSyntax;
-
                 // This part might be tricky if the method is static and called directly, 
                 // but we want to replace the expression that leads to the method.
                 // For a method call like `Console.WriteLine()`, the expression is `Console.WriteLine`.
 
                 // A more robust way is often to rebuild the expression part:
                 var typeName = methodSymbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
-                var newIdentifierName = SyntaxFactory.IdentifierName(methodSymbol.Name);
+
+                SimpleNameSyntax newIdentifierName = default;
+                if (methodSymbol.TypeArguments.Any())
+                {
+                    newIdentifierName = SyntaxFactory.GenericName(methodSymbol.Name)
+                            .WithTypeArgumentList(
+                                SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(methodSymbol.TypeArguments.Select(a =>
+                                {
+                                    return SyntaxFactory.ParseTypeName(a.ToDisplayString());
+                                }))));
+                }
+                else
+                {
+                    newIdentifierName = SyntaxFactory.IdentifierName(methodSymbol.Name);
+                }
                 var newQualifiedName = SyntaxFactory.ParseName(typeName);
 
                 // Reconstruct the expression that the method is called on (the part before the parentheses)
@@ -590,7 +606,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             // Find all member access expressions
             var memberAccesses = root.DescendantNodes()
                 .OfType<MemberAccessExpressionSyntax>()
-                .Where(m => m.Name.Identifier.Text == oldMemberName)
+                .Where(m => m.Name.ToString() == oldMemberName)
                 .ToList();
 
             // Filter to only those that are the last in their chain
@@ -773,6 +789,8 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             }
             yield return groupEnd;
         }
+
+        record DelegateMethodCallInfo(string RecieverObjectName, bool IsSimpleMemberAccessCall, bool IsDirectCall, bool IsNullSafeCall);
         private DelegateMethodCallInfo? GetDelegateMethodCallInfo(ExpressionSyntax expression, IMethodSymbol methodSymbol)
         {
             bool isSimpleMemberAccess = false;
@@ -826,3 +844,4 @@ namespace DotNetCompose.SourceGenerators.Rewriters
         }
     }
 }
+
