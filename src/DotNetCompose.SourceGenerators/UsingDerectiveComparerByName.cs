@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DotNetCompose.SourceGenerators
 {
-    public partial class ComposeGenerator
+    public partial class ComposeSourceGenerator
     {
         public class UsingDerectiveComparerByName : IEqualityComparer<UsingDirectiveSyntax>
         {

@@ -8,10 +8,17 @@ using System.Text;
 using System.Threading.Tasks;
 using static DotNetCompose.Playground.TestClass2;
 using static DotNetCompose.Runtime.Composables;
+
 namespace DotNetCompose.Playground
 {
     public static partial class TestClass
     {
+        [Composable]
+        public static void dd()
+        {
+
+        }
+
         [Composable]
         public static void EmptyComposable(int argInt)
         {

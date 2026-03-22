@@ -12,6 +12,7 @@ using System.Text;
 using System.Xml.Linq;
 using static DotNetCompose.SourceGenerators.ComposableMethodGeneratorContext;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
+
 #nullable enable
 namespace DotNetCompose.SourceGenerators.Rewriters
 {
@@ -26,26 +27,29 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
         private SemanticModel _semanticModel;
         private ComposableMethodGeneratorContext _ctx;
-        private string _suffix = "Generated";
         public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax method)
         {
             var sourceLocationAnnotation = method.CreateLocationSyntaxAnnotation();
 
             _ctx.MethodParameters = method.GetParametersInfos(_semanticModel);
-            _ctx.MethodModifiers = method.Modifiers;
+            var methodModifiers = method.Modifiers;
+            if (!methodModifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+                methodModifiers = methodModifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword));
+
             //string newName = string.Format("{0}_{1}", method.Identifier.Text, _suffix);
             bool hasAnyComposables = _ctx.MethodParameters.Any(p => p.IsComposable);
 
             ParameterListSyntax newParameterList = method.ParameterList;
             if (hasAnyComposables)
             {
-                newParameterList = ReplaceAllComposableParameters(method, _semanticModel);
+                newParameterList = ReplaceAllComposableParameters(method, _semanticModel,true);
             }
-            newParameterList = AppendComposableContextrelatedParameters(newParameterList, _semanticModel);
+            newParameterList = AppendComposableContextrelatedParameters(newParameterList, _semanticModel, _ctx.ContextVarName, _ctx.ChangedVarName);
 
             MethodDeclarationSyntax newMethod = method
                 //.WithIdentifier(SyntaxFactory.Identifier(newName))
                 .WithParameterList(newParameterList)
+                .WithModifiers(methodModifiers)
                 .WithAttributeLists(ReplaceComposableAttribute(method.AttributeLists, _semanticModel));
 
             if (method.Body != null)
@@ -65,20 +69,20 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             return newMethod;
         }
 
-        private ParameterListSyntax AppendComposableContextrelatedParameters(ParameterListSyntax paramList, SemanticModel semanticModel)
+        public static ParameterListSyntax AppendComposableContextrelatedParameters(ParameterListSyntax paramList, SemanticModel semanticModel, string contextParamName, string changedParamName)
         {
             SeparatedSyntaxList<ParameterSyntax> newArguments = paramList.Parameters.AddRange(new ParameterSyntax[]
                     {
                 SyntaxFactory.Parameter(default,
                     default,
                     SyntaxFactory.ParseTypeName(Consts.ComposeContext.FullName).WithTrailingSpace(),
-                    SyntaxFactory.Identifier(_ctx.ContextVarName),
+                    SyntaxFactory.Identifier(contextParamName),
                     default),
 
                 SyntaxFactory.Parameter(default,
                     default,
                     SyntaxFactory.ParseTypeName("int").WithTrailingSpace() ,     // SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
-                    SyntaxFactory.Identifier("__changed"),
+                    SyntaxFactory.Identifier(changedParamName),
                     default),
                     });
 
@@ -716,7 +720,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
         /// <param name="method"></param>
         /// <param name="semanticModel"></param>
         /// <returns></returns>
-        private static ParameterListSyntax ReplaceAllComposableParameters(MethodDeclarationSyntax method, SemanticModel semanticModel)
+        public static ParameterListSyntax ReplaceAllComposableParameters(MethodDeclarationSyntax method, SemanticModel semanticModel, bool addAttributeToComposableParameters)
         {
             var args = method.ParameterList.Parameters.Zip(
                     method.GetParametersInfos(semanticModel),
@@ -727,9 +731,11 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                 args.Select(s => (Syntax: s.parameter, ParamInfo: s.paramInfo))
                         .Select(oldParam =>
                         SyntaxFactory.Parameter(
-                            oldParam.ParamInfo.IsComposable
-                                ? ReplaceComposableActionParameterAttributes(oldParam.Syntax.AttributeLists, semanticModel)
-                                : oldParam.Syntax.AttributeLists,
+                            addAttributeToComposableParameters
+                                ? (oldParam.ParamInfo.IsComposable 
+                                    ? ReplaceComposableActionParameterAttributes(oldParam.Syntax.AttributeLists, semanticModel)
+                                    : oldParam.Syntax.AttributeLists) 
+                                : default,
                             oldParam.Syntax.Modifiers,
                             oldParam.ParamInfo.IsComposable
                                 ? SyntaxFactory.ParseTypeName(Consts.ComposableAction.FullNameWithGenericArguments(oldParam.ParamInfo.GenericArguments.Select(t => t.GetFullMetadataName()))).WithTrailingSpace()

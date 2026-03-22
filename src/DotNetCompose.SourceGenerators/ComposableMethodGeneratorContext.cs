@@ -31,7 +31,6 @@ namespace DotNetCompose.SourceGenerators
         public List<StoredLambda> StoredLambdas { get; } = new List<StoredLambda> { };
         public bool WasGeneratedComposableFunctionWithinConditionalBlocks { get; private set; }
         public ImmutableArray<MethodParameterInfo> MethodParameters { get; internal set; } = ImmutableArray<MethodParameterInfo>.Empty;
-        public SyntaxTokenList MethodModifiers { get; internal set; }
 
         private int _initialGroupId = 0;
         private int _currentGroupId;

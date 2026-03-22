@@ -9,11 +9,6 @@ namespace DotNetCompose.Playground
 {
     internal static partial class TestClass2
     {
-        public class Buildes
-        {
-            public static void InBuilder() { }
-        }
-
         [Composable]
         public static void ComeComposableInAnotherClass()
         {

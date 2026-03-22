@@ -1,6 +1,5 @@
 ﻿using DotNetCompose.Runtime;
 using System.Diagnostics;
-using static DotNetCompose.Runtime.Composables;
 namespace DotNetCompose.Playground
 {
     internal class Program
@@ -13,16 +12,14 @@ namespace DotNetCompose.Playground
                 //Composables.CurrentContext?.StartGroup(3);
                 using (var r = ComposeScope.CreateScope(context1))
                 {
-                    TestClass.Builders.EmptyComposable(3,context1, 0);
+                    //TestClass.Builders.EmptyComposable(0, context1, 3);
+                    //TestClass23.Builders.DD2
                     //TestClass.App(i, 0);
                 }
                 context1.Tree();
             }
 
         }
-
-
-
     }
 
 
@@ -50,7 +47,7 @@ namespace DotNetCompose.Playground
         }
         public void StartRestartableGroup(int groupId)
         {
-            Start(groupId,true);
+            Start(groupId, true);
         }
 
         public void EndGroup(int v)
@@ -70,7 +67,7 @@ namespace DotNetCompose.Playground
             {
                 parent = Groups[index];
             }
-            Groups.Add(new Group(id, parent,restartable));
+            Groups.Add(new Group(id, parent, restartable));
             GroupStackIndecies.Push(Groups.Count - 1);
         }
 
