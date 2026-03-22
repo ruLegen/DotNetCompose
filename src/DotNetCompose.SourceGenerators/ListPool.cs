@@ -9,7 +9,7 @@ using System.Text;
 
 namespace DotNetCompose.SourceGenerators
 {
-    struct ListPoolObject<T> : IDisposable, IList<T>
+    public struct ListPoolObject<T> : IDisposable, IList<T>
     {
         public ListPoolObject(List<T> list)
         {
@@ -21,10 +21,15 @@ namespace DotNetCompose.SourceGenerators
 
         private List<T> _list;
 
-        public int Count => ((ICollection<T>)_list).Count;
+        public int Count => _list.Count;
 
         public bool IsReadOnly => ((ICollection<T>)_list).IsReadOnly;
 
+        public int Capacity
+        {
+            get => _list.Capacity;
+            set => _list.Capacity = value;
+        }
         public T this[int index]
         {
             get => ((IList<T>)_list)[index];
@@ -65,37 +70,37 @@ namespace DotNetCompose.SourceGenerators
 
         public void Add(T item)
         {
-            ((ICollection<T>)_list).Add(item);
+           _list.Add(item);
         }
 
         public void Clear()
         {
-            ((ICollection<T>)_list).Clear();
+            _list.Clear();
         }
 
         public bool Contains(T item)
         {
-            return ((ICollection<T>)_list).Contains(item);
+            return _list.Contains(item);
         }
 
         public void CopyTo(T[] array, int arrayIndex)
         {
-            ((ICollection<T>)_list).CopyTo(array, arrayIndex);
+            _list.CopyTo(array, arrayIndex);
         }
 
         public bool Remove(T item)
         {
-            return ((ICollection<T>)_list).Remove(item);
+            return _list.Remove(item);
         }
 
         public IEnumerator<T> GetEnumerator()
         {
-            return ((IEnumerable<T>)_list).GetEnumerator();
+            return _list.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return ((IEnumerable)_list).GetEnumerator();
+            return _list.GetEnumerator();
         }
         #endregion
     }

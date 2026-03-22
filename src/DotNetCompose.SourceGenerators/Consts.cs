@@ -14,6 +14,9 @@ namespace DotNetCompose.SourceGenerators
 
         public const string ComposableAttributeFullName = "DotNetCompose.Runtime.ComposableAttribute";
 
+        public const string DefaultEOL = "\r\n";
+        public static string DefaultIndent = new string(' ',4);
+
         public static class Rewriter
         {
             public const string ContextParamName = "__ctx";
