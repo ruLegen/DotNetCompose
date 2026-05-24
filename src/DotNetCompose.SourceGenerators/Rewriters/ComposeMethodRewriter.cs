@@ -42,7 +42,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             ParameterListSyntax newParameterList = method.ParameterList;
             if (hasAnyComposables)
             {
-                newParameterList = ReplaceAllComposableParameters(method, _semanticModel,true);
+                newParameterList = ReplaceAllComposableParameters(method, _semanticModel, true);
             }
             newParameterList = AppendComposableContextrelatedParameters(newParameterList, _semanticModel, _ctx.ContextVarName, _ctx.ChangedVarName);
 
@@ -111,7 +111,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
             syntaxList.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
                 contextVarName,
-                Consts.ComposeContext.StartGroupMethod,
+                Consts.ComposeContext.StartRestartableGroupMethod,
                 SyntaxFactoryHelpers.CreateIntLiteral(_ctx.InitialGroupId)));
 
             BlockSyntax newBlock = base.VisitBlock(node) as BlockSyntax;
@@ -120,7 +120,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
             syntaxList.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
                 contextVarName,
-                Consts.ComposeContext.EndGroupMethod,
+                Consts.ComposeContext.EndRestartableGroupMethod,
                 SyntaxFactoryHelpers.CreateIntLiteral(_ctx.InitialGroupId)));
 
             return newBlock.WithStatements(SyntaxFactory.List(syntaxList));
@@ -239,11 +239,11 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             {
                 int elseGroupId = _ctx.GetNextGroupId();
                 ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                    Consts.ComposeContext.StartRestartableGroupMethod,
+                    Consts.ComposeContext.StartReplaceableGroupMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId))
                     .WithTrailingNewLine();
                 ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                    Consts.ComposeContext.EndRestartableGroupMethod,
+                    Consts.ComposeContext.EndReplaceableGroupMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId));
 
                 if (isElseIfBlock)
@@ -270,12 +270,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             if (ifOutStatements.Any())
             {
                 ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                        Consts.ComposeContext.StartRestartableGroupMethod,
+                        Consts.ComposeContext.StartReplaceableGroupMethod,
                         SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId))
                     .WithTrailingNewLine();
 
                 ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
-                    Consts.ComposeContext.EndRestartableGroupMethod,
+                    Consts.ComposeContext.EndReplaceableGroupMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId));
 
                 newIfStatement = node.WithStatement(SyntaxFactory.Block(
@@ -732,9 +732,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                         .Select(oldParam =>
                         SyntaxFactory.Parameter(
                             addAttributeToComposableParameters
-                                ? (oldParam.ParamInfo.IsComposable 
+                                ? (oldParam.ParamInfo.IsComposable
                                     ? ReplaceComposableActionParameterAttributes(oldParam.Syntax.AttributeLists, semanticModel)
-                                    : oldParam.Syntax.AttributeLists) 
+                                    : oldParam.Syntax.AttributeLists)
                                 : default,
                             oldParam.Syntax.Modifiers,
                             oldParam.ParamInfo.IsComposable

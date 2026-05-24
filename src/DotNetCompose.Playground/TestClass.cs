@@ -15,7 +15,7 @@ namespace DotNetCompose.Playground
     {
         public partial class Builders
         {
-            public static void IgnoredComposable(IComposeContext _ctx, int changed=0)
+            public static void IgnoredComposable(IComposeContext _ctx, int changed = 0)
             {
                 Console.WriteLine("Print");
             }
@@ -45,65 +45,71 @@ namespace DotNetCompose.Playground
         {
 
         }
-        //[Composable]
-        //public static void EmptyComposable(int argInt)
-        //{
-        //    int localInt = 3;
-        //    //Composables.CurrentContext();
+        [Composable]
+        public static void EmptyComposable(int argInt)
+        {
+            int localInt = 3;
+            //Composables.CurrentContext();
 
-        //    int rememberedFromStaticUsings = Remember<int>(0, () => 3);
+            int rememberedFromStaticUsings = Remember<int>(0, () => 3);
 
-        //    int rememberedInt = Composables.Remember(0, () => 3);
-        //    string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
-        //    ComposableTest(3, i =>
-        //    {
-        //        int nonCaptured = i;
-        //        ComposableTest(123);
-        //    });
-        //    ComposableTest(3, i =>
-        //    {
-        //        int nonCaptured = i;
+            int rememberedInt = Composables.Remember(0, () => 3);
+            string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
+            ComposableTest(3, i =>
+            {
+                int nonCaptured = i;
+                ComposableTest(123);
+            });
+            ComposableTest(3, i =>
+            {
+                int nonCaptured = i;
 
 
-        //        ComposableTest2(123, (i) =>
-        //        {
-        //            int someLocal = i;
-        //        });
-        //    });
-        //    ComposableTest(3, i =>
-        //    {
-        //        int innerInt = localInt * i;
-        //        ComposableTest(123123);
-        //    });
+                ComposableTest2(123, (i) =>
+                {
+                    int someLocal = i;
+                });
+            });
+            ComposableTest(3, i =>
+            {
+                int innerInt = localInt * i;
+                ComposableTest(123123);
+            });
 
-        //    ComposableTest(3);
-        //   // ComposableTest(3, ComposableTest);
+            ComposableTest(3);
+            // ComposableTest(3, ComposableTest);
 
-        //}
-        //private static void SomeNonComposableFunction()
-        //{
-        //}
+        }
+        private static void SomeNonComposableFunction()
+        {
+        }
 
-        //[Composable]
-        //private static void ComposableTest(int i)
-        //{
+        [Composable]
+        private static void ComposableTest(int i)
+        {
 
-        //}
+        }
 
-        //[Composable]
-        //private static void ComposableTest2(int i, [Composable] Action<int> action)
-        //{
-        //    action.Invoke(i);
-        //    action(i);
-        //    action?.Invoke(i);
-        //}
-        //[Composable]
-        //private static void ComposableTest(int i, [Composable] Action<int> action)
-        //{
-        //    action.Invoke(i);
-        //    action(i);
-        //    action?.Invoke(i);
-        //}
+        [Composable]
+        private static void ComposableTest2(int i, [Composable] Action<int> action)
+        {
+            action.Invoke(i);
+            action(i);
+            action?.Invoke(i);
+        }
+        [Composable]
+        private static void ComposableTest(int i, [Composable] Action<int> action)
+        {
+            action.Invoke(i);
+            if (i == 0)
+            {
+                action(i);
+            }
+            else
+            {
+                action?.Invoke(i);
+            }
+        }
 
     }
 }

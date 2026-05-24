@@ -38,8 +38,13 @@ namespace DotNetCompose.SourceGenerators
             public const string FullName  = "DotNetCompose.Runtime.IComposeContext";
             public const string StartRestartableGroupMethod  = "StartRestartableGroup";
             public const string EndRestartableGroupMethod  = "EndRestartableGroup";
-            public const string StartGroupMethod  = "StartGroup";
-            public const string EndGroupMethod  = "EndGroup";
+
+            public const string StartReplaceableGroupMethod  = "StartReplaceableGroup";
+            public const string EndReplaceableGroupMethod  = "EndReplaceableGroup";
+
+            public const string StartMovableGroupMethod  = "StartRestartableGroup";
+            public const string EndMovableGroupMethod  = "StartRestartableGroup";
+
         }
         public static class ComposableLabmdaWrapper
         {

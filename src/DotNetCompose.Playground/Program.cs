@@ -34,16 +34,30 @@ namespace DotNetCompose.Playground
         public void StartRoot()
         {
             Groups.Clear();
-            StartGroup(ROOT_KEY);
+            Start(ROOT_KEY);
         }
         public void EndRoot()
         {
             EndGroup(ROOT_KEY);
         }
-
-        public void StartGroup(int v)
+        public void StartReplaceableGroup(int groupId)
         {
-            Start(v, false);
+            Start(groupId, false);
+        }
+
+        public void EndReplaceableGroup(int groupId)
+        {
+            EndGroup(groupId);
+        }
+
+        public void StartMoveableGroup(int groupId)
+        {
+            Start(groupId, false);
+        }
+
+        public void EndMoveableGroup(int groupId)
+        {
+            EndGroup(groupId);
         }
         public void StartRestartableGroup(int groupId)
         {
@@ -71,10 +85,12 @@ namespace DotNetCompose.Playground
             GroupStackIndecies.Push(Groups.Count - 1);
         }
 
+
         public void Tree()
         {
             var g = Groups.GroupBy(g => g.Parent);
         }
 
+      
     }
 }
