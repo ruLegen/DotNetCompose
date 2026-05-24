@@ -33,8 +33,8 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
             _ctx.MethodParameters = method.GetParametersInfos(_semanticModel);
             var methodModifiers = method.Modifiers;
-            if (!methodModifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
-                methodModifiers = methodModifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword));
+            //if (!methodModifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+            //    methodModifiers = methodModifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword));
 
             //string newName = string.Format("{0}_{1}", method.Identifier.Text, _suffix);
             bool hasAnyComposables = _ctx.MethodParameters.Any(p => p.IsComposable);
@@ -781,7 +781,8 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
         private static SyntaxList<AttributeListSyntax> ReplaceComposableAttribute(SyntaxList<AttributeListSyntax> attributeLists, SemanticModel semanticModel)
         {
-            AttributeSyntax[] editorNotVisibleAttribute = new AttributeSyntax[] { SyntaxFactoryHelpers.CreateEditorNotVisibleAttribute() };
+            //AttributeSyntax[] editorNotVisibleAttribute = new AttributeSyntax[] { SyntaxFactoryHelpers.CreateEditorNotVisibleAttribute() };
+
             return SyntaxFactory.List(attributeLists.Select(aList =>
             {
                 IEnumerable<AttributeSyntax> newAttributes = aList.Attributes.Select(attribute =>
@@ -790,9 +791,8 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                         return SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(Consts.ComposeGeneratedAttributeFullTypeName));
                     else
                         return attribute;
-                }).Concat(editorNotVisibleAttribute);
+                });//.Concat(editorNotVisibleAttribute);
                 return aList.WithAttributes(SyntaxFactory.SeparatedList(newAttributes));
-
             }));
         }
 

@@ -7,7 +7,7 @@ namespace DotNetCompose.Runtime
 {
     public static class Composables
     {
-        public class Builders
+        public partial class Builders
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static IComposeContext CurrentContext(IComposeContext context, int changed = 0) => context;
@@ -21,13 +21,13 @@ namespace DotNetCompose.Runtime
             }
         }
 
-        [Composable]
+        [Composable, ComposableIgnore]
         public static IComposeContext? CurrentContext() => throw new NotImplementedException("Internal usage only");
 
-        [Composable]
+        [Composable, ComposableIgnore]
         public static void ComposeNode<T, K>(Func<T> factory, Action<T> updater) => throw new NotImplementedException("Use composable version");
 
-        [Composable]
+        [Composable, ComposableIgnore]
         public static T Remember<T>(object key, Func<T> creator) => throw new NotImplementedException("Use composable version");
     }
 }

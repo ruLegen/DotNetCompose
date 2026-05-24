@@ -4,7 +4,7 @@ using System.Text;
 
 namespace DotNetCompose.Runtime
 {
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter| AttributeTargets.Property)]
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
     public class ComposableAttribute : Attribute
     {
     }

@@ -13,6 +13,7 @@ namespace DotNetCompose.SourceGenerators
 
 
         public const string ComposableAttributeFullName = "DotNetCompose.Runtime.ComposableAttribute";
+        public const string ComposableIgnoreAttributeFullName = "DotNetCompose.Runtime.ComposableIgnoreAttribute";
 
         public const string DefaultEOL = "\r\n";
         public static string DefaultIndent = new string(' ',4);
