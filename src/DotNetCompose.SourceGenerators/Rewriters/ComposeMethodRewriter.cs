@@ -671,7 +671,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
         }
         private ExpressionSyntax VisitComposableArgumentCall(ExpressionSyntax expression, DelegateMethodCallInfo delegateMethodCallInfo)
         {
-
+            ExpressionSyntax result = null;
             if (delegateMethodCallInfo.IsSimpleMemberAccessCall)
             {
                 var invocationSyntax = expression as InvocationExpressionSyntax;
@@ -682,12 +682,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ChangedVarName)),
                    }
                 );
-                expression = invocationSyntax.WithArgumentList(newArguments);
+                result = invocationSyntax.WithArgumentList(newArguments);
             }
             else if (delegateMethodCallInfo.IsDirectCall)
             {
                 InvocationExpressionSyntax invocation = expression as InvocationExpressionSyntax;
-                expression = invocation.WithArgumentList(invocation.ArgumentList.AddArguments(
+                result = invocation.WithArgumentList(invocation.ArgumentList.AddArguments(
                     new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ContextVarName)),
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ChangedVarName)),
@@ -707,10 +707,15 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ChangedVarName)),
                     });
 
-                expression = conditionalAccessExpression.WithWhenNotNull(
+                result = conditionalAccessExpression.WithWhenNotNull(
                     invocation.WithArgumentList(newArguments));
             }
-            return expression;
+            if (result != null)
+            {
+                _ctx.ComposableProcessed();
+                return result;
+            }else
+                return expression;
         }
 
 
