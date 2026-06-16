@@ -15,12 +15,12 @@ namespace DotNetCompose.Playground
     {
         public partial class Builders
         {
-            public static void IgnoredComposable(IComposeContext _ctx, int changed = 0)
+            public static void IgnoredComposable(IComposeContext _ctx, ComposableArgumentsState changed = default)
             {
                 Console.WriteLine("Print");
             }
 
-            public static void IgnoredComposable2(IComposeContext _ctx, int changed = 0)
+            public static void IgnoredComposable2(IComposeContext _ctx, ComposableArgumentsState changed = default)
             {
                 Console.WriteLine("Print2");
             }

@@ -7,6 +7,7 @@ namespace DotNetCompose.Playground
         static void Main(string[] args)
         {
             ComposeContext context1 = new ComposeContext();
+
             for (int i = 0; i < 2; i++)
             {
                 //Composables.CurrentContext?.StartGroup(3);
@@ -18,8 +19,19 @@ namespace DotNetCompose.Playground
                 }
                 context1.Tree();
             }
-
         }
+
+        public static void Test(Span<int> changed)
+        {
+            Span<int> parameters = stackalloc int[4];
+            R<int>(parameters, () =>
+            {
+                Span<int> localParams = stackalloc int[2];
+                R<long>(localParams, null);
+            });
+        }
+
+        public static void R<T>(Span<int> ints, Action action) { }
     }
 
 

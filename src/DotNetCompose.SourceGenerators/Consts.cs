@@ -46,6 +46,10 @@ namespace DotNetCompose.SourceGenerators
             public const string EndMovableGroupMethod  = "StartRestartableGroup";
 
         }
+        public static class ComposableArgumentsState
+        {
+            public const string FullName = "DotNetCompose.Runtime.ComposableArgumentsState";
+        }
         public static class ComposableLabmdaWrapper
         {
             public const string FullName = "DotNetCompose.Runtime.ComposableLambdaWrapper";

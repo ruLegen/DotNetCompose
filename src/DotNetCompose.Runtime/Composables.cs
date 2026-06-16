@@ -10,12 +10,12 @@ namespace DotNetCompose.Runtime
         public partial class Builders
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static IComposeContext CurrentContext(IComposeContext context, int changed = 0) => context;
-            public static T Remember<T>(object key, Func<T> creator, IComposeContext context, int changed = 0)
+            public static IComposeContext CurrentContext(IComposeContext context, ComposableArgumentsState changed = default) => context;
+            public static T Remember<T>(object key, Func<T> creator, IComposeContext context, ComposableArgumentsState changed = default)
             {
                 return creator.Invoke();
             }
-            public static void ComposeNode<T, K>(Func<T> factory, Action<T> updater, IComposeContext context, int changed = 0)
+            public static void ComposeNode<T, K>(Func<T> factory, Action<T> updater, IComposeContext context, ComposableArgumentsState changed = default)
             {
 
             }

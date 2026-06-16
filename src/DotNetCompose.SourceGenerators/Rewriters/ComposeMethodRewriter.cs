@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
 using static DotNetCompose.SourceGenerators.ComposableMethodGeneratorContext;
+using static DotNetCompose.SourceGenerators.Consts;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
 
 #nullable enable
@@ -81,7 +82,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
                 SyntaxFactory.Parameter(default,
                     default,
-                    SyntaxFactory.ParseTypeName("int").WithTrailingSpace() ,     // SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
+                    SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName).WithTrailingSpace() ,     // SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
                     SyntaxFactory.Identifier(changedParamName),
                     default),
                     });
@@ -425,7 +426,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
                     ImmutableArray<(string Type, string Name)> newArgs = argTypes.AddRange(new (string Type, string Name)[] {
                             (Consts.ComposeContext.FullName, _ctx.ContextVarName),
-                            ("int", _ctx.ChangedVarName),
+                            (Consts.ComposableArgumentsState.FullName, _ctx.ChangedVarName),
                         });
 
                     var newParamList = SyntaxFactory.ParameterList(
