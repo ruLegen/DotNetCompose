@@ -26,12 +26,13 @@ namespace DotNetCompose.Playground
             }
         }
         [Composable]
-        public static void dd()
+        public static void dd<T>()
         {
             IgnoredComposable();
             IgnoredComposable2();
         }
 
+      
 
         [Composable]
         [ComposableIgnore]

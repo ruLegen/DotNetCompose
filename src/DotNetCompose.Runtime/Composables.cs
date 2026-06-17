@@ -11,10 +11,14 @@ namespace DotNetCompose.Runtime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static IComposeContext CurrentContext(IComposeContext context, ComposableArgumentsState changed = default) => context;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static T Remember<T>(object key, Func<T> creator, IComposeContext context, ComposableArgumentsState changed = default)
             {
                 return creator.Invoke();
             }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void ComposeNode<T, K>(Func<T> factory, Action<T> updater, IComposeContext context, ComposableArgumentsState changed = default)
             {
 

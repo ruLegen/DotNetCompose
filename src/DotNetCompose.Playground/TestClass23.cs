@@ -27,5 +27,11 @@ namespace DotNetCompose.Playground
             int i = 3;
             int b = 3;
         }
+
+
+        public static void T(int i, object testClass, IComposeContext composeContext, ComposableArgumentsState state)
+        {
+
+        }
     }
 }
