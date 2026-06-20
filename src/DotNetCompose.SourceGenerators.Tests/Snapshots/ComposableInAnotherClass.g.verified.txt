@@ -1,0 +1,52 @@
+﻿[
+  {
+    Item1: TestNs_TestClassA.DuplicatedMethods.g.cs,
+    Item2:
+using DotNetCompose.Runtime;
+
+namespace TestNs
+{
+    public partial class TestClassA
+    {
+        public partial class Builders
+        {
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void MethodA(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(36080424);
+                __ctx?.EndRestartableGroup(36080424);
+            }
+            static class __StoredLambda
+            {
+            }
+        }
+    }
+}
+
+  },
+  {
+    Item1: TestNs_TestClassB.DuplicatedMethods.g.cs,
+    Item2:
+using DotNetCompose.Runtime;
+
+namespace TestNs
+{
+    public partial class TestClassB
+    {
+        public partial class Builders
+        {
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void MethodB(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(37340008);
+                __ctx?.EndRestartableGroup(37340008);
+            }
+            static class __StoredLambda
+            {
+            }
+        }
+    }
+}
+
+  }
+]

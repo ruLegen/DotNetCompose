@@ -1,0 +1,106 @@
+﻿using DotNetCompose.Runtime;
+using System;
+using static DotNetCompose.Runtime.Composables;
+
+namespace DotNetCompose.Playground
+{
+    public partial class TestClass
+    {
+        public partial class Builders
+        {
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void dd<T>(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(-2111629801);
+                global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable(__ctx, default);
+                global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable2(__ctx, default);
+                __ctx?.EndRestartableGroup(-2111629801);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void Unstable(int i, object obj, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(-453779699);
+                __ctx?.EndRestartableGroup(-453779699);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void Stable(int i, string stable, int g, string kkk, string sdf, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(63517754);
+                __ctx?.EndRestartableGroup(63517754);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void StableTestGeneric<T>(int i, T param2, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(1321479685);
+                __ctx?.EndRestartableGroup(1321479685);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void EmptyComposable(int argInt, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(-447876319);
+                int localInt = 3;
+                int rememberedFromStaticUsings = Remember<int>(0, () => 3);
+                int rememberedInt = Composables.Remember(0, () => 3);
+                string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
+                global::DotNetCompose.Playground.TestClass.Builders.Unstable(argInt, null, __ctx, default);
+                global::DotNetCompose.Playground.TestClass.Builders.Stable(argInt, "", 3, "", "", __ctx, default);
+                global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<int>(argInt, 3, __ctx, default);
+                global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<object>(argInt, new object (), __ctx, default);
+                ComposableTest(3, i =>
+                {
+                    int nonCaptured = i;
+                    global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123, __ctx, default);
+                });
+                ComposableTest(3, i =>
+                {
+                    int nonCaptured = i;
+                    ComposableTest2(123, (i) =>
+                    {
+                        int someLocal = i;
+                    });
+                });
+                ComposableTest(3, i =>
+                {
+                    int innerInt = localInt * i;
+                    global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123123, __ctx, default);
+                });
+                global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __ctx, default);
+                __ctx?.EndRestartableGroup(-447876319);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            private static void ComposableTest(int i, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(1918245812);
+                __ctx?.EndRestartableGroup(1918245812);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            private static void ComposableTest2(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(-1169319122);
+                action.Invoke(i);
+                action(i);
+                action?.Invoke(i);
+                __ctx?.EndRestartableGroup(-1169319122);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            private static void ComposableTest(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(1918245812);
+                action.Invoke(i);
+                if (i == 0)
+                {
+                    action(i);
+                }
+                else
+                {
+                    action?.Invoke(i);
+                }
+
+                __ctx?.EndRestartableGroup(1918245812);
+            }
+            static class __StoredLambda
+            {
+            }
+        }
+    }
+}

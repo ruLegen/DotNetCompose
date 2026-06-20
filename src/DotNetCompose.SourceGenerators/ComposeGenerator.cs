@@ -72,11 +72,16 @@ namespace DotNetCompose.SourceGenerators
                 sourceBuilder.AppendLine($"{containingType.DeclaredAccessibility.ToString().ToLower()} partial class {typeName}");
                 sourceBuilder.AppendLine("{");
 
-                var rewrittenMethods = typeMethods.Select(m => (Method: m,
-                                        Context: new ComposableMethodGeneratorContext(Consts.Rewriter.ContextParamName,
-                                                     Consts.Rewriter.ChangedParamName,
-                                                     Consts.Rewriter.StoredLambdaClassName,
-                                                     Consts.Rewriter.BuildersClassName)))
+                var rewrittenMethods = typeMethods.Select(m =>
+                                       {
+                                           return (Method: m,
+                                                   Context: new ComposableMethodGeneratorContext(
+                                                       m.GetMethodID(semanticModel),
+                                                       Consts.Rewriter.ContextParamName,
+                                                       Consts.Rewriter.ChangedParamName,
+                                                       Consts.Rewriter.StoredLambdaClassName,
+                                                       Consts.Rewriter.BuildersClassName)); 
+                                       })
                                        .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method)))
                                        .ToImmutableArray();
 

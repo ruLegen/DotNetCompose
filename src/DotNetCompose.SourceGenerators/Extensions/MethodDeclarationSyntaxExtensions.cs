@@ -14,6 +14,13 @@ namespace DotNetCompose.SourceGenerators.Extensions
 
     public static class MethodDeclarationSyntaxExtensions
     {
+        public static string GetMethodID(this MethodDeclarationSyntax method, SemanticModel? semanticModel)
+        {
+            ISymbol? methodSymbol = semanticModel?.GetDeclaredSymbol(method);
+            string methodId = methodSymbol?.GetFullMetadataName()
+                           ?? method.Identifier.ValueText;
+            return methodId;
+        }
         public static string GetFullTypeName(this MethodDeclarationSyntax method, Compilation compilation)
         {
             var semanticModel = compilation.GetSemanticModel(method.SyntaxTree);

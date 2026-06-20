@@ -12,10 +12,9 @@ namespace DotNetCompose.SourceGenerators
 {
     internal class ComposableMethodGeneratorContext
     {
-        private static int GlobalInitialGroupId = 2000;
-        public ComposableMethodGeneratorContext(string? contextParamName = null, string? changedParamName = null, string? storedLambdaClassName = null, string? builderClassName = null)
+        public ComposableMethodGeneratorContext(string methodId, string? contextParamName = null, string? changedParamName = null, string? storedLambdaClassName = null, string? builderClassName = null)
         {
-            _initialGroupId = Interlocked.Increment(ref GlobalInitialGroupId);
+            _initialGroupId = GetDeterministicId(methodId);
             _currentGroupId = _initialGroupId;
 
             ContextVarName = contextParamName ?? Consts.Rewriter.ContextParamName;
@@ -36,6 +35,7 @@ namespace DotNetCompose.SourceGenerators
         private int _initialGroupId = 0;
         private int _currentGroupId;
         private int _conditionalProccessingDepth;
+        private int _nextLambdaKey;
 
         public int GetNextGroupId()
         {
@@ -72,13 +72,29 @@ namespace DotNetCompose.SourceGenerators
 
         internal int GetNextLambdaKey()
         {
-            return DateTime.Now.GetHashCode();
+            return _nextLambdaKey++;
         }
 
         internal string GetNextLambdaName()
         {
             var key = (uint)GetNextLambdaKey();
             return "__Lambda_" + key;
+        }
+
+        private static int GetDeterministicId(string str)
+        {
+            int hash1 = 5381;
+            int hash2 = hash1;
+
+            for (int i = 0; i < str.Length; i += 2)
+            {
+                hash1 = ((hash1 << 5) + hash1) ^ str[i];
+                if (i + 1 >= str.Length)
+                    break;
+                hash2 = ((hash2 << 5) + hash2) ^ str[i + 1];
+            }
+
+            return hash1 + (hash2 * 1566083941);
         }
 
         internal void AddStoredLambda(StoredLambda lambda)

@@ -1,0 +1,42 @@
+﻿using DotNetCompose.Runtime;
+
+namespace DotNetCompose.Playground
+{
+    internal partial class TestClass23
+    {
+        public partial class Builders
+        {
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void DD(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(-958684812);
+                int i = 3;
+                __ctx?.EndRestartableGroup(-958684812);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void vvvv3334(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(825147549);
+                int i = 3;
+                __ctx?.EndRestartableGroup(825147549);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void vvvv3333(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(825147556);
+                int i = 3;
+                int b = 3;
+                __ctx?.EndRestartableGroup(825147556);
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void T(int i, object testClass, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            {
+                __ctx?.StartRestartableGroup(-402270168);
+                __ctx?.EndRestartableGroup(-402270168);
+            }
+            static class __StoredLambda
+            {
+            }
+        }
+    }
+}

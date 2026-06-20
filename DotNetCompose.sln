@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCompose.Runtime", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCompose.SourceGenerators", "src\DotNetCompose.SourceGenerators\DotNetCompose.SourceGenerators.csproj", "{197825F2-3998-42A7-90FD-C638A97CD1CA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCompose.SourceGenerators.Tests", "src\DotNetCompose.SourceGenerators.Tests\DotNetCompose.SourceGenerators.Tests.csproj", "{73B24FD3-1E18-40B5-90D0-634D3A19A4CA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{197825F2-3998-42A7-90FD-C638A97CD1CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{197825F2-3998-42A7-90FD-C638A97CD1CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{197825F2-3998-42A7-90FD-C638A97CD1CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73B24FD3-1E18-40B5-90D0-634D3A19A4CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73B24FD3-1E18-40B5-90D0-634D3A19A4CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73B24FD3-1E18-40B5-90D0-634D3A19A4CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73B24FD3-1E18-40B5-90D0-634D3A19A4CA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
