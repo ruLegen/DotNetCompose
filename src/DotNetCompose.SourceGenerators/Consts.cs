@@ -55,6 +55,7 @@ namespace DotNetCompose.SourceGenerators
             public const string SameField = "Same";
             public const string DifferentField = "Different";
             public const string UncertainField = "Uncertain";
+            public const string StaticField = "Static";
         }
         public static class ComposableLabmdaWrapper
         {

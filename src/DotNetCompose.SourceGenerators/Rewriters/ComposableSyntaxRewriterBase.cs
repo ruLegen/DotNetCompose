@@ -202,13 +202,27 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                 ExpressionSyntax? condition = null;
                 foreach (var stateVar in stateVarNames)
                 {
-                    var eq = SyntaxFactory.BinaryExpression(
+                    var eqToSame = SyntaxFactory.BinaryExpression(
                         SyntaxKind.EqualsExpression,
                         SyntaxFactory.IdentifierName(stateVar),
                         SyntaxFactory.MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
                             SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.SameField)));
+
+                    var eqToStatic = SyntaxFactory.BinaryExpression(
+                        SyntaxKind.EqualsExpression,
+                        SyntaxFactory.IdentifierName(stateVar),
+                        SyntaxFactory.MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
+                            SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.StaticField)));
+
+                    var eq = SyntaxFactory.ParenthesizedExpression(
+                        SyntaxFactory.BinaryExpression(
+                            SyntaxKind.LogicalOrExpression,
+                            eqToSame,
+                            eqToStatic));
 
                     condition = condition == null
                         ? eq

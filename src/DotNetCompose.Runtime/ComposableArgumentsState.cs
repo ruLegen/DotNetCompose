@@ -8,28 +8,35 @@ namespace DotNetCompose.Runtime
 {
     public readonly ref struct ComposableArgumentsState
     {
-        public const int Same = 0;
-        public const int Different = 1;
-        public const int Uncertain = 2;
+        public const byte Uncertain = 0;
+        public const byte Different = 1;
+        public const byte Same = 2;
+        public const byte Static = 3;
+
+        private readonly byte _force;
+        private readonly Span<byte> _parametersState;
 
         public static ComposableArgumentsState Empty => default;
         public ComposableArgumentsState()
         {
-            _parametersState = Span<int>.Empty;
+            _parametersState = Span<byte>.Empty;
+            _force = 0;
         }
-        public ComposableArgumentsState(Span<int> parameterStates)
+        public ComposableArgumentsState(Span<byte> parameterStates, byte force = 0)
         {
             _parametersState = parameterStates;
+            _force = force;
         }
 
-        public int this[int index]
+        public byte this[int index]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _parametersState.IsEmpty
-                ? Same
-                : _parametersState[index];
+            get
+            {
+                if (_parametersState.IsEmpty)
+                    return Uncertain;
+                return (byte)((_parametersState[index] & (byte)(_force - 1)) | _force);
+            }
         }
-
-        private readonly Span<int> _parametersState;
     }
 }
