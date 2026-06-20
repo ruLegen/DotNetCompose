@@ -8,6 +8,10 @@ namespace DotNetCompose.Runtime
 {
     public readonly ref struct ComposableArgumentsState
     {
+        public const int Same = 0;
+        public const int Different = 1;
+        public const int Uncertain = 2;
+
         public static ComposableArgumentsState Empty => default;
         public ComposableArgumentsState()
         {
@@ -22,7 +26,7 @@ namespace DotNetCompose.Runtime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _parametersState.IsEmpty
-                ? 0
+                ? Same
                 : _parametersState[index];
         }
 

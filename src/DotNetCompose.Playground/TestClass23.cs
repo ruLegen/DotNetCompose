@@ -29,9 +29,9 @@ namespace DotNetCompose.Playground
         }
 
 
-        public static void T(int i, object testClass, IComposeContext composeContext, ComposableArgumentsState state)
+        [Composable]
+        public static void T(int i, object testClass)
         {
-
         }
     }
 }

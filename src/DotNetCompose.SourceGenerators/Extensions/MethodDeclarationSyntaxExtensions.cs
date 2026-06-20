@@ -20,7 +20,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
             var methodSymbol = semanticModel.GetDeclaredSymbol(method);
             return methodSymbol?.ContainingType?.ToDisplayString() ?? string.Empty;
         }
-        public record MethodParameterInfo(string Name, bool IsComposable, ImmutableArray<ITypeSymbol> GenericArguments);
+        public record MethodParameterInfo(string Name, bool IsComposable, ImmutableArray<ITypeSymbol> GenericArguments, ITypeSymbol? Type = null);
         public static bool HasAnyComposablesParamaters(this MethodDeclarationSyntax method, SemanticModel semanticModel)
         {
             var r = method.ParameterList
@@ -43,6 +43,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
             {
                 bool isComposable = false;
                 string name = semanticModel.GetDeclaredSymbol(parameter)?.Name ?? string.Empty;
+                ITypeSymbol? paramType = (semanticModel.GetDeclaredSymbol(parameter) as IParameterSymbol)?.Type;
                 if (parameter.AttributeLists.Any(aList => aList.Attributes.Any(a => IsComposableAttribute(a, semanticModel))))
                 {
                     ISymbol? symbol = semanticModel.GetSymbolInfo(parameter.Type).Symbol;
@@ -52,7 +53,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
                         genericArguments = namedTypeSymbol.TypeArguments;
                     }
                 }
-                result.Add(new MethodParameterInfo(name,isComposable, genericArguments));
+                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, paramType));
             }
             return ImmutableArray.Create<MethodParameterInfo>(result.ToArray());
         }

@@ -215,11 +215,15 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                     }
                 });
 
+            ExpressionSyntax changedArg = _ctx.HasUnstableParam
+                ? SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)
+                : (ExpressionSyntax)SyntaxFactory.IdentifierName(_ctx.ChangedVarName);
+
             ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList<ArgumentSyntax>(processedArgs).AddRange(
                     new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ContextVarName)),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ChangedVarName)),
+                        SyntaxFactory.Argument(changedArg),
                     })
             );
             _ctx.ComposableProcessed();

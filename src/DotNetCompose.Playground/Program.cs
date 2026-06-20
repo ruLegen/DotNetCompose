@@ -39,14 +39,16 @@ namespace DotNetCompose.Playground
     {
         private const int ROOT_KEY = -1000;
 
-        record Group(int ID, Group? Parent, bool Restartable);
+        record Group(int ID, Group? Parent, bool Restartable, Dictionary<object, object?> LastValues);
         private List<Group> Groups { get; } = new List<Group>();
         private Stack<int> GroupStackIndecies { get; } = new Stack<int>();
+        private bool _skipped;
 
         public void StartRoot()
         {
             Groups.Clear();
             Start(ROOT_KEY);
+            _skipped = false;
         }
         public void EndRoot()
         {
@@ -74,6 +76,7 @@ namespace DotNetCompose.Playground
         public void StartRestartableGroup(int groupId)
         {
             Start(groupId, true);
+            _skipped = false;
         }
 
         public void EndGroup(int v)
@@ -93,16 +96,45 @@ namespace DotNetCompose.Playground
             {
                 parent = Groups[index];
             }
-            Groups.Add(new Group(id, parent, restartable));
+            Groups.Add(new Group(id, parent, restartable, new Dictionary<object, object?>()));
             GroupStackIndecies.Push(Groups.Count - 1);
         }
 
+        public bool Changed<T>(T value)
+        {
+            if (!GroupStackIndecies.TryPeek(out int index))
+                return true;
+            var group = Groups[index];
+            var key = (typeof(T), value);
+            if (group.LastValues.TryGetValue(key, out var lastValue))
+            {
+                return !EqualityComparer<T>.Default.Equals(value, (T)lastValue);
+            }
+            group.LastValues[key] = value;
+            return true;
+        }
+
+        public bool Skipping
+        {
+            get
+            {
+                if (!GroupStackIndecies.TryPeek(out int index))
+                    return false;
+                var group = Groups[index];
+                return group.Restartable && !_skipped;
+            }
+        }
+
+        public void SkipToGroupEnd()
+        {
+            _skipped = true;
+        }
 
         public void Tree()
         {
             var g = Groups.GroupBy(g => g.Parent);
         }
 
-      
+       
     }
 }

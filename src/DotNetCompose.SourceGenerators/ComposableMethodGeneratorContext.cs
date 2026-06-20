@@ -30,6 +30,7 @@ namespace DotNetCompose.SourceGenerators
         public string BuildersClassName { get; }
         public List<StoredLambda> StoredLambdas { get; } = new List<StoredLambda> { };
         public bool WasGeneratedComposableFunctionWithinConditionalBlocks { get; private set; }
+        public bool HasUnstableParam { get; set; }
         public ImmutableArray<MethodParameterInfo> MethodParameters { get; internal set; } = ImmutableArray<MethodParameterInfo>.Empty;
 
         private int _initialGroupId = 0;

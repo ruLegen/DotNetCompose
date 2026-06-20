@@ -17,6 +17,10 @@ namespace DotNetCompose.Runtime
         void EndReplaceableGroup(int groupId);
 
         void StartMoveableGroup(int groupId);   
-        void EndMoveableGroup(int groupId);   
+        void EndMoveableGroup(int groupId);
+
+        bool Changed<T>(T value);
+        bool Skipping { get; }
+        void SkipToGroupEnd();
     }
 }

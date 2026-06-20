@@ -45,10 +45,16 @@ namespace DotNetCompose.SourceGenerators
             public const string StartMovableGroupMethod  = "StartRestartableGroup";
             public const string EndMovableGroupMethod  = "StartRestartableGroup";
 
+            public const string ChangedMethod = "Changed";
+            public const string SkippingProperty = "Skipping";
+            public const string SkipToGroupEndMethod = "SkipToGroupEnd";
         }
         public static class ComposableArgumentsState
         {
             public const string FullName = "DotNetCompose.Runtime.ComposableArgumentsState";
+            public const string SameField = "Same";
+            public const string DifferentField = "Different";
+            public const string UncertainField = "Uncertain";
         }
         public static class ComposableLabmdaWrapper
         {

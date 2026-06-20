@@ -17,6 +17,13 @@ namespace DotNetCompose.SourceGenerators.Extensions
             return false;
 
         }
+        public static bool IsStableType(this ITypeSymbol? type)
+        {
+            if (type == null) return false;
+
+            return type.SpecialType == SpecialType.System_String
+                || type.IsValueType;
+        }
         public static string GetFullMetadataName(this ISymbol s)
         {
             if (s is ITypeSymbol symbol && TryGetPrimitiveName(symbol.SpecialType, out string primitiveName))

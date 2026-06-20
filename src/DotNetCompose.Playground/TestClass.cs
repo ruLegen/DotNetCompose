@@ -46,6 +46,24 @@ namespace DotNetCompose.Playground
         {
 
         }
+
+        [Composable]
+        public static void Unstable(int i, object obj)
+        {
+
+        }
+
+        [Composable]
+        public static void Stable(int i, string stable, int g, string kkk, string sdf)
+        {
+
+        }
+
+        [Composable]
+        public static void StableTestGeneric<T>(int i, T param2)
+        {
+
+        }
         [Composable]
         public static void EmptyComposable(int argInt)
         {
@@ -56,6 +74,11 @@ namespace DotNetCompose.Playground
 
             int rememberedInt = Composables.Remember(0, () => 3);
             string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
+            Unstable(argInt,null);
+            Stable(argInt,"", 3,"","");
+            StableTestGeneric<int>(argInt,3);
+            StableTestGeneric<object>(argInt,new object());
+
             ComposableTest(3, i =>
             {
                 int nonCaptured = i;

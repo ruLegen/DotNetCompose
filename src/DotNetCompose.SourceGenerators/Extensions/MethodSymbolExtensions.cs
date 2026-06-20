@@ -65,7 +65,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
                         genericArguments = namedTypeSymbol.TypeArguments;
                     }
                 }
-                result.Add(new MethodParameterInfo(name, isComposable, genericArguments));
+                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, parameter.Type));
             }
             return ImmutableArray.Create<MethodParameterInfo>(result.ToArray());
         }
