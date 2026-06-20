@@ -33,9 +33,10 @@ namespace DotNetCompose.Runtime
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if (_parametersState.IsEmpty)
-                    return Uncertain;
-                return (byte)((_parametersState[index] & (byte)(_force - 1)) | _force);
+                byte res = Uncertain;
+                if (!_parametersState.IsEmpty)
+                    res = _parametersState[index];
+                return (byte)((res & (byte)(_force - 1)) | _force);
             }
         }
     }
