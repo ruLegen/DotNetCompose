@@ -215,123 +215,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                     }
                 });
 
-            ExpressionSyntax changedArg;
-            if (_ctx.HasUnstableParam)
-            {
-                changedArg = SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-            }
-            else
-            {
-                using ListPoolObject<ExpressionSyntax> stateExprs = ListPool<ExpressionSyntax>.Get();
-                bool allSame = true;
-
-                for (int i = 0; i < parameterInfos.Length; i++)
-                {
-                    var calleeParam = parameterInfos[i];
-
-                    int argIdx = -1;
-                    for (int j = 0; j < invocationExpression.ArgumentList.Arguments.Count; j++)
-                    {
-                        var invArg = invocationExpression.ArgumentList.Arguments[j];
-                        if (invArg.NameColon != null)
-                        {
-                            if (invArg.NameColon.Name.Identifier.ValueText == calleeParam.Name)
-                            {
-                                argIdx = j;
-                                break;
-                            }
-                        }
-                        else if (j == i)
-                        {
-                            argIdx = j;
-                            break;
-                        }
-                    }
-
-                    if (argIdx == -1)
-                    {
-                        stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                            SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.UncertainField)));
-                        allSame = false;
-                        continue;
-                    }
-
-                    var argEntry = arguments[argIdx];
-
-                    if (argEntry.IsComposable)
-                    {
-                        stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                            SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.DifferentField)));
-                        allSame = false;
-                        continue;
-                    }
-
-                    var expr = argEntry.Argument.Expression;
-
-                    if (expr is LiteralExpressionSyntax)
-                    {
-                        stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                            SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.StaticField)));
-                        continue;
-                    }
-
-                    if (expr is IdentifierNameSyntax idName)
-                    {
-                        var callerParams = _ctx.MethodParameters;
-                        bool found = false;
-                        for (int cp = 0; cp < callerParams.Length; cp++)
-                        {
-                            if (callerParams[cp].Name == idName.Identifier.Text)
-                            {
-                                stateExprs.Add(SyntaxFactory.CastExpression(
-                                    SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
-                                    SyntaxFactory.ElementAccessExpression(
-                                        SyntaxFactory.IdentifierName(_ctx.ChangedVarName))
-                                        .WithArgumentList(SyntaxFactory.BracketedArgumentList(
-                                            SyntaxFactory.SingletonSeparatedList(
-                                                SyntaxFactory.Argument(SyntaxFactoryHelpers.CreateIntLiteral(cp)))))));
-                                allSame = false;
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (found) continue;
-                    }
-
-                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                        SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.UncertainField)));
-                    allSame = false;
-                }
-
-                if (allSame)
-                {
-                    changedArg = SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-                }
-                else
-                {
-                    changedArg = SyntaxFactory.ObjectCreationExpression(
-                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName))
-                        .WithArgumentList(SyntaxFactory.ArgumentList(
-                            SyntaxFactory.SingletonSeparatedList(
-                                SyntaxFactory.Argument(
-                                    SyntaxFactory.StackAllocArrayCreationExpression(
-                                        SyntaxFactory.ArrayType(
-                                            SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
-                                            SyntaxFactory.SingletonList(
-                                                SyntaxFactory.ArrayRankSpecifier())),
-                                        SyntaxFactory.InitializerExpression(
-                                            SyntaxKind.ArrayInitializerExpression,
-                                            SyntaxFactory.SeparatedList(stateExprs)))))));
-                }
-            }
+            ExpressionSyntax changedArg = BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments);
 
             ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList<ArgumentSyntax>(processedArgs).AddRange(
@@ -356,6 +240,27 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
         protected override ExpressionSyntax VisitComposableArgumentCall(ExpressionSyntax expression, DelegateMethodCallInfo delegateMethodCallInfo)
         {
+            InvocationExpressionSyntax? invocation = null;
+            if (delegateMethodCallInfo.IsSimpleMemberAccessCall || delegateMethodCallInfo.IsDirectCall)
+            {
+                invocation = expression as InvocationExpressionSyntax;
+            }
+            else if (delegateMethodCallInfo.IsNullSafeCall)
+            {
+                var conditionalAccess = expression as ConditionalAccessExpressionSyntax;
+                invocation = conditionalAccess?.WhenNotNull as InvocationExpressionSyntax;
+            }
+
+            if (invocation == null)
+                return expression;
+
+            IMethodSymbol? delegateMethod = _semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+            ImmutableArray<MethodParameterInfo> delegateParams = ImmutableArray<MethodParameterInfo>.Empty;
+            if (delegateMethod != null)
+                delegateParams = delegateMethod.GetParametersInfos(_semanticModel);
+
+            ExpressionSyntax changedArg = BuildChangedArg(delegateParams, invocation.ArgumentList.Arguments);
+
             ExpressionSyntax result = null;
             if (delegateMethodCallInfo.IsSimpleMemberAccessCall)
             {
@@ -363,37 +268,37 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                 ArgumentListSyntax newArguments = invocationSyntax.ArgumentList.AddArguments(
                    new ArgumentSyntax[]
                    {
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ContextVarName)),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ChangedVarName)),
+                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ContextVarName)),
+                         SyntaxFactory.Argument(changedArg),
                    }
                 );
                 result = invocationSyntax.WithArgumentList(newArguments);
             }
             else if (delegateMethodCallInfo.IsDirectCall)
             {
-                InvocationExpressionSyntax invocation = expression as InvocationExpressionSyntax;
-                result = invocation.WithArgumentList(invocation.ArgumentList.AddArguments(
+                InvocationExpressionSyntax inv = expression as InvocationExpressionSyntax;
+                result = inv.WithArgumentList(inv.ArgumentList.AddArguments(
                     new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ContextVarName)),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ChangedVarName)),
+                        SyntaxFactory.Argument(changedArg),
                     }
                 ));
             }
             else if (delegateMethodCallInfo.IsNullSafeCall)
             {
                 ConditionalAccessExpressionSyntax conditionalAccessExpression = expression as ConditionalAccessExpressionSyntax;
-                InvocationExpressionSyntax invocation = conditionalAccessExpression.WhenNotNull as InvocationExpressionSyntax;
-                if (invocation == null)
+                InvocationExpressionSyntax inv = conditionalAccessExpression.WhenNotNull as InvocationExpressionSyntax;
+                if (inv == null)
                     new NotSupportedException();
 
-                ArgumentListSyntax newArguments = invocation.ArgumentList.AddArguments(
+                ArgumentListSyntax newArguments = inv.ArgumentList.AddArguments(
                       new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ContextVarName)),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(_ctx.ChangedVarName)),
+                        SyntaxFactory.Argument(changedArg),
                     });
 
                 result = conditionalAccessExpression.WithWhenNotNull(
-                    invocation.WithArgumentList(newArguments));
+                    inv.WithArgumentList(newArguments));
             }
             if (result != null)
             {
@@ -403,7 +308,111 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                 return expression;
         }
 
-      
+        private ExpressionSyntax BuildChangedArg(
+            ImmutableArray<MethodParameterInfo> calleeParams,
+            SeparatedSyntaxList<ArgumentSyntax> args)
+        {
+            if (_ctx.HasUnstableParam)
+                return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+
+            using ListPoolObject<ExpressionSyntax> stateExprs = ListPool<ExpressionSyntax>.Get();
+            bool allSame = true;
+
+            for (int i = 0; i < calleeParams.Length; i++)
+            {
+                var calleeParam = calleeParams[i];
+
+                int argIdx = -1;
+                for (int j = 0; j < args.Count; j++)
+                {
+                    var invArg = args[j];
+                    if (invArg.NameColon != null)
+                    {
+                        if (invArg.NameColon.Name.Identifier.ValueText == calleeParam.Name)
+                        {
+                            argIdx = j;
+                            break;
+                        }
+                    }
+                    else if (j == i)
+                    {
+                        argIdx = j;
+                        break;
+                    }
+                }
+
+                if (argIdx == -1)
+                {
+                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
+                        SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.UncertainField)));
+                    allSame = false;
+                    continue;
+                }
+
+                if (calleeParam.IsComposable)
+                {
+                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
+                        SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.DifferentField)));
+                    allSame = false;
+                    continue;
+                }
+
+                var expr = args[argIdx].Expression;
+
+                if (expr is LiteralExpressionSyntax)
+                {
+                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
+                        SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.StaticField)));
+                    continue;
+                }
+
+                if (expr is IdentifierNameSyntax idName)
+                {
+                    var callerParams = _ctx.MethodParameters;
+                    bool found = false;
+                    for (int cp = 0; cp < callerParams.Length; cp++)
+                    {
+                        if (callerParams[cp].Name == idName.Identifier.Text)
+                        {
+                            stateExprs.Add(SyntaxFactory.IdentifierName($"__{idName.Identifier.Text}_state"));
+                            allSame = false;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) continue;
+                }
+
+                stateExprs.Add(SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
+                    SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.UncertainField)));
+                allSame = false;
+            }
+
+            if (allSame)
+                return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+
+            return SyntaxFactory.ObjectCreationExpression(
+                SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName))
+                .WithArgumentList(SyntaxFactory.ArgumentList(
+                    SyntaxFactory.SingletonSeparatedList(
+                        SyntaxFactory.Argument(
+                            SyntaxFactory.StackAllocArrayCreationExpression(
+                                SyntaxFactory.ArrayType(
+                                    SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
+                                    SyntaxFactory.SingletonList(
+                                        SyntaxFactory.ArrayRankSpecifier())),
+                                SyntaxFactory.InitializerExpression(
+                                    SyntaxKind.ArrayInitializerExpression,
+                                    SyntaxFactory.SeparatedList(stateExprs)))))));
+        }
 
         internal static SyntaxNode? Rewrite(ComposableMethodGeneratorContext ctx, SemanticModel semanticModel, MethodDeclarationSyntax method)
         {
