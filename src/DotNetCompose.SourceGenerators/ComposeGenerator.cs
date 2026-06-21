@@ -48,7 +48,7 @@ namespace DotNetCompose.SourceGenerators
             if (!typeMethods.Any())
                 return string.Empty;
 
-            MethodDeclarationSyntax firstMethod = typeMethods.First();
+            MethodDeclarationSyntax firstMethod = typeMethods.First().Declaration!;
             SemanticModel semanticModel = compilation.GetSemanticModel(firstMethod.SyntaxTree);
             IMethodSymbol methodSymbol = semanticModel.GetDeclaredSymbol(firstMethod);
             INamedTypeSymbol containingType = methodSymbol?.ContainingType;
@@ -66,7 +66,8 @@ namespace DotNetCompose.SourceGenerators
                 .Distinct(UsingDerectiveComparerByName.Default)
                 .ToImmutableArray();
 
-            var rewrittenMethods = typeMethods.Select(m =>
+            var rewrittenMethods = typeMethods.Select(m => m.Declaration!)
+            .Select(m =>
             {
                 var methodParams = m.GetParametersInfos(semanticModel);
                 var normalParams = methodParams

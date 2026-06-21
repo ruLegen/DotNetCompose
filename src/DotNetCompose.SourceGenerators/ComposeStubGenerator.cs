@@ -28,7 +28,7 @@ namespace DotNetCompose.SourceGenerators
 
         private static string GenerateStubComposablesMethods(ClassAndComposablesMethods classAndComposablesMethods, Compilation compilation)
         {
-            var typeMethods = classAndComposablesMethods.Methods;
+            var typeMethods = classAndComposablesMethods.Methods.Select(m => m.Declaration!);
             if (!typeMethods.Any())
                 return string.Empty;
 
