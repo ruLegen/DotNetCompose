@@ -1,4 +1,5 @@
 ﻿using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Handlers;
 using DotNetCompose.SourceGenerators.Rewriters;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -18,6 +19,12 @@ namespace DotNetCompose.SourceGenerators
 {
     internal class ComposeGenerator
     {
+        private static readonly IReadOnlyList<IMethodCallHandler> DefaultHandlerChain = new IMethodCallHandler[]
+        {
+            new ComposableMethodCallHandler(),
+            new DelegateMethodCallHandler(),
+        };
+
         public static void ExecuteComposeGenerator(Compilation compilation,
             ClassAndComposablesMethods classAndComposablesMethods,
             SourceProductionContext context)
@@ -82,7 +89,7 @@ namespace DotNetCompose.SourceGenerators
                                                        Consts.Rewriter.StoredLambdaClassName,
                                                        Consts.Rewriter.BuildersClassName)); 
                                        })
-                                       .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method)))
+                                       .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method, DefaultHandlerChain)))
                                        .ToImmutableArray();
 
                 sourceBuilder.WithIndent(() =>
