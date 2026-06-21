@@ -1,15 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace DotNetCompose.Runtime
 {
-    public class DefaultAttribute<T> : Attribute  
+    public interface IDefaultValueProvider
     {
-        public Type Delegate { get; set; }
+    }
+
+    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
+    public class DefaultAttribute<T> : Attribute where T : IDefaultValueProvider
+    {
+        public Type DefaultValueProviderType { get; }
         public DefaultAttribute()
         {
-            Delegate = typeof(T);
+            DefaultValueProviderType = typeof(T);
         }
     }
 }

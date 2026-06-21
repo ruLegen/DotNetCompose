@@ -54,6 +54,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
             {
                 bool isComposable = false;
                 string name = parameter.Name;
+                ITypeSymbol? defaultProviderType = null;
                 AttributeData? composableAttribute = parameter.GetAttributes()
                                                 .FirstOrDefault(attribData => attribData.AttributeClass.GetFullMetadataName() == Consts.ComposableAttributeFullName);
                 if (composableAttribute != null)
@@ -65,7 +66,13 @@ namespace DotNetCompose.SourceGenerators.Extensions
                         genericArguments = namedTypeSymbol.TypeArguments;
                     }
                 }
-                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, parameter.Type));
+                AttributeData? defaultAttribute = parameter.GetAttributes()
+                    .FirstOrDefault(attribData => attribData.AttributeClass?.OriginalDefinition?.GetFullMetadataName() == Consts.DefaultAttributeFullName);
+                if (defaultAttribute != null && defaultAttribute.AttributeClass is INamedTypeSymbol namedDefaultAttr && namedDefaultAttr.TypeArguments.Length > 0)
+                {
+                    defaultProviderType = namedDefaultAttr.TypeArguments[0];
+                }
+                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, parameter.Type, defaultProviderType));
             }
             return ImmutableArray.Create<MethodParameterInfo>(result.ToArray());
         }

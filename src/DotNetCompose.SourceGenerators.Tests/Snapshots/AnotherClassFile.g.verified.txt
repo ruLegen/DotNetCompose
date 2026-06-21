@@ -7,7 +7,7 @@ namespace DotNetCompose.Playground
         public partial class Builders
         {
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void DD(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void DD(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -20,7 +20,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void vvvv3334(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void vvvv3334(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -33,7 +33,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void vvvv3333(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void vvvv3333(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -47,7 +47,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void T(int i, object testClass, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void T(int i, object testClass, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {

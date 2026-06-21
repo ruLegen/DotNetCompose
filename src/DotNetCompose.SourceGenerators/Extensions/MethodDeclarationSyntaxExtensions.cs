@@ -27,7 +27,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
             var methodSymbol = semanticModel.GetDeclaredSymbol(method);
             return methodSymbol?.ContainingType?.ToDisplayString() ?? string.Empty;
         }
-        public record MethodParameterInfo(string Name, bool IsComposable, ImmutableArray<ITypeSymbol> GenericArguments, ITypeSymbol? Type = null);
+        public record MethodParameterInfo(string Name, bool IsComposable, ImmutableArray<ITypeSymbol> GenericArguments, ITypeSymbol? Type = null, ITypeSymbol? DefaultProviderType = null);
         public static bool HasAnyComposablesParamaters(this MethodDeclarationSyntax method, SemanticModel semanticModel)
         {
             var r = method.ParameterList
@@ -51,6 +51,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
                 bool isComposable = false;
                 string name = semanticModel.GetDeclaredSymbol(parameter)?.Name ?? string.Empty;
                 ITypeSymbol? paramType = (semanticModel.GetDeclaredSymbol(parameter) as IParameterSymbol)?.Type;
+                ITypeSymbol? defaultProviderType = null;
                 if (parameter.AttributeLists.Any(aList => aList.Attributes.Any(a => IsComposableAttribute(a, semanticModel))))
                 {
                     ISymbol? symbol = semanticModel.GetSymbolInfo(parameter.Type).Symbol;
@@ -60,7 +61,21 @@ namespace DotNetCompose.SourceGenerators.Extensions
                         genericArguments = namedTypeSymbol.TypeArguments;
                     }
                 }
-                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, paramType));
+                foreach (var attributeList in parameter.AttributeLists)
+                {
+                    foreach (var attribute in attributeList.Attributes)
+                    {
+                        string? attrName = (attribute.Name as SimpleNameSyntax)?.Identifier.ValueText;
+                        bool isDefaultAttr = attrName == "Default" || attrName == "DefaultAttribute";
+                        if (isDefaultAttr && attribute.Name is GenericNameSyntax genericName &&
+                            genericName.TypeArgumentList.Arguments.Count > 0)
+                        {
+                            var typeArg = genericName.TypeArgumentList.Arguments[0];
+                            defaultProviderType = semanticModel.GetTypeInfo(typeArg).Type;
+                        }
+                    }
+                }
+                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, paramType, defaultProviderType));
             }
             return ImmutableArray.Create<MethodParameterInfo>(result.ToArray());
         }

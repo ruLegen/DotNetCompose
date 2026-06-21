@@ -206,11 +206,78 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
             ExpressionSyntax changedArg = BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments, ctx);
 
+            bool anyDefaultArgIsDefault = false;
+            var defaultStateBytes = new List<byte>();
+            for (int i = 0; i < methodSymbol.Parameters.Length; i++)
+            {
+                var param = methodSymbol.Parameters[i];
+                bool hasDefaultAttr = param.GetAttributes().Any(a =>
+                    a.AttributeClass?.OriginalDefinition?.GetFullMetadataName() == Consts.DefaultAttributeFullName);
+                if (!hasDefaultAttr) continue;
+
+                int argIdx = -1;
+                for (int j = 0; j < invocationExpression.ArgumentList.Arguments.Count; j++)
+                {
+                    var invArg = invocationExpression.ArgumentList.Arguments[j];
+                    if (invArg.NameColon != null)
+                    {
+                        if (invArg.NameColon.Name.Identifier.ValueText == param.Name)
+                        {
+                            argIdx = j;
+                            break;
+                        }
+                    }
+                    else if (j == i)
+                    {
+                        argIdx = j;
+                        break;
+                    }
+                }
+
+                if (argIdx >= 0)
+                {
+                    var argExpr = invocationExpression.ArgumentList.Arguments[argIdx].Expression;
+                    if (argExpr.IsKind(SyntaxKind.DefaultLiteralExpression))
+                    {
+                        defaultStateBytes.Add(1);
+                        anyDefaultArgIsDefault = true;
+                        continue;
+                    }
+                }
+                defaultStateBytes.Add(0);
+            }
+
+            ArgumentSyntax defaultStateArg;
+            if (!anyDefaultArgIsDefault)
+            {
+                defaultStateArg = SyntaxFactory.Argument(
+                    SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression));
+            }
+            else
+            {
+                var byteExprs = defaultStateBytes.Select(b => (ExpressionSyntax)
+                    SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(b)));
+                var arrayExpr = SyntaxFactory.ArrayCreationExpression(
+                    SyntaxFactory.ArrayType(
+                        SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
+                        SyntaxFactory.SingletonList(SyntaxFactory.ArrayRankSpecifier())))
+                    .WithInitializer(SyntaxFactory.InitializerExpression(
+                        SyntaxKind.ArrayInitializerExpression,
+                        SyntaxFactory.SeparatedList(byteExprs)));
+                var stateCreation = SyntaxFactory.ObjectCreationExpression(
+                    SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName))
+                    .WithArgumentList(SyntaxFactory.ArgumentList(
+                        SyntaxFactory.SingletonSeparatedList(
+                            SyntaxFactory.Argument(arrayExpr))));
+                defaultStateArg = SyntaxFactory.Argument(stateCreation);
+            }
+
             ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList<ArgumentSyntax>(processedArgs).AddRange(
                     new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
+                        defaultStateArg,
                     })
             );
             ctx.ComposableProcessed();

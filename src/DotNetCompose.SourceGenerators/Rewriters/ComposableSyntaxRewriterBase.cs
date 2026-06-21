@@ -143,6 +143,55 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
 			BlockSyntax processedBody = base.VisitBlock(node) as BlockSyntax;
 
+			if (_ctx.HasDefaultParams)
+			{
+				using ListPoolObject<StatementSyntax> substStmts = ListPool<StatementSyntax>.Get();
+				for (int i = 0; i < _ctx.MethodParameters.Length; i++)
+				{
+					var p = _ctx.MethodParameters[i];
+					if (p.DefaultProviderType == null) continue;
+
+					string providerTypeName = p.DefaultProviderType.ToDisplayString(
+						SymbolDisplayFormat.FullyQualifiedFormat
+							.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
+
+					var condition = SyntaxFactory.BinaryExpression(
+						SyntaxKind.EqualsExpression,
+						SyntaxFactory.ElementAccessExpression(
+							SyntaxFactory.IdentifierName(Consts.Rewriter.DefaultParamName))
+						.WithArgumentList(SyntaxFactory.BracketedArgumentList(
+							SyntaxFactory.SingletonSeparatedList(
+								SyntaxFactory.Argument(
+									SyntaxFactory.LiteralExpression(
+										SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(i)))))),
+						SyntaxFactory.LiteralExpression(
+							SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(1)));
+
+					var assignment = SyntaxFactory.AssignmentExpression(
+						SyntaxKind.SimpleAssignmentExpression,
+						SyntaxFactory.IdentifierName(p.Name),
+						SyntaxFactory.MemberAccessExpression(
+							SyntaxKind.SimpleMemberAccessExpression,
+							SyntaxFactory.ParseTypeName(providerTypeName),
+							SyntaxFactory.IdentifierName("Value")));
+
+					substStmts.Add(SyntaxFactory.IfStatement(
+						condition,
+						SyntaxFactory.Block(
+							SyntaxFactory.SingletonList<StatementSyntax>(
+								SyntaxFactory.ExpressionStatement(assignment).WithTrailingNewLine()))));
+				}
+
+				if (substStmts.Count > 0)
+				{
+					var origStmts = processedBody.Statements.ToArray();
+					var newStmts = new StatementSyntax[substStmts.Count + origStmts.Length];
+					substStmts.CopyTo(newStmts, 0);
+					origStmts.CopyTo(newStmts, substStmts.Count);
+					processedBody = processedBody.WithStatements(SyntaxFactory.List(newStmts));
+				}
+			}
+
 			if (allStable && anyNormalParams)
 			{
 				var stateVarNames = new List<string>();
@@ -549,6 +598,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 					default,
 					SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName).WithTrailingSpace(),
 					SyntaxFactory.Identifier(changedParamName),
+					default),
+
+				SyntaxFactory.Parameter(default,
+					default,
+					SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName).WithTrailingSpace(),
+					SyntaxFactory.Identifier(Consts.Rewriter.DefaultParamName),
 					default),
 					});
 

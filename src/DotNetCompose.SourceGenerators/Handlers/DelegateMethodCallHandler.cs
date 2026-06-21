@@ -77,6 +77,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                    {
                          SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
                          SyntaxFactory.Argument(changedArg),
+                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
                    }
                 );
                 result = invocationSyntax.WithArgumentList(newArguments);
@@ -88,6 +89,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
                     }
                 ));
             }
@@ -102,6 +104,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                       new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
                     });
 
                 result = conditionalAccessExpression.WithWhenNotNull(

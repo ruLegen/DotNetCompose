@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
 
@@ -30,6 +31,7 @@ namespace DotNetCompose.SourceGenerators
         public List<StoredLambda> StoredLambdas { get; } = new List<StoredLambda> { };
         public bool WasGeneratedComposableFunctionWithinConditionalBlocks { get; private set; }
         public bool HasUnstableParam { get; set; }
+        public bool HasDefaultParams => MethodParameters.Any(p => p.DefaultProviderType != null);
         public ImmutableArray<MethodParameterInfo> MethodParameters { get; internal set; } = ImmutableArray<MethodParameterInfo>.Empty;
 
         private int _initialGroupId = 0;

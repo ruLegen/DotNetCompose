@@ -1,0 +1,47 @@
+﻿using DotNetCompose.Runtime;
+
+namespace TestNs
+{
+    public partial class TestClass
+    {
+        public partial class Builders
+        {
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void WithDefault([Default<MyIntProvider>] int x = default, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            {
+                try
+                {
+                    __ctx?.StartRestartableGroup(-917303168);
+                    if (__defaultParamState[0] == 1)
+                    {
+                        x = global::TestNs.MyIntProvider.Value;
+                    }
+
+                    Use(x);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(-917303168);
+                }
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public static void Caller(int y, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            {
+                try
+                {
+                    __ctx?.StartRestartableGroup(-1313269180);
+                    global::TestNs.TestClass.Builders.WithDefault(y, __ctx, default, default);
+                    global::TestNs.TestClass.Builders.WithDefault(default, __ctx, default, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(new byte[] { 1 }));
+                    global::TestNs.TestClass.Builders.WithDefault(__ctx, default, default);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(-1313269180);
+                }
+            }
+            static class __StoredLambda
+            {
+            }
+        }
+    }
+}

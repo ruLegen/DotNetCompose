@@ -88,4 +88,12 @@ public class ComposeGeneratorSnapshotTests
         var result = GeneratorTestHelper.RunSingleGenerator(source);
         return Verifier.Verify(result).UseFileName("FullTestClass.g");
     }
+
+    [Fact]
+    public Task ComposableWithDefault()
+    {
+        var source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
+        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        return Verifier.Verify(result).UseFileName("ComposableWithDefault.g");
+    }
 }

@@ -95,4 +95,30 @@ public class ComposeGeneratorCompilationTests
         Assert.Contains("Stable", result);
         Assert.Contains("ComposableTest", result);
     }
+
+    [Fact]
+    public void ComposableWithDefault_GeneratesWithoutCompilationErrors()
+    {
+        var source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+        Assert.DoesNotContain(diags, d => d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ComposableWithDefault_ContainsDefaultParamState()
+    {
+        var source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
+        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        Assert.Contains("__defaultParamState", result);
+        Assert.Contains("ComposableArgumentsDefaultState", result);
+    }
+
+    [Fact]
+    public void ComposableWithDefault_ContainsDefaultSubstitution()
+    {
+        var source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
+        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        Assert.Contains("MyIntProvider.Value", result);
+        Assert.Contains("__defaultParamState[0] == 1", result);
+    }
 }

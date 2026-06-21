@@ -9,13 +9,13 @@ namespace DotNetCompose.Playground
         public partial class Builders
         {
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void dd<T>(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void dd<T>(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
                     __ctx?.StartRestartableGroup(-2111629801);
-                    global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable(__ctx, default);
-                    global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable2(__ctx, default);
+                    global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable(__ctx, default, default);
+                    global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable2(__ctx, default, default);
                 }
                 finally
                 {
@@ -23,7 +23,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void Unstable(int i, object obj, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void Unstable(int i, object obj, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -35,7 +35,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void Stable(int i, string stable, int g, string kkk, string sdf, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void Stable(int i, string stable, int g, string kkk, string sdf, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -47,7 +47,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void StableTestGeneric<T>(int i, T param2, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void StableTestGeneric<T>(int i, T param2, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -59,7 +59,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void EmptyComposable(int argInt, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            public static void EmptyComposable(int argInt, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -68,14 +68,14 @@ namespace DotNetCompose.Playground
                     int rememberedFromStaticUsings = Remember<int>(0, () => 3);
                     int rememberedInt = Composables.Remember(0, () => 3);
                     string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
-                    global::DotNetCompose.Playground.TestClass.Builders.Unstable(argInt, null, __ctx, default);
-                    global::DotNetCompose.Playground.TestClass.Builders.Stable(argInt, "", 3, "", "", __ctx, default);
-                    global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<int>(argInt, 3, __ctx, default);
-                    global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<object>(argInt, new object (), __ctx, default);
+                    global::DotNetCompose.Playground.TestClass.Builders.Unstable(argInt, null, __ctx, default, default);
+                    global::DotNetCompose.Playground.TestClass.Builders.Stable(argInt, "", 3, "", "", __ctx, default, default);
+                    global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<int>(argInt, 3, __ctx, default, default);
+                    global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<object>(argInt, new object (), __ctx, default, default);
                     ComposableTest(3, i =>
                     {
                         int nonCaptured = i;
-                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123, __ctx, default);
+                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123, __ctx, default, default);
                     });
                     ComposableTest(3, i =>
                     {
@@ -88,9 +88,9 @@ namespace DotNetCompose.Playground
                     ComposableTest(3, i =>
                     {
                         int innerInt = localInt * i;
-                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123123, __ctx, default);
+                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123123, __ctx, default, default);
                     });
-                    global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __ctx, default);
+                    global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __ctx, default, default);
                 }
                 finally
                 {
@@ -98,7 +98,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            private static void ComposableTest(int i, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            private static void ComposableTest(int i, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -110,7 +110,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            private static void ComposableTest2(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            private static void ComposableTest2(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
@@ -125,7 +125,7 @@ namespace DotNetCompose.Playground
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            private static void ComposableTest(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
+            private static void ComposableTest(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {

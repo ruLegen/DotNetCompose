@@ -14,6 +14,7 @@ namespace DotNetCompose.SourceGenerators
 
         public const string ComposableAttributeFullName = "DotNetCompose.Runtime.ComposableAttribute";
         public const string ComposableIgnoreAttributeFullName = "DotNetCompose.Runtime.ComposableIgnoreAttribute";
+        public const string DefaultAttributeFullName = "DotNetCompose.Runtime.DefaultAttribute`1";
 
         public const string DefaultEOL = "\r\n";
         public static string DefaultIndent = new string(' ',4);
@@ -22,6 +23,7 @@ namespace DotNetCompose.SourceGenerators
         {
             public const string ContextParamName = "__ctx";
             public const string ChangedParamName = "__changed";
+            public const string DefaultParamName = "__defaultParamState";
             public const string StoredLambdaClassName = "__StoredLambda";
             public const string BuildersClassName = "Builders";
         }
@@ -57,6 +59,12 @@ namespace DotNetCompose.SourceGenerators
             public const string UncertainField = "Uncertain";
             public const string StaticField = "Static";
         }
+        public static class ComposableArgumentsDefaultState
+        {
+            public const string FullName = "DotNetCompose.Runtime.ComposableArgumentsDefaultState";
+            public const string DefaultParamName = "_defaultParamState";
+        }
+
         public static class ComposableLabmdaWrapper
         {
             public const string FullName = "DotNetCompose.Runtime.ComposableLambdaWrapper";
