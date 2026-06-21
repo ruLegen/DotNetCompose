@@ -1,5 +1,6 @@
 using DotNetCompose.SourceGenerators;
 using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Helpers;
 using DotNetCompose.SourceGenerators.Rewriters;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -206,7 +207,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 }
             });
 
-            ExpressionSyntax changedArg = BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments, methodCtx);
+            ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments, methodCtx);
 
             int defaultCount = parameterInfos.Count(p => p.DefaultProviderType != null);
             bool anyShouldUseDefault = false;
@@ -216,24 +217,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 var paramInfo = parameterInfos[i];
                 if (paramInfo.DefaultProviderType == null) continue;
 
-                int argIdx = -1;
-                for (int j = 0; j < invocationExpression.ArgumentList.Arguments.Count; j++)
-                {
-                    var invArg = invocationExpression.ArgumentList.Arguments[j];
-                    if (invArg.NameColon != null)
-                    {
-                        if (invArg.NameColon.Name.Identifier.ValueText == paramInfo.Name)
-                        {
-                            argIdx = j;
-                            break;
-                        }
-                    }
-                    else if (j == i)
-                    {
-                        argIdx = j;
-                        break;
-                    }
-                }
+                int argIdx = ArgumentResolver.FindArgumentIndex(invocationExpression.ArgumentList.Arguments, i, paramInfo.Name);
 
                 if (argIdx >= 0)
                 {
@@ -284,24 +268,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             var allArgs = new List<ArgumentSyntax>();
             for (int i = 0; i < parameterInfos.Length; i++)
             {
-                int argIdx = -1;
-                for (int j = 0; j < invocationExpression.ArgumentList.Arguments.Count; j++)
-                {
-                    var invArg = invocationExpression.ArgumentList.Arguments[j];
-                    if (invArg.NameColon != null)
-                    {
-                        if (invArg.NameColon.Name.Identifier.ValueText == parameterInfos[i].Name)
-                        {
-                            argIdx = j;
-                            break;
-                        }
-                    }
-                    else if (j == i)
-                    {
-                        argIdx = j;
-                        break;
-                    }
-                }
+                int argIdx = ArgumentResolver.FindArgumentIndex(invocationExpression.ArgumentList.Arguments, i, parameterInfos[i].Name);
 
                 if (argIdx >= 0)
                 {
@@ -338,113 +305,6 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 return invocationExpression.WithArgumentList(newArgs);
             }
             throw new NotSupportedException();
-        }
-
-        private ExpressionSyntax BuildChangedArg(
-            ImmutableArray<MethodParameterInfo> calleeParams,
-            SeparatedSyntaxList<ArgumentSyntax> args,
-            MethodGenerationContext methodCtx)
-        {
-            if (methodCtx.HasUnstableParam)
-                return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-
-            using ListPoolObject<ExpressionSyntax> stateExprs = ListPool<ExpressionSyntax>.Get();
-            bool allSame = true;
-
-            for (int i = 0; i < calleeParams.Length; i++)
-            {
-                var calleeParam = calleeParams[i];
-
-                int argIdx = -1;
-                for (int j = 0; j < args.Count; j++)
-                {
-                    var invArg = args[j];
-                    if (invArg.NameColon != null)
-                    {
-                        if (invArg.NameColon.Name.Identifier.ValueText == calleeParam.Name)
-                        {
-                            argIdx = j;
-                            break;
-                        }
-                    }
-                    else if (j == i)
-                    {
-                        argIdx = j;
-                        break;
-                    }
-                }
-
-                if (argIdx == -1)
-                {
-                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                        SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.UncertainField)));
-                    allSame = false;
-                    continue;
-                }
-
-                if (calleeParam.IsComposable)
-                {
-                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                        SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.DifferentField)));
-                    allSame = false;
-                    continue;
-                }
-
-                var expr = args[argIdx].Expression;
-
-                if (expr is LiteralExpressionSyntax)
-                {
-                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                        SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.StaticField)));
-                    continue;
-                }
-
-                if (expr is IdentifierNameSyntax idName)
-                {
-                    var callerParams = methodCtx.Parameters;
-                    bool found = false;
-                    for (int cp = 0; cp < callerParams.Length; cp++)
-                    {
-                        if (callerParams[cp].Name == idName.Identifier.Text)
-                        {
-                            stateExprs.Add(SyntaxFactory.IdentifierName($"__{idName.Identifier.Text}_state"));
-                            allSame = false;
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) continue;
-                }
-
-                stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
-                    SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.UncertainField)));
-                allSame = false;
-            }
-
-            if (allSame)
-                return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-
-            return SyntaxFactory.ObjectCreationExpression(
-                SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName))
-                .WithArgumentList(SyntaxFactory.ArgumentList(
-                    SyntaxFactory.SingletonSeparatedList(
-                        SyntaxFactory.Argument(
-                            SyntaxFactory.StackAllocArrayCreationExpression(
-                                SyntaxFactory.ArrayType(
-                                    SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
-                                    SyntaxFactory.SingletonList(
-                                        SyntaxFactory.ArrayRankSpecifier())),
-                                SyntaxFactory.InitializerExpression(
-                                    SyntaxKind.ArrayInitializerExpression,
-                                    SyntaxFactory.SeparatedList(stateExprs)))))));
         }
 
         private static InvocationExpressionSyntax ReplaceWithFullQualifiedName(InvocationExpressionSyntax node, IMethodSymbol methodSymbol)
