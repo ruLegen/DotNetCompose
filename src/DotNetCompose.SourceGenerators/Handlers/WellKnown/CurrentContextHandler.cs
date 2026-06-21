@@ -14,7 +14,7 @@ namespace DotNetCompose.SourceGenerators.Handlers.WellKnown
             InvocationExpressionSyntax invocation,
             MethodCallHandlerContext context)
         {
-            return SyntaxFactory.IdentifierName(context.GeneratorContext.ContextVarName);
+            return SyntaxFactory.IdentifierName(context.Options.ContextVarName);
         }
     }
 }

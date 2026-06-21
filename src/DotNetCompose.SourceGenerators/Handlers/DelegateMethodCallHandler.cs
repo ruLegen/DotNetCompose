@@ -30,7 +30,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             if (delegateMethodCallInfo == null)
                 return InterceptionResult.Continue;
 
-            bool isComposableArgumentCall = context.GeneratorContext.MethodParameters
+            bool isComposableArgumentCall = context.MethodCtx.Parameters
                 .FirstOrDefault(p => p.Name == delegateMethodCallInfo.RecieverObjectName)?.IsComposable ?? false;
             if (!isComposableArgumentCall)
                 return InterceptionResult.Continue;
@@ -44,7 +44,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
             DelegateMethodCallInfo delegateMethodCallInfo,
             MethodCallHandlerContext context)
         {
-            var ctx = context.GeneratorContext;
+            var options = context.Options;
+            var methodCtx = context.MethodCtx;
+            var session = context.Session;
             var semanticModel = context.SemanticModel;
 
             InvocationExpressionSyntax? invocation = null;
@@ -66,7 +68,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             if (delegateMethod != null)
                 delegateParams = delegateMethod.GetParametersInfos(semanticModel);
 
-            ExpressionSyntax changedArg = BuildChangedArg(delegateParams, invocation.ArgumentList.Arguments, ctx);
+            ExpressionSyntax changedArg = BuildChangedArg(delegateParams, invocation.ArgumentList.Arguments, methodCtx);
 
             ExpressionSyntax result = null;
             if (delegateMethodCallInfo.IsSimpleMemberAccessCall)
@@ -75,7 +77,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 ArgumentListSyntax newArguments = invocationSyntax.ArgumentList.AddArguments(
                    new ArgumentSyntax[]
                    {
-                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
+                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                          SyntaxFactory.Argument(changedArg),
                          SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
                    }
@@ -87,7 +89,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 InvocationExpressionSyntax inv = expression as InvocationExpressionSyntax;
                 result = inv.WithArgumentList(inv.ArgumentList.AddArguments(
                     new ArgumentSyntax[]{
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
                     }
@@ -102,7 +104,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
                 ArgumentListSyntax newArguments = inv.ArgumentList.AddArguments(
                       new ArgumentSyntax[]{
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
                     });
@@ -112,7 +114,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             }
             if (result != null)
             {
-                ctx.ComposableProcessed();
+                session.MarkComposableProcessed();
                 return result;
             }
             else
@@ -122,9 +124,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
         private static ExpressionSyntax BuildChangedArg(
             ImmutableArray<MethodParameterInfo> calleeParams,
             SeparatedSyntaxList<ArgumentSyntax> args,
-            ComposableMethodGeneratorContext ctx)
+            MethodGenerationContext methodCtx)
         {
-            if (ctx.HasUnstableParam)
+            if (methodCtx.HasUnstableParam)
                 return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
 
             using ListPoolObject<ExpressionSyntax> stateExprs = ListPool<ExpressionSyntax>.Get();
@@ -186,7 +188,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
                 if (expr is IdentifierNameSyntax idName)
                 {
-                    var callerParams = ctx.MethodParameters;
+                    var callerParams = methodCtx.Parameters;
                     bool found = false;
                     for (int cp = 0; cp < callerParams.Length; cp++)
                     {

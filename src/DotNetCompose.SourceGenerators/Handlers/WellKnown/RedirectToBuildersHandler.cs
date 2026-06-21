@@ -14,15 +14,15 @@ namespace DotNetCompose.SourceGenerators.Handlers.WellKnown
             InvocationExpressionSyntax invocation,
             MethodCallHandlerContext context)
         {
-            var ctx = context.GeneratorContext;
+            var options = context.Options;
             var methodSymbol = context.SemanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
             if (methodSymbol == null)
                 return null;
 
             var args = new List<ArgumentSyntax>();
             args.AddRange(invocation.ArgumentList.Arguments);
-            args.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)));
-            args.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ChangedVarName)));
+            args.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)));
+            args.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ChangedVarName)));
             args.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)));
 
             var methodName = methodSymbol.TypeArguments.Length > 0

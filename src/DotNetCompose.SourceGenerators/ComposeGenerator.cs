@@ -84,15 +84,31 @@ namespace DotNetCompose.SourceGenerators
 
                 var rewrittenMethods = typeMethods.Select(m =>
                                        {
-                                           return (Method: m,
-                                                   Context: new ComposableMethodGeneratorContext(
-                                                       m.GetMethodID(semanticModel),
-                                                       Consts.Rewriter.ContextParamName,
-                                                       Consts.Rewriter.ChangedParamName,
-                                                       Consts.Rewriter.StoredLambdaClassName,
-                                                       Consts.Rewriter.BuildersClassName)); 
+                                           var methodParams = m.GetParametersInfos(semanticModel);
+                                           var normalParams = methodParams
+                                               .Select((p, i) => (Param: p, Index: i))
+                                               .Where(x => !x.Param.IsComposable)
+                                               .ToList();
+                                           bool anyNormalParams = normalParams.Any();
+                                           bool allStable = anyNormalParams
+                                               && normalParams.All(x => x.Param.Type != null && x.Param.Type.IsStableType());
+                                           bool hasUnstable = anyNormalParams && !allStable;
+
+                                           var options = new RewriterOptions(
+                                               Consts.Rewriter.ContextParamName,
+                                               Consts.Rewriter.ChangedParamName,
+                                               Consts.Rewriter.DefaultParamName,
+                                               Consts.Rewriter.StoredLambdaClassName,
+                                               Consts.Rewriter.BuildersClassName);
+                                           var methodCtx = new MethodGenerationContext(
+                                               methodParams,
+                                               methodParams.Any(p => p.DefaultProviderType != null),
+                                               hasUnstable);
+                                           var session = new RewriterSession(RewriterSession.DeterministicHash(m.GetMethodID(semanticModel)));
+
+                                           return (Options: options, MethodCtx: methodCtx, Session: session, Method: m);
                                        })
-                                       .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method, DefaultHandlerChain, WellKnownRegistry)))
+                                       .Select(pair => (Session: pair.Session, MethodBody: ComposeMethodRewriter.Rewrite(pair.Options, pair.MethodCtx, pair.Session, semanticModel, pair.Method, DefaultHandlerChain, WellKnownRegistry)))
                                        .ToImmutableArray();
 
                 sourceBuilder.WithIndent(() =>
@@ -114,9 +130,9 @@ namespace DotNetCompose.SourceGenerators
                         sourceBuilder.WithIndent(() =>
                         {
                             int currentIndent = sourceBuilder.Indent;
-                            foreach (ComposableMethodGeneratorContext ctx in rewrittenMethods.Select(pair => pair.Context))
+                            foreach (RewriterSession session in rewrittenMethods.Select(pair => pair.Session))
                             {
-                                foreach (var storedLambda in ctx.StoredLambdas)
+                                foreach (var storedLambda in session.StoredLambdas)
                                 {
                                     //var rewrittenLines = new DebugLineNumberSyntaxTreeWriter().Visit(storedLambda.MethodDeclaration);
                                     var normalizedMethod = SyntaxNormalizer.Normalize(storedLambda.MethodDeclaration, false, currentIndent, Consts.DefaultIndent, Consts.DefaultEOL);

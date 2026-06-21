@@ -14,7 +14,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
     internal class MethodCallHandlerContext
     {
         public SemanticModel SemanticModel { get; set; }
-        public ComposableMethodGeneratorContext GeneratorContext { get; set; }
+        public RewriterOptions Options { get; set; }
+        public MethodGenerationContext MethodCtx { get; set; }
+        public RewriterSession Session { get; set; }
         public Func<SyntaxNode, SyntaxNode> VisitNode { get; set; }
     }
 

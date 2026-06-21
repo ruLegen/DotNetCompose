@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using static DotNetCompose.SourceGenerators.ComposableMethodGeneratorContext;
 using static DotNetCompose.SourceGenerators.Consts;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
 
@@ -40,7 +39,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
             IMethodSymbol methodSymbol,
             MethodCallHandlerContext context)
         {
-            var ctx = context.GeneratorContext;
+            var options = context.Options;
+            var methodCtx = context.MethodCtx;
+            var session = context.Session;
             var semanticModel = context.SemanticModel;
 
             ImmutableArray<MethodParameterInfo> parameterInfos = methodSymbol.GetParametersInfos(semanticModel);
@@ -103,8 +104,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 }).ToImmutableArray();
 
                 ImmutableArray<(string Type, string Name)> newArgs = argTypes.AddRange(new (string Type, string Name)[] {
-                    (Consts.ComposeContext.FullName, ctx.ContextVarName),
-                    (Consts.ComposableArgumentsState.FullName, ctx.ChangedVarName),
+                    (Consts.ComposeContext.FullName, options.ContextVarName),
+                    (Consts.ComposableArgumentsState.FullName, options.ChangedVarName),
                     (Consts.ComposableArgumentsDefaultState.FullName, Consts.Rewriter.DefaultParamName),
                 });
 
@@ -135,8 +136,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     variableType = variableType.WithTrailingSpace();
 
                     var wrappedLambdaExpression = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs("ComposeHelpers", "GetLambda",
-                        SyntaxFactory.IdentifierName(ctx.ContextVarName),
-                        SyntaxFactoryHelpers.CreateIntLiteral(ctx.GetNextLambdaKey()),
+                        SyntaxFactory.IdentifierName(options.ContextVarName),
+                        SyntaxFactoryHelpers.CreateIntLiteral(session.NextLambdaKey()),
                         SyntaxFactory.ParenthesizedLambdaExpression(
                             SyntaxFactory.ParameterList(),
                             SyntaxFactory.Block(
@@ -173,7 +174,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 }
                 else
                 {
-                    string name = ctx.GetNextLambdaName();
+                    string name = session.NextLambdaName();
 
                     SyntaxTokenList lamdaModifiers = default(SyntaxTokenList).AddRange(new SyntaxToken[]
                     {
@@ -197,15 +198,15 @@ namespace DotNetCompose.SourceGenerators.Handlers
                          newBodyBlockSyntax.WithTrailingNewLine(),
                          default(SyntaxToken));
 
-                    ctx.AddStoredLambda(new StoredLambda(name, newArgs, lambdaMethodDeclaration));
+                    session.AddStoredLambda(new RewriterSession.StoredLambda(name, newArgs, lambdaMethodDeclaration));
 
                     return arg.WithExpression(SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                                        SyntaxFactory.IdentifierName(ctx.StoredLambdaIdentifierName),
+                                                        SyntaxFactory.IdentifierName(options.StoredLambdaClassName),
                                                         SyntaxFactory.IdentifierName(name)));
                 }
             });
 
-            ExpressionSyntax changedArg = BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments, ctx);
+            ExpressionSyntax changedArg = BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments, methodCtx);
 
             int defaultCount = parameterInfos.Count(p => p.DefaultProviderType != null);
             bool anyShouldUseDefault = false;
@@ -319,20 +320,20 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 }
             }
 
-            allArgs.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)));
+            allArgs.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)));
             allArgs.Add(SyntaxFactory.Argument(changedArg));
             allArgs.Add(defaultStateArg);
 
             ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList(allArgs));
-            ctx.ComposableProcessed();
+            session.MarkComposableProcessed();
 
             invocationExpression = ReplaceWithFullQualifiedName(invocationExpression, methodSymbol);
             MemberAccessExpressionSyntax? lastmemberAccess = invocationExpression.DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
             if (lastmemberAccess != null)
             {
                 string lastAccessedMemberName = lastmemberAccess.Name.ToFullString();
-                string newAccessMemberName = $"{ctx.BuildersClassName}.{lastAccessedMemberName}";
+                string newAccessMemberName = $"{options.BuildersClassName}.{lastAccessedMemberName}";
                 invocationExpression = (InvocationExpressionSyntax)ReplaceLastMemberAccess(invocationExpression, lastAccessedMemberName, newAccessMemberName);
                 return invocationExpression.WithArgumentList(newArgs);
             }
@@ -342,9 +343,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
         private ExpressionSyntax BuildChangedArg(
             ImmutableArray<MethodParameterInfo> calleeParams,
             SeparatedSyntaxList<ArgumentSyntax> args,
-            ComposableMethodGeneratorContext ctx)
+            MethodGenerationContext methodCtx)
         {
-            if (ctx.HasUnstableParam)
+            if (methodCtx.HasUnstableParam)
                 return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
 
             using ListPoolObject<ExpressionSyntax> stateExprs = ListPool<ExpressionSyntax>.Get();
@@ -406,7 +407,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
                 if (expr is IdentifierNameSyntax idName)
                 {
-                    var callerParams = ctx.MethodParameters;
+                    var callerParams = methodCtx.Parameters;
                     bool found = false;
                     for (int cp = 0; cp < callerParams.Length; cp++)
                     {

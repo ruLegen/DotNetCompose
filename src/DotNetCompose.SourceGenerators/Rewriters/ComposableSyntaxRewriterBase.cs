@@ -60,44 +60,49 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 	internal abstract class ComposableSyntaxRewriterBase : CSharpSyntaxRewriter
 	{
 		protected ComposableSyntaxRewriterBase(
-			ComposableMethodGeneratorContext ctx,
+			RewriterOptions options,
+			MethodGenerationContext methodCtx,
+			RewriterSession session,
 			SemanticModel semanticModel,
 			IReadOnlyList<IMethodCallHandler> methodCallHandlers,
 			WellKnownFunctionRegistry wellKnownRegistry)
 		{
+			_options = options;
+			_methodCtx = methodCtx;
+			_session = session;
 			_semanticModel = semanticModel;
-			_ctx = ctx;
 			_methodCallHandlers = methodCallHandlers;
 			_wellKnownRegistry = wellKnownRegistry;
 		}
+		protected readonly RewriterOptions _options;
+		protected readonly MethodGenerationContext _methodCtx;
+		protected readonly RewriterSession _session;
 		protected SemanticModel _semanticModel;
-		protected ComposableMethodGeneratorContext _ctx;
 		protected readonly IReadOnlyList<IMethodCallHandler> _methodCallHandlers;
 		protected readonly WellKnownFunctionRegistry _wellKnownRegistry;
 
 		public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax method)
 		{
 			var sourceLocationAnnotation = method.CreateLocationSyntaxAnnotation();
-			_ctx.MethodParameters = method.GetParametersInfos(_semanticModel);
 			var methodModifiers = method.Modifiers;
 
-			bool hasAnyComposables = _ctx.MethodParameters.Any(p => p.IsComposable);
+			bool hasAnyComposables = _methodCtx.Parameters.Any(p => p.IsComposable);
 
 			ParameterListSyntax newParameterList = method.ParameterList;
 			if (hasAnyComposables)
 			{
 				newParameterList = ReplaceAllComposableParameters(method, true);
 			}
-			if (_ctx.HasDefaultParams)
+			if (_methodCtx.HasDefaultParams)
 			{
 				newParameterList = newParameterList.WithParameters(
 					SyntaxFactory.SeparatedList(
 						newParameterList.Parameters.Select((p, i) =>
-							i < _ctx.MethodParameters.Length && _ctx.MethodParameters[i].DefaultProviderType != null
+							i < _methodCtx.Parameters.Length && _methodCtx.Parameters[i].DefaultProviderType != null
 								? p.WithDefault(null)
 								: p)));
 			}
-			newParameterList = AppendComposableContextrelatedParameters(newParameterList, _ctx.ContextVarName, _ctx.ChangedVarName);
+			newParameterList = AppendComposableContextrelatedParameters(newParameterList, _options.ContextVarName, _options.ChangedVarName);
 
 			MethodDeclarationSyntax newMethod = method
 				.WithParameterList(newParameterList)
@@ -131,8 +136,8 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
 		protected SyntaxNode VisitMethodDeclarationBlock(BlockSyntax node)
 		{
-			string ctxVar = _ctx.ContextVarName;
-			string changedVar = _ctx.ChangedVarName;
+			string ctxVar = _options.ContextVarName;
+			string changedVar = _options.ChangedVarName;
 			using ListPoolObject<StatementSyntax> syntaxList = ListPool<StatementSyntax>.Get();
 
 			using ListPoolObject<StatementSyntax> tryStatements = ListPool<StatementSyntax>.Get();
@@ -140,9 +145,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			tryStatements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
 				ctxVar,
 				Consts.ComposeContext.StartRestartableGroupMethod,
-				SyntaxFactoryHelpers.CreateIntLiteral(_ctx.InitialGroupId)));
+				SyntaxFactoryHelpers.CreateIntLiteral(_session.InitialGroupId)));
 
-			var normalParams = _ctx.MethodParameters
+			var normalParams = _methodCtx.Parameters
 				.Select((p, i) => (Param: p, Index: i))
 				.Where(x => !x.Param.IsComposable)
 				.ToList();
@@ -150,20 +155,17 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			bool anyNormalParams = normalParams.Any();
 			bool allStable = anyNormalParams
 				&& normalParams.All(x => x.Param.Type != null && x.Param.Type.IsStableType());
-			_ctx.HasUnstableParam = anyNormalParams && !allStable;
-
-
 
 			// DIAG: check allStable for all methods with normal params
 
 			BlockSyntax processedBody = base.VisitBlock(node) as BlockSyntax;
 
-			if (_ctx.HasDefaultParams)
+			if (_methodCtx.HasDefaultParams)
 			{
 				using ListPoolObject<StatementSyntax> substStmts = ListPool<StatementSyntax>.Get();
-				for (int i = 0; i < _ctx.MethodParameters.Length; i++)
+				for (int i = 0; i < _methodCtx.Parameters.Length; i++)
 				{
-					var p = _ctx.MethodParameters[i];
+					var p = _methodCtx.Parameters[i];
 					if (p.DefaultProviderType == null) continue;
 
 					string providerTypeName = p.DefaultProviderType.ToDisplayString(
@@ -368,7 +370,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			ExpressionStatementSyntax endGroupStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
 				ctxVar,
 				Consts.ComposeContext.EndRestartableGroupMethod,
-				SyntaxFactoryHelpers.CreateIntLiteral(_ctx.InitialGroupId));
+				SyntaxFactoryHelpers.CreateIntLiteral(_session.InitialGroupId));
 
 			syntaxList.Add(SyntaxFactory.TryStatement(
 				SyntaxFactory.Block(tryStatements),
@@ -388,7 +390,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			var context = new MethodCallHandlerContext
 			{
 				SemanticModel = _semanticModel,
-				GeneratorContext = _ctx,
+				Options = _options,
+				MethodCtx = _methodCtx,
+				Session = _session,
 				VisitNode = Visit,
 			};
 
@@ -415,7 +419,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			var context = new MethodCallHandlerContext
 			{
 				SemanticModel = _semanticModel,
-				GeneratorContext = _ctx,
+				Options = _options,
+				MethodCtx = _methodCtx,
+				Session = _session,
 				VisitNode = Visit,
 			};
 
@@ -432,7 +438,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
 		public override SyntaxNode VisitIfStatement(IfStatementSyntax node)
 		{
-			using var ifProcessingHanler = _ctx.WithIfProcessing();
+			using var ifProcessingHanler = _session.EnterConditional();
 			IEnumerable<StatementSyntax>? ifStatementsToProcesss = null;
 			if (node.Statement is BlockSyntax blockSyntax)
 			{
@@ -479,19 +485,19 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 				}
 			}
 
-			if (!_ctx.WasGeneratedComposableFunctionWithinConditionalBlocks)
+			if (!_session.WasInConditional)
 				return base.VisitIfStatement(node);
 
-			int ifGroupId = _ctx.GetNextGroupId();
+			int ifGroupId = _session.NextGroupId();
 			ElseClauseSyntax? newElseClauseSyntax = node.Else;
 			if (elseOutStatements.Any())
 			{
-				int elseGroupId = _ctx.GetNextGroupId();
-				ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+				int elseGroupId = _session.NextGroupId();
+				ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_options.ContextVarName,
 					Consts.ComposeContext.StartReplaceableGroupMethod,
 					SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId))
 					.WithTrailingNewLine();
-				ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+				ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_options.ContextVarName,
 					Consts.ComposeContext.EndReplaceableGroupMethod,
 					SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId));
 
@@ -518,12 +524,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
 			if (ifOutStatements.Any())
 			{
-				ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+				ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_options.ContextVarName,
 						Consts.ComposeContext.StartReplaceableGroupMethod,
 						SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId))
 					.WithTrailingNewLine();
 
-				ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_ctx.ContextVarName,
+				ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(_options.ContextVarName,
 					Consts.ComposeContext.EndReplaceableGroupMethod,
 					SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId));
 
