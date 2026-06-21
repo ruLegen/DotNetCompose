@@ -10,9 +10,15 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void WithStaticUsing(int argInt, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(-1783410025);
-                int r = Remember<int>(0, () => 3);
-                __ctx?.EndRestartableGroup(-1783410025);
+                try
+                {
+                    __ctx?.StartRestartableGroup(-1783410025);
+                    int r = Remember<int>(0, () => 3);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(-1783410025);
+                }
             }
             static class __StoredLambda
             {

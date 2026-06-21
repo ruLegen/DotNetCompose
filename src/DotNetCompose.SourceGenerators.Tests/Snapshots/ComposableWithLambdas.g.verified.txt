@@ -10,20 +10,32 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void MainMethod(int argInt, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(-224109069);
-                int local = argInt;
-                ComposableTest(3, i =>
+                try
                 {
-                    int x = i + local;
-                });
-                __ctx?.EndRestartableGroup(-224109069);
+                    __ctx?.StartRestartableGroup(-224109069);
+                    int local = argInt;
+                    ComposableTest(3, i =>
+                    {
+                        int x = i + local;
+                    });
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(-224109069);
+                }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             private static void ComposableTest(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(2024347930);
-                action(i);
-                __ctx?.EndRestartableGroup(2024347930);
+                try
+                {
+                    __ctx?.StartRestartableGroup(2024347930);
+                    action(i);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(2024347930);
+                }
             }
             static class __StoredLambda
             {

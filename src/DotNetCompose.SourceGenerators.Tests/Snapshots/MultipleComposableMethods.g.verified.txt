@@ -9,20 +9,38 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void A(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(-1053874766);
-                __ctx?.EndRestartableGroup(-1053874766);
+                try
+                {
+                    __ctx?.StartRestartableGroup(-1053874766);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(-1053874766);
+                }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void B(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(-650590239);
-                __ctx?.EndRestartableGroup(-650590239);
+                try
+                {
+                    __ctx?.StartRestartableGroup(-650590239);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(-650590239);
+                }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void C(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(2078293116);
-                __ctx?.EndRestartableGroup(2078293116);
+                try
+                {
+                    __ctx?.StartRestartableGroup(2078293116);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(2078293116);
+                }
             }
             static class __StoredLambda
             {

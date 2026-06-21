@@ -9,8 +9,14 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void NotIgnored(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(-990364774);
-                __ctx?.EndRestartableGroup(-990364774);
+                try
+                {
+                    __ctx?.StartRestartableGroup(-990364774);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(-990364774);
+                }
             }
             static class __StoredLambda
             {

@@ -10,8 +10,14 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void WithLambda(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(2093042836);
-                __ctx?.EndRestartableGroup(2093042836);
+                try
+                {
+                    __ctx?.StartRestartableGroup(2093042836);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(2093042836);
+                }
             }
             static class __StoredLambda
             {

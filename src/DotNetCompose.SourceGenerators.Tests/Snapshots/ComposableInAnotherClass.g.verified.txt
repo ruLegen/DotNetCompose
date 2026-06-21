@@ -13,8 +13,14 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void MethodA(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(36080424);
-                __ctx?.EndRestartableGroup(36080424);
+                try
+                {
+                    __ctx?.StartRestartableGroup(36080424);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(36080424);
+                }
             }
             static class __StoredLambda
             {
@@ -38,8 +44,14 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void MethodB(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(37340008);
-                __ctx?.EndRestartableGroup(37340008);
+                try
+                {
+                    __ctx?.StartRestartableGroup(37340008);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(37340008);
+                }
             }
             static class __StoredLambda
             {

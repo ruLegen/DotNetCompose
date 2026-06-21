@@ -121,7 +121,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             string changedVar = _ctx.ChangedVarName;
             using ListPoolObject<StatementSyntax> syntaxList = ListPool<StatementSyntax>.Get();
 
-            syntaxList.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+            using ListPoolObject<StatementSyntax> tryStatements = ListPool<StatementSyntax>.Get();
+
+            tryStatements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
                 ctxVar,
                 Consts.ComposeContext.StartRestartableGroupMethod,
                 SyntaxFactoryHelpers.CreateIntLiteral(_ctx.InitialGroupId)));
@@ -146,7 +148,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                     string stateVar = $"__{param.Name}_state";
                     stateVarNames.Add(stateVar);
 
-                    syntaxList.Add(SyntaxFactory.LocalDeclarationStatement(
+                    tryStatements.Add(SyntaxFactory.LocalDeclarationStatement(
                         SyntaxFactory.VariableDeclaration(
                             SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)))
                         .WithVariables(
@@ -164,7 +166,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
                     if (param.Type != null && param.Type.IsStableType())
                     {
-                        syntaxList.Add(SyntaxFactory.IfStatement(
+                        tryStatements.Add(SyntaxFactory.IfStatement(
                             SyntaxFactory.BinaryExpression(
                                 SyntaxKind.EqualsExpression,
                                 SyntaxFactory.IdentifierName(stateVar),
@@ -237,7 +239,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                         SyntaxFactory.IdentifierName(ctxVar),
                         SyntaxFactory.IdentifierName(Consts.ComposeContext.SkippingProperty)));
 
-                syntaxList.Add(SyntaxFactory.IfStatement(
+                tryStatements.Add(SyntaxFactory.IfStatement(
                     condition,
                     SyntaxFactory.Block(
                         SyntaxFactory.SingletonList<StatementSyntax>(
@@ -253,13 +255,19 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             }
             else
             {
-                syntaxList.AddRange(processedBody.Statements);
+                tryStatements.AddRange(processedBody.Statements);
             }
 
-            syntaxList.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+            ExpressionStatementSyntax endGroupStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
                 ctxVar,
                 Consts.ComposeContext.EndRestartableGroupMethod,
-                SyntaxFactoryHelpers.CreateIntLiteral(_ctx.InitialGroupId)));
+                SyntaxFactoryHelpers.CreateIntLiteral(_ctx.InitialGroupId));
+
+            syntaxList.Add(SyntaxFactory.TryStatement(
+                SyntaxFactory.Block(tryStatements),
+                default,
+                SyntaxFactory.FinallyClause(SyntaxFactory.Block(SyntaxFactory.SingletonList<StatementSyntax>(endGroupStatement))))
+                .WithTrailingNewLine());
 
             return node.WithStatements(SyntaxFactory.List(syntaxList));
         }

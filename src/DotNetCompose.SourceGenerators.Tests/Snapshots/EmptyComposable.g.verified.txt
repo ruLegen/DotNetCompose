@@ -9,8 +9,14 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void EmptyComposable(int argInt, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(1397818021);
-                __ctx?.EndRestartableGroup(1397818021);
+                try
+                {
+                    __ctx?.StartRestartableGroup(1397818021);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(1397818021);
+                }
             }
             static class __StoredLambda
             {

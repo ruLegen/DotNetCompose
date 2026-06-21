@@ -9,8 +9,14 @@ namespace TestNs
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
             public static void GenericMethod<T>(int i, T param, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed)
             {
-                __ctx?.StartRestartableGroup(5675965);
-                __ctx?.EndRestartableGroup(5675965);
+                try
+                {
+                    __ctx?.StartRestartableGroup(5675965);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(5675965);
+                }
             }
             static class __StoredLambda
             {
