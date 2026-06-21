@@ -105,6 +105,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 ImmutableArray<(string Type, string Name)> newArgs = argTypes.AddRange(new (string Type, string Name)[] {
                     (Consts.ComposeContext.FullName, ctx.ContextVarName),
                     (Consts.ComposableArgumentsState.FullName, ctx.ChangedVarName),
+                    (Consts.ComposableArgumentsDefaultState.FullName, Consts.Rewriter.DefaultParamName),
                 });
 
                 var newParamList = SyntaxFactory.ParameterList(
