@@ -7,17 +7,53 @@ namespace TestNs
         public partial class Builders
         {
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void WithDefault([Default<MyIntProvider>] int x = default, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            public static void WithDefault([Default<MyIntProvider>] int x, string nonDefault, int someNondefaultInt, [Default<MyIntProvider>] int someOther, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
             {
                 try
                 {
                     __ctx?.StartRestartableGroup(-917303168);
-                    if (__defaultParamState[0] == 1)
+                    byte __x_state = __defaultParamState[0] == DotNetCompose.Runtime.ComposableArgumentsDefaultState.ShouldUseDefault ? DotNetCompose.Runtime.ComposableArgumentsState.Static : __changed[0];
+                    if (__x_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
-                        x = global::TestNs.MyIntProvider.Value;
+                        __x_state = __ctx.Changed(x) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
-                    Use(x);
+                    byte __nonDefault_state = __changed[1];
+                    if (__nonDefault_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                    {
+                        __nonDefault_state = __ctx.Changed(nonDefault) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    byte __someNondefaultInt_state = __changed[2];
+                    if (__someNondefaultInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                    {
+                        __someNondefaultInt_state = __ctx.Changed(someNondefaultInt) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    byte __someOther_state = __defaultParamState[1] == DotNetCompose.Runtime.ComposableArgumentsDefaultState.ShouldUseDefault ? DotNetCompose.Runtime.ComposableArgumentsState.Static : __changed[3];
+                    if (__someOther_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                    {
+                        __someOther_state = __ctx.Changed(someOther) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    if ((__x_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __x_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__nonDefault_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __nonDefault_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__someNondefaultInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __someNondefaultInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__someOther_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __someOther_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
+                    {
+                        __ctx.SkipToGroupEnd();
+                    }
+                    else
+                    {
+                        if (__defaultParamState[0] == DotNetCompose.Runtime.ComposableArgumentsDefaultState.ShouldUseDefault)
+                        {
+                            x = global::TestNs.MyIntProvider.Value;
+                        }
+
+                        if (__defaultParamState[1] == DotNetCompose.Runtime.ComposableArgumentsDefaultState.ShouldUseDefault)
+                        {
+                            someOther = global::TestNs.MyIntProvider.Value;
+                        }
+
+                        Use(x);
+                    }
                 }
                 finally
                 {
@@ -30,9 +66,28 @@ namespace TestNs
                 try
                 {
                     __ctx?.StartRestartableGroup(-1313269180);
-                    global::TestNs.TestClass.Builders.WithDefault(y, __ctx, default, default);
-                    global::TestNs.TestClass.Builders.WithDefault(default, __ctx, default, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(new byte[] { 1 }));
-                    global::TestNs.TestClass.Builders.WithDefault(__ctx, default, default);
+                    byte __y_state = __changed[0];
+                    if (__y_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                    {
+                        __y_state = __ctx.Changed(y) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    if ((__y_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __y_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
+                    {
+                        __ctx.SkipToGroupEnd();
+                    }
+                    else
+                    {
+                        global::TestNs.TestClass.Builders.WithDefault(x: default, "", 3, default, __ctx, default, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(new byte[] { 1, 1 }));
+                        global::TestNs.TestClass.Builders.WithDefault(x: default, "", 3, 4, __ctx, default, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(new byte[] { 1, 0 }));
+                        global::TestNs.TestClass.Builders.WithDefault(x: default, "", 3, default(int), __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), new DotNetCompose.Runtime.ComposableArgumentsDefaultState(new byte[] { 1, 1 }));
+                        global::TestNs.TestClass.Builders.WithDefault(y, "", 3, default(int), __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __y_state, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), new DotNetCompose.Runtime.ComposableArgumentsDefaultState(new byte[] { 0, 1 }));
+                        global::TestNs.TestClass.Builders.WithDefault(y, "", 3, default, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __y_state, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), new DotNetCompose.Runtime.ComposableArgumentsDefaultState(new byte[] { 0, 1 }));
+                        global::TestNs.TestClass.Builders.WithDefault(y, "", 3, 4, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __y_state, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+                        WithDefault(x: 3, someOther: default, "bb", 3);
+                        WithDefault(y);
+                        WithDefault(default);
+                    }
                 }
                 finally
                 {

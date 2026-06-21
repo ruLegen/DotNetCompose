@@ -4,6 +4,14 @@ namespace TestNs;
 
 public static partial class TestClass
 {
+    public partial class Builders
+    {
+        public static void Ignored(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+        {
+
+        }
+    }
+
     [Composable]
     [ComposableIgnore]
     public static void Ignored()

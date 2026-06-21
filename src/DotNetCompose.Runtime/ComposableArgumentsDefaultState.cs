@@ -6,7 +6,7 @@ namespace DotNetCompose.Runtime
     public readonly ref struct ComposableArgumentsDefaultState
     {
         public const byte NotProvided = 0;
-        public const byte Provided = 1;
+        public const byte ShouldUseDefault = 1;
 
         public static ComposableArgumentsDefaultState Empty => default;
 

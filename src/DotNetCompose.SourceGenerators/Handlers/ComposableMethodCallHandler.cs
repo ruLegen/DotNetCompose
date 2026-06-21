@@ -206,14 +206,13 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
             ExpressionSyntax changedArg = BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments, ctx);
 
-            bool anyDefaultArgIsDefault = false;
-            var defaultStateBytes = new List<byte>();
+            int defaultCount = parameterInfos.Count(p => p.DefaultProviderType != null);
+            bool anyShouldUseDefault = false;
+            byte[] defaultStateBytes = new byte[defaultCount];
             for (int i = 0; i < methodSymbol.Parameters.Length; i++)
             {
-                var param = methodSymbol.Parameters[i];
-                bool hasDefaultAttr = param.GetAttributes().Any(a =>
-                    a.AttributeClass?.OriginalDefinition?.GetFullMetadataName() == Consts.DefaultAttributeFullName);
-                if (!hasDefaultAttr) continue;
+                var paramInfo = parameterInfos[i];
+                if (paramInfo.DefaultProviderType == null) continue;
 
                 int argIdx = -1;
                 for (int j = 0; j < invocationExpression.ArgumentList.Arguments.Count; j++)
@@ -221,7 +220,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     var invArg = invocationExpression.ArgumentList.Arguments[j];
                     if (invArg.NameColon != null)
                     {
-                        if (invArg.NameColon.Name.Identifier.ValueText == param.Name)
+                        if (invArg.NameColon.Name.Identifier.ValueText == paramInfo.Name)
                         {
                             argIdx = j;
                             break;
@@ -239,16 +238,22 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     var argExpr = invocationExpression.ArgumentList.Arguments[argIdx].Expression;
                     if (argExpr.IsKind(SyntaxKind.DefaultLiteralExpression))
                     {
-                        defaultStateBytes.Add(1);
-                        anyDefaultArgIsDefault = true;
+                        defaultStateBytes[paramInfo.DefaultIndex] = 1;
+                        anyShouldUseDefault = true;
                         continue;
                     }
                 }
-                defaultStateBytes.Add(0);
+                else
+                {
+                    defaultStateBytes[paramInfo.DefaultIndex] = 1;
+                    anyShouldUseDefault = true;
+                    continue;
+                }
+                defaultStateBytes[paramInfo.DefaultIndex] = 0;
             }
 
             ArgumentSyntax defaultStateArg;
-            if (!anyDefaultArgIsDefault)
+            if (!anyShouldUseDefault)
             {
                 defaultStateArg = SyntaxFactory.Argument(
                     SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression));
@@ -272,14 +277,53 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 defaultStateArg = SyntaxFactory.Argument(stateCreation);
             }
 
+            var processedArgsArray = processedArgs.ToArray();
+
+            var allArgs = new List<ArgumentSyntax>();
+            for (int i = 0; i < parameterInfos.Length; i++)
+            {
+                int argIdx = -1;
+                for (int j = 0; j < invocationExpression.ArgumentList.Arguments.Count; j++)
+                {
+                    var invArg = invocationExpression.ArgumentList.Arguments[j];
+                    if (invArg.NameColon != null)
+                    {
+                        if (invArg.NameColon.Name.Identifier.ValueText == parameterInfos[i].Name)
+                        {
+                            argIdx = j;
+                            break;
+                        }
+                    }
+                    else if (j == i)
+                    {
+                        argIdx = j;
+                        break;
+                    }
+                }
+
+                if (argIdx >= 0)
+                {
+                    allArgs.Add(processedArgsArray[argIdx]);
+                }
+                else
+                {
+                    var paramType = parameterInfos[i].Type;
+                    ExpressionSyntax defaultExpr = paramType != null
+                        ? SyntaxFactory.DefaultExpression(
+                            SyntaxFactory.ParseTypeName(paramType.ToDisplayString(
+                                SymbolDisplayFormat.FullyQualifiedFormat
+                                    .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included))))
+                        : SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+                    allArgs.Add(SyntaxFactory.Argument(defaultExpr));
+                }
+            }
+
+            allArgs.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)));
+            allArgs.Add(SyntaxFactory.Argument(changedArg));
+            allArgs.Add(defaultStateArg);
+
             ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
-                SyntaxFactory.SeparatedList<ArgumentSyntax>(processedArgs).AddRange(
-                    new ArgumentSyntax[]{
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(ctx.ContextVarName)),
-                        SyntaxFactory.Argument(changedArg),
-                        defaultStateArg,
-                    })
-            );
+                SyntaxFactory.SeparatedList(allArgs));
             ctx.ComposableProcessed();
 
             invocationExpression = ReplaceWithFullQualifiedName(invocationExpression, methodSymbol);

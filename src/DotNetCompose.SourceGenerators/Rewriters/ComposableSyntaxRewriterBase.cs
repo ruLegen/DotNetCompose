@@ -75,7 +75,6 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 		public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax method)
 		{
 			var sourceLocationAnnotation = method.CreateLocationSyntaxAnnotation();
-
 			_ctx.MethodParameters = method.GetParametersInfos(_semanticModel);
 			var methodModifiers = method.Modifiers;
 
@@ -85,6 +84,15 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			if (hasAnyComposables)
 			{
 				newParameterList = ReplaceAllComposableParameters(method, true);
+			}
+			if (_ctx.HasDefaultParams)
+			{
+				newParameterList = newParameterList.WithParameters(
+					SyntaxFactory.SeparatedList(
+						newParameterList.Parameters.Select((p, i) =>
+							i < _ctx.MethodParameters.Length && _ctx.MethodParameters[i].DefaultProviderType != null
+								? p.WithDefault(null)
+								: p)));
 			}
 			newParameterList = AppendComposableContextrelatedParameters(newParameterList, _ctx.ContextVarName, _ctx.ChangedVarName);
 
@@ -141,6 +149,10 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 				&& normalParams.All(x => x.Param.Type != null && x.Param.Type.IsStableType());
 			_ctx.HasUnstableParam = anyNormalParams && !allStable;
 
+
+
+			// DIAG: check allStable for all methods with normal params
+
 			BlockSyntax processedBody = base.VisitBlock(node) as BlockSyntax;
 
 			if (_ctx.HasDefaultParams)
@@ -162,10 +174,11 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 						.WithArgumentList(SyntaxFactory.BracketedArgumentList(
 							SyntaxFactory.SingletonSeparatedList(
 								SyntaxFactory.Argument(
-									SyntaxFactory.LiteralExpression(
-										SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(i)))))),
-						SyntaxFactory.LiteralExpression(
-							SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(1)));
+									SyntaxFactoryHelpers.CreateIntLiteral(p.DefaultIndex))))),
+						SyntaxFactory.MemberAccessExpression(
+							SyntaxKind.SimpleMemberAccessExpression,
+							SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName),
+							SyntaxFactory.IdentifierName("ShouldUseDefault")));
 
 					var assignment = SyntaxFactory.AssignmentExpression(
 						SyntaxKind.SimpleAssignmentExpression,
@@ -200,21 +213,60 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 					string stateVar = $"__{param.Name}_state";
 					stateVarNames.Add(stateVar);
 
-					tryStatements.Add(SyntaxFactory.LocalDeclarationStatement(
-						SyntaxFactory.VariableDeclaration(
-							SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)))
-						.WithVariables(
-							SyntaxFactory.SingletonSeparatedList(
-								SyntaxFactory.VariableDeclarator(
-									SyntaxFactory.Identifier(stateVar))
-								.WithInitializer(SyntaxFactory.EqualsValueClause(
-									SyntaxFactory.ElementAccessExpression(
-										SyntaxFactory.IdentifierName(changedVar))
-									.WithArgumentList(SyntaxFactory.BracketedArgumentList(
-										SyntaxFactory.SingletonSeparatedList(
-											SyntaxFactory.Argument(
-												SyntaxFactoryHelpers.CreateIntLiteral(index))))))))))
-						.WithTrailingNewLine());
+					if (param.DefaultProviderType != null)
+					{
+						var conditionalExpr = SyntaxFactory.ConditionalExpression(
+							SyntaxFactory.BinaryExpression(
+								SyntaxKind.EqualsExpression,
+								SyntaxFactory.ElementAccessExpression(
+									SyntaxFactory.IdentifierName(Consts.Rewriter.DefaultParamName))
+								.WithArgumentList(SyntaxFactory.BracketedArgumentList(
+									SyntaxFactory.SingletonSeparatedList(
+										SyntaxFactory.Argument(
+											SyntaxFactoryHelpers.CreateIntLiteral(param.DefaultIndex))))),
+								SyntaxFactory.MemberAccessExpression(
+									SyntaxKind.SimpleMemberAccessExpression,
+									SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName),
+									SyntaxFactory.IdentifierName("ShouldUseDefault"))),
+							SyntaxFactory.MemberAccessExpression(
+								SyntaxKind.SimpleMemberAccessExpression,
+								SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
+								SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.StaticField)),
+							SyntaxFactory.ElementAccessExpression(
+								SyntaxFactory.IdentifierName(changedVar))
+							.WithArgumentList(SyntaxFactory.BracketedArgumentList(
+								SyntaxFactory.SingletonSeparatedList(
+									SyntaxFactory.Argument(
+										SyntaxFactoryHelpers.CreateIntLiteral(index))))));
+
+						tryStatements.Add(SyntaxFactory.LocalDeclarationStatement(
+							SyntaxFactory.VariableDeclaration(
+								SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)))
+							.WithVariables(
+								SyntaxFactory.SingletonSeparatedList(
+									SyntaxFactory.VariableDeclarator(
+										SyntaxFactory.Identifier(stateVar))
+									.WithInitializer(SyntaxFactory.EqualsValueClause(conditionalExpr)))))
+							.WithTrailingNewLine());
+					}
+					else
+					{
+						tryStatements.Add(SyntaxFactory.LocalDeclarationStatement(
+							SyntaxFactory.VariableDeclaration(
+								SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)))
+							.WithVariables(
+								SyntaxFactory.SingletonSeparatedList(
+									SyntaxFactory.VariableDeclarator(
+										SyntaxFactory.Identifier(stateVar))
+									.WithInitializer(SyntaxFactory.EqualsValueClause(
+										SyntaxFactory.ElementAccessExpression(
+											SyntaxFactory.IdentifierName(changedVar))
+										.WithArgumentList(SyntaxFactory.BracketedArgumentList(
+											SyntaxFactory.SingletonSeparatedList(
+												SyntaxFactory.Argument(
+													SyntaxFactoryHelpers.CreateIntLiteral(index))))))))))
+							.WithTrailingNewLine());
+					}
 
 					if (param.Type != null && param.Type.IsStableType())
 					{

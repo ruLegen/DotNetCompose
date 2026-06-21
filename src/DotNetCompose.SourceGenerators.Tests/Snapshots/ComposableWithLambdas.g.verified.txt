@@ -13,11 +13,24 @@ namespace TestNs
                 try
                 {
                     __ctx?.StartRestartableGroup(-224109069);
-                    int local = argInt;
-                    ComposableTest(3, i =>
+                    byte __argInt_state = __changed[0];
+                    if (__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
-                        int x = i + local;
-                    });
+                        __argInt_state = __ctx.Changed(argInt) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    if ((__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
+                    {
+                        __ctx.SkipToGroupEnd();
+                    }
+                    else
+                    {
+                        int local = argInt;
+                        ComposableTest(3, i =>
+                        {
+                            int x = i + local;
+                        });
+                    }
                 }
                 finally
                 {

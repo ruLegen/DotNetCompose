@@ -119,6 +119,6 @@ public class ComposeGeneratorCompilationTests
         var source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
         var result = GeneratorTestHelper.RunSingleGenerator(source);
         Assert.Contains("MyIntProvider.Value", result);
-        Assert.Contains("__defaultParamState[0] == 1", result);
+        Assert.Contains("ShouldUseDefault", result);
     }
 }

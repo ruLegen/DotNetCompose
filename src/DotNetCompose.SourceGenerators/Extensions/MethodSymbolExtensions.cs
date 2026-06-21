@@ -50,6 +50,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
                 //.Select(p => (p.Name, p.Type.IsComposableAction()))
                 using ListPoolObject<MethodParameterInfo> result = ListPool<MethodParameterInfo>.Get();
             ImmutableArray<ITypeSymbol> genericArguments = ImmutableArray<ITypeSymbol>.Empty;
+            int defaultIdx = 0;
             foreach (IParameterSymbol parameter in method.Parameters)
             {
                 bool isComposable = false;
@@ -72,7 +73,8 @@ namespace DotNetCompose.SourceGenerators.Extensions
                 {
                     defaultProviderType = namedDefaultAttr.TypeArguments[0];
                 }
-                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, parameter.Type, defaultProviderType));
+                int paramDefaultIdx = defaultProviderType != null ? defaultIdx++ : -1;
+                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, parameter.Type, defaultProviderType, paramDefaultIdx));
             }
             return ImmutableArray.Create<MethodParameterInfo>(result.ToArray());
         }
