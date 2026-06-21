@@ -13,51 +13,6 @@ using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxEx
 #nullable enable
 namespace DotNetCompose.SourceGenerators.Rewriters
 {
-	/*
-		 https://github.com/JetBrains/kotlin/blob/2e7e1fd40b1ff862f4b574b17c2034e441179958/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/ComposableFunctionBodyTransformer.kt#L71
-	   if all arguments are not stable we cannot skip whole function
-	   Actions and ComposableFunctions are stable*
-
-		(1) if parameter is passed directly to some composable function as an argument
-				=> CAlculate changed value for that function (bits + dirt flag)
-		(2) if parameter is passed  to some composable function as an argument with some modifications
-				=> Set changedValue for this argument to "Uncertain"
-		(3) "Different" and "Same" will come from (1) calculation
-
-	*KOTLIN*
-	int $dirty = $changed;
-	  if (($changed & 14) == 0) {
-		 $dirty = $changed | ($composer.changed(testInt) ? 4 : 2);
-	 }
-	if (($dirty & 731) == 146 && $composer.getSkipping()) {
-		 $composer.skipToGroupEnd();
-	  }
-	means in C#:
-	if(argN == UNCERTAIN)
-	   argN = Changed(argN)? Differ (not stable): Same (not stable)
-
-	if(allArguments == SameAndStable && ctx.IsSkiping())
-		ctx.Skip()
-
-
-	StableMeans that we can't trust to the result of composer.Changed method because of the fact that composer use == operator.
-	e.g. Reference types can have same comparison results regardless of whether they changed or not
-
-
-		if(allArgAreStable)
-			GenerateDirtyFlagAndTrySkipWholeFunction()
-			CalculateChnagedParamBasedOnDirtyFlag
-		else
-			CalculateChangedParamBasedOnChangedArgumnetOnly
-
-
-		/////////////////
-		if composable function have any unstable parameter (except composer,changed,defaults,any lambdas)
-			it must not generate code for parameter checking
-		if composable function calls another composable function with unstable parameters
-			it should pass Empty as a Changed parameter
-		composable function that generates parameter checking should work with both 'Changed' argument Empty and Non Empty
- */
 	internal abstract class ComposableSyntaxRewriterBase : CSharpSyntaxRewriter
 	{
 		protected ComposableSyntaxRewriterBase(
