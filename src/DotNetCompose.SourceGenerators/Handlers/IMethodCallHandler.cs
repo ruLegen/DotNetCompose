@@ -1,7 +1,7 @@
+using DotNetCompose.SourceGenerators.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DotNetCompose.SourceGenerators.Handlers
 {
@@ -11,13 +11,30 @@ namespace DotNetCompose.SourceGenerators.Handlers
         Handled,
     }
 
-    internal class MethodCallHandlerContext
+    internal sealed class MethodCallHandlerContext
     {
-        public SemanticModel SemanticModel { get; set; }
-        public RewriterOptions Options { get; set; }
-        public MethodGenerationContext MethodCtx { get; set; }
-        public RewriterSession Session { get; set; }
-        public Func<SyntaxNode, SyntaxNode> VisitNode { get; set; }
+        public MethodCallHandlerContext(
+            SemanticModel semanticModel,
+            RewriterOptions options,
+            MethodGenerationContext methodCtx,
+            RewriterSession session,
+            IDiagnosticReporter diagnostics,
+            Func<SyntaxNode, SyntaxNode> visitNode)
+        {
+            SemanticModel = semanticModel;
+            Options = options;
+            MethodCtx = methodCtx;
+            Session = session;
+            Diagnostics = diagnostics;
+            VisitNode = visitNode;
+        }
+
+        public SemanticModel SemanticModel { get; }
+        public RewriterOptions Options { get; }
+        public MethodGenerationContext MethodCtx { get; }
+        public RewriterSession Session { get; }
+        public IDiagnosticReporter Diagnostics { get; }
+        public Func<SyntaxNode, SyntaxNode> VisitNode { get; }
     }
 
     internal interface IMethodCallHandler

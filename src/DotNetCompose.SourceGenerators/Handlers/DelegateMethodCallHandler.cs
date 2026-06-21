@@ -1,4 +1,4 @@
-using DotNetCompose.SourceGenerators;
+using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Helpers;
 using Microsoft.CodeAnalysis;
@@ -101,7 +101,12 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 ConditionalAccessExpressionSyntax conditionalAccessExpression = expression as ConditionalAccessExpressionSyntax;
                 InvocationExpressionSyntax inv = conditionalAccessExpression.WhenNotNull as InvocationExpressionSyntax;
                 if (inv == null)
-                    new NotSupportedException();
+                {
+                    context.Diagnostics.Report(DiagnosticInfo.Create(
+                        DiagnosticDescriptors.DNC009_ConditionalAccessFailed,
+                        conditionalAccessExpression.GetLocation()));
+                    return expression;
+                }
 
                 ArgumentListSyntax newArguments = inv.ArgumentList.AddArguments(
                       new ArgumentSyntax[]{

@@ -1,3 +1,4 @@
+using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -12,20 +13,31 @@ namespace DotNetCompose.SourceGenerators
         private int _currentGroupId;
         private int _nextLambdaKey;
         private int _conditionalDepth;
+        private bool _hasErrors;
 
-        public RewriterSession(int initialGroupId)
+        public RewriterSession(int initialGroupId, IDiagnosticReporter diagnostics)
         {
             _currentGroupId = initialGroupId;
             InitialGroupId = initialGroupId;
+            Diagnostics = diagnostics;
         }
 
         public int InitialGroupId { get; }
+        public IDiagnosticReporter Diagnostics { get; }
         public List<StoredLambda> StoredLambdas { get; } = new();
         public bool WasInConditional { get; private set; }
+        public bool HasErrors => _hasErrors;
 
         public int NextGroupId() => ++_currentGroupId;
         public int NextLambdaKey() => _nextLambdaKey++;
         public string NextLambdaName() => $"__Lambda_{(uint)NextLambdaKey()}";
+
+        public void Report(DiagnosticInfo diagnostic)
+        {
+            if (diagnostic.Descriptor.DefaultSeverity == DiagnosticSeverity.Error)
+                _hasErrors = true;
+            Diagnostics.Report(diagnostic);
+        }
 
         public IDisposable EnterConditional()
         {
@@ -39,7 +51,15 @@ namespace DotNetCompose.SourceGenerators
         {
             _conditionalDepth--;
             if (_conditionalDepth < 0)
-                throw new InvalidOperationException();
+            {
+                Report(DiagnosticDescriptors.DNC900_InternalError, Location.None);
+                _conditionalDepth = 0;
+            }
+        }
+
+        private void Report(DiagnosticDescriptor descriptor, Location location)
+        {
+            Report(DiagnosticInfo.Create(descriptor, location));
         }
 
         public void MarkComposableProcessed()

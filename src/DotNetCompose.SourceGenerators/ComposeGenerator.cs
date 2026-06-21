@@ -1,4 +1,5 @@
-﻿using DotNetCompose.SourceGenerators.Emitters;
+﻿using DotNetCompose.SourceGenerators.Diagnostics;
+using DotNetCompose.SourceGenerators.Emitters;
 using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Handlers;
 using DotNetCompose.SourceGenerators.Handlers.WellKnown;
@@ -31,7 +32,11 @@ namespace DotNetCompose.SourceGenerators
             SourceProductionContext context)
         {
             string typeName = classAndComposablesMethods.ClassName;
-            string sourceCode = GenerateComposableMethods(classAndComposablesMethods, compilation);
+            var reporter = new DiagnosticReporter();
+            string sourceCode = GenerateComposableMethods(classAndComposablesMethods, compilation, reporter);
+
+            foreach (DiagnosticInfo diag in reporter.ToImmutable())
+                context.ReportDiagnostic(diag.ToDiagnostic());
 
             if (!string.IsNullOrEmpty(sourceCode))
             {
@@ -42,7 +47,8 @@ namespace DotNetCompose.SourceGenerators
 
         private static string GenerateComposableMethods(
             ClassAndComposablesMethods classAndComposablesMethods,
-            Compilation compilation)
+            Compilation compilation,
+            IDiagnosticReporter diagnostics)
         {
             var typeMethods = classAndComposablesMethods.Methods;
             if (!typeMethods.Any())
@@ -89,19 +95,27 @@ namespace DotNetCompose.SourceGenerators
                     methodParams,
                     methodParams.Any(p => p.DefaultProviderType != null),
                     hasUnstable);
-                var session = new RewriterSession(RewriterSession.DeterministicHash(m.GetMethodID(semanticModel)));
+                var session = new RewriterSession(RewriterSession.DeterministicHash(m.GetMethodID(semanticModel)), diagnostics);
 
                 return (Options: options, MethodCtx: methodCtx, Session: session, Method: m);
             })
-            .Select(pair => (Session: pair.Session, MethodBody: ComposeMethodRewriter.Rewrite(pair.Options, pair.MethodCtx, pair.Session, semanticModel, pair.Method, DefaultHandlerChain, WellKnownRegistry)))
+            .Select(pair =>
+            {
+                var body = ComposeMethodRewriter.Rewrite(pair.Options, pair.MethodCtx, pair.Session, semanticModel, pair.Method, DefaultHandlerChain, WellKnownRegistry);
+                return (Session: pair.Session, MethodBody: pair.Session.HasErrors ? null : body);
+            })
+            .Where(x => x.MethodBody != null)
             .ToImmutableArray();
+
+            if (!rewrittenMethods.Any())
+                return string.Empty;
 
             var input = new CodeGenerationInput(
                 Namespace: namespaceName,
                 TypeName: typeName,
                 Accessibility: accessibility,
                 Usings: usings,
-                BuilderMethods: rewrittenMethods.Select(p => p.MethodBody).ToImmutableArray(),
+                BuilderMethods: rewrittenMethods.Select(p => p.MethodBody!).ToImmutableArray(),
                 Sessions: rewrittenMethods.Select(p => p.Session).ToImmutableArray());
 
             var emitter = new DefaultCodeEmitter();

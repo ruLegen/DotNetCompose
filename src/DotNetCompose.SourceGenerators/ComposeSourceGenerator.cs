@@ -1,4 +1,5 @@
-﻿using DotNetCompose.SourceGenerators.Extensions;
+﻿using DotNetCompose.SourceGenerators.Diagnostics;
+using DotNetCompose.SourceGenerators.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -20,7 +21,7 @@ namespace DotNetCompose.SourceGenerators
             {
                // Debugger.Launch();
             }
-#endif       
+#endif
             IncrementalValuesProvider<MethodFullNameAndDeclaration> composableMethodsDeclarations = context
                 .SyntaxProvider
                 .ForAttributeWithMetadataName<MethodFullNameAndDeclaration>(Consts.ComposableAttributeFullName,
@@ -60,29 +61,81 @@ namespace DotNetCompose.SourceGenerators
                     IEnumerable<ClassAndComposablesMethods> methodsByType = methods
                         .GroupBy(m => m.Declaration!.GetFullTypeName(compilation))
                         .Where(static g => !string.IsNullOrEmpty(g.Key))
-                        .Select(static g => new ClassAndComposablesMethods(g.Key, g.ToImmutableArray()));
+                        .Select(static g =>
+                        {
+                            var firstDecl = g.First().Declaration;
+                            var classDecl = firstDecl?.Ancestors().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+                            bool isPartial = classDecl?.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)) ?? false;
+                            return new ClassAndComposablesMethods(g.Key, g.ToImmutableArray(), isPartial);
+                        });
 
                     return methodsByType.ToImmutableArray();
                 });
 
+            IncrementalValuesProvider<ValidationResult> validationResults = classAndComposablesMethods
+                .SelectMany(static (cls, _) =>
+                {
+                    var results = new List<ValidationResult>();
 
-            IncrementalValuesProvider<(ClassAndComposablesMethods ClassAndMethods, Compilation Compilation)> executeValueProvider
-                = classAndComposablesMethods.Combine(context.CompilationProvider);
+                    if (!cls.IsPartial)
+                    {
+                        var location = cls.Methods.FirstOrDefault()?.Declaration?.GetLocation();
+                        results.Add(new ClassResult(cls, new DiagnosticInfo(
+                            DiagnosticDescriptors.DNC010_ClassNotPartial,
+                            LocationInfo.FromLocation(location),
+                            new object[] { cls.ClassName })));
+                    }
 
-            //context.RegisterSourceOutput(executeValueProvider, 
-            //    static (spc, source) => ComposeStubGenerator.ExecuteStubGenerator(source.Compilation, source.ClassAndMethods, spc));
+                    foreach (MethodFullNameAndDeclaration method in cls.Methods)
+                    {
+                        if (method.Declaration?.ExpressionBody != null)
+                        {
+                            string methodName = method.Declaration.Identifier.Text;
+                            results.Add(new MethodResult(method, new DiagnosticInfo(
+                                DiagnosticDescriptors.DNC001_ExpressionBodiedNotSupported,
+                                LocationInfo.FromLocation(method.Declaration.ExpressionBody.GetLocation()),
+                                new object[] { methodName })));
+                        }
+                    }
 
-            context.RegisterImplementationSourceOutput(executeValueProvider,
-                static (spc, source) => ComposeGenerator.ExecuteComposeGenerator(source.Compilation, source.ClassAndMethods, spc));
+                    if (results.Count == 0)
+                    {
+                        results.Add(new ClassResult(cls, null));
+                    }
+
+                    return results.ToImmutableArray();
+                });
+
+            // Class-level early diagnostics
+            context.RegisterSourceOutput(
+                validationResults.Where(static r => r is ClassResult { Diagnostic: not null })
+                                 .Select(static (r, _) => ((ClassResult)r).Diagnostic!.ToDiagnostic()),
+                static (spc, d) => spc.ReportDiagnostic(d)
+            );
+
+            // Method-level early diagnostics
+            context.RegisterSourceOutput(
+                validationResults.Where(static r => r is MethodResult { Diagnostic: not null })
+                                 .Select(static (r, _) => ((MethodResult)r).Diagnostic!.ToDiagnostic()),
+                static (spc, d) => spc.ReportDiagnostic(d)
+            );
+
+            // Code generation (valid classes only)
+            context.RegisterImplementationSourceOutput(
+                validationResults.Where(static r => r is ClassResult { IsValid: true })
+                                 .Select(static (r, _) => ((ClassResult)r).Class)
+                                 .Combine(context.CompilationProvider),
+                static (spc, source) => ComposeGenerator.ExecuteComposeGenerator(source.Right, source.Left, spc)
+            );
         }
 
         private static int ComputeContentHash(MethodDeclarationSyntax? method)
         {
             if (method == null) return 0;
             int hash = 0;
-            foreach (var token in method.DescendantTokens())
+            foreach (SyntaxToken token in method.DescendantTokens())
             {
-                foreach (var c in token.Text)
+                foreach (char c in token.Text)
                     hash = unchecked(hash * 31 + c);
             }
             return hash;

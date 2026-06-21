@@ -1,4 +1,5 @@
-﻿using DotNetCompose.SourceGenerators.Extensions;
+﻿using DotNetCompose.SourceGenerators.Diagnostics;
+using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Rewriters;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -6,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using static DotNetCompose.SourceGenerators.ComposeSourceGenerator;
@@ -61,10 +63,10 @@ namespace DotNetCompose.SourceGenerators
 
             sourceBuilder.AppendLine($"         public partial class {Consts.Rewriter.BuildersClassName} {{");
 
-            foreach (var method in typeMethods)
+            foreach (MethodDeclarationSyntax method in typeMethods)
             {
-                var methodParameters = method.GetParametersInfos(semanticModel);
-                var methodModifiers = method.Modifiers;
+                ImmutableArray<MethodDeclarationSyntaxExtensions.MethodParameterInfo> methodParameters = method.GetParametersInfos(semanticModel);
+                SyntaxTokenList methodModifiers = method.Modifiers;
                 if (!methodModifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
                     methodModifiers = methodModifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword));
 
@@ -74,6 +76,7 @@ namespace DotNetCompose.SourceGenerators
                 if (hasAnyComposables)
                     newParameterList = ComposeMethodRewriter.ReplaceAllComposableParameters(method, semanticModel, false);
 
+                /*TODO Add default state parameter*/
                 newParameterList = ComposeMethodRewriter.AppendComposableContextrelatedParameters(newParameterList,
                                                                                                   semanticModel,
                                                                                                   Consts.Rewriter.ContextParamName,

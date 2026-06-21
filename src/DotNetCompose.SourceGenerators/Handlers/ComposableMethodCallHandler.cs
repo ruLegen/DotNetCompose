@@ -1,4 +1,4 @@
-using DotNetCompose.SourceGenerators;
+using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Helpers;
 using DotNetCompose.SourceGenerators.Rewriters;
@@ -74,7 +74,13 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 {
                     IMethodSymbol? argumentMethod = semanticModel.GetSymbolInfo(identifierName).Symbol as IMethodSymbol;
                     if (argumentMethod != null)
-                        throw new NotSupportedException("Composable method referencing is not supported");
+                    {
+                        context.Diagnostics.Report(DiagnosticInfo.Create(
+                            DiagnosticDescriptors.DNC005_DirectComposableReference,
+                            identifierName.GetLocation(),
+                            argumentMethod.Name));
+                        return arg;
+                    }
                 }
 
                 ImmutableArray<ParameterSyntax> lambdaParameters;
@@ -96,7 +102,12 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     newBody = (CSharpSyntaxNode)visit(parenthesizedLambdaExpression.Body);
                 }
                 else
-                    throw new NotSupportedException();
+                {
+                    context.Diagnostics.Report(DiagnosticInfo.Create(
+                        DiagnosticDescriptors.DNC006_UnrecognizedLambda,
+                        arg.Expression.GetLocation()));
+                    return arg;
+                }
 
                 ImmutableArray<(string Type, string Name)> argTypes = lambdaParameters.Select(item =>
                 {
@@ -182,12 +193,19 @@ namespace DotNetCompose.SourceGenerators.Handlers
                         SyntaxFactory.Token(SyntaxKind.PublicKeyword),
                         SyntaxFactory.Token(SyntaxKind.StaticKeyword),
                     });
+                    bool bodyConversionFailed = newBody is not BlockSyntax and not ArrowExpressionClauseSyntax;
                     BlockSyntax newBodyBlockSyntax = newBody switch
                     {
                         BlockSyntax block => block,
                         ArrowExpressionClauseSyntax arrowExpression => SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(arrowExpression.Expression)),
-                        _ => throw new NotSupportedException(),
+                        _ => SyntaxFactory.Block(),
                     };
+                    if (bodyConversionFailed)
+                    {
+                        context.Diagnostics.Report(DiagnosticInfo.Create(
+                            DiagnosticDescriptors.DNC007_LambdaBodyConversion,
+                            arg.Expression.GetLocation()));
+                    }
                     MethodDeclarationSyntax lambdaMethodDeclaration = SyntaxFactory.MethodDeclaration(default,
                          lamdaModifiers,
                          SyntaxFactory.ParseTypeName("void").WithTrailingSpace(),
@@ -304,7 +322,10 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 invocationExpression = (InvocationExpressionSyntax)ReplaceLastMemberAccess(invocationExpression, lastAccessedMemberName, newAccessMemberName);
                 return invocationExpression.WithArgumentList(newArgs);
             }
-            throw new NotSupportedException();
+            context.Diagnostics.Report(DiagnosticInfo.Create(
+                DiagnosticDescriptors.DNC008_MemberAccessNotFound,
+                invocationExpression.GetLocation()));
+            return invocationExpression.WithArgumentList(newArgs);
         }
 
         private static InvocationExpressionSyntax ReplaceWithFullQualifiedName(InvocationExpressionSyntax node, IMethodSymbol methodSymbol)

@@ -1,4 +1,5 @@
-﻿using DotNetCompose.SourceGenerators.Extensions;
+﻿using DotNetCompose.SourceGenerators.Diagnostics;
+using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Handlers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -116,7 +117,11 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			}
 			else if (method.ExpressionBody != null)
 			{
-				throw new NotSupportedException();
+				_session.Report(DiagnosticInfo.Create(
+					DiagnosticDescriptors.DNC001_ExpressionBodiedNotSupported,
+					method.ExpressionBody.GetLocation(),
+					method.Identifier.ValueText));
+				newMethod = newMethod.WithBody(SyntaxFactory.Block());
 			}
 
 			if (sourceLocationAnnotation != null)
@@ -387,14 +392,13 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			if (methodSymbol == null)
 				return base.VisitInvocationExpression(node);
 
-			var context = new MethodCallHandlerContext
-			{
-				SemanticModel = _semanticModel,
-				Options = _options,
-				MethodCtx = _methodCtx,
-				Session = _session,
-				VisitNode = Visit,
-			};
+			var context = new MethodCallHandlerContext(
+				_semanticModel,
+				_options,
+				_methodCtx,
+				_session,
+				_session.Diagnostics,
+				Visit);
 
 			if (_wellKnownRegistry.TryHandle(methodSymbol, node, context, out var wellKnownReplacement))
 				return wellKnownReplacement;
@@ -416,14 +420,13 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			if (methodSymbol == null)
 				return base.VisitConditionalAccessExpression(node);
 
-			var context = new MethodCallHandlerContext
-			{
-				SemanticModel = _semanticModel,
-				Options = _options,
-				MethodCtx = _methodCtx,
-				Session = _session,
-				VisitNode = Visit,
-			};
+			var context = new MethodCallHandlerContext(
+				_semanticModel,
+				_options,
+				_methodCtx,
+				_session,
+				_session.Diagnostics,
+				Visit);
 
 			foreach (var handler in _methodCallHandlers)
 			{
@@ -449,7 +452,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 				ifStatementsToProcesss = new StatementSyntax[] { expressionStatementSyntax };
 			}
 			if (ifStatementsToProcesss == null)
-				throw new NotSupportedException();
+			{
+				_session.Report(DiagnosticInfo.Create(
+					DiagnosticDescriptors.DNC002_IfWithoutBlock,
+					node.GetLocation()));
+				return base.VisitIfStatement(node);
+			}
 			using ListPoolObject<StatementSyntax> ifOutStatements = ListPool<StatementSyntax>.Get();
 			foreach (StatementSyntax statement in ifStatementsToProcesss)
 			{
@@ -550,7 +558,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 				statementsToProcess = block.Statements;
 			}
 			else
-				throw new NotSupportedException();
+			{
+				_session.Report(DiagnosticInfo.Create(
+					DiagnosticDescriptors.DNC003_ForWithoutBlock,
+					forStatement.GetLocation()));
+				return base.VisitForStatement(forStatement);
+			}
 			if (statementsToProcess != null)
 			{
 				using ListPoolObject<StatementSyntax> outForStatements = ListPool<StatementSyntax>.Get();
@@ -577,7 +590,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 				statementsToProcess = block.Statements;
 			}
 			else
-				throw new NotSupportedException();
+			{
+				_session.Report(DiagnosticInfo.Create(
+					DiagnosticDescriptors.DNC004_ForeachWithoutBlock,
+					forEachStatement.GetLocation()));
+				return base.VisitForEachStatement(forEachStatement);
+			}
 			if (statementsToProcess != null)
 			{
 				using ListPoolObject<StatementSyntax> outForEachStatements = ListPool<StatementSyntax>.Get();

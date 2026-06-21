@@ -1,4 +1,5 @@
-﻿using DotNetCompose.SourceGenerators.Extensions;
+﻿using DotNetCompose.SourceGenerators.Diagnostics;
+using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Handlers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -9,7 +10,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using static DotNetCompose.SourceGenerators.Consts;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
-using static DotNetCompose.SourceGenerators.Consts;
 
 #nullable enable
 namespace DotNetCompose.SourceGenerators.Rewriters
@@ -44,18 +44,19 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 		{
 			var rewriter = new ComposeMethodRewriter(RewriterOptions.Default,
 				new MethodGenerationContext(ImmutableArray<MethodParameterInfo>.Empty, false, false),
-				new RewriterSession(0),
+				new RewriterSession(0, NullDiagnosticReporter.Instance),
 				semanticModel, Array.Empty<IMethodCallHandler>(), WellKnownFunctionRegistry.Empty);
 			return rewriter.ReplaceAllComposableParameters(method, addAttributeToComposableParameters);
 		}
 
+		/*TODO Add default state parameter*/
 		internal static ParameterListSyntax AppendComposableContextrelatedParameters(ParameterListSyntax paramList, SemanticModel semanticModel, string contextParamName, string changedParamName)
 		{
 			var options = new RewriterOptions(contextParamName, changedParamName, Consts.Rewriter.DefaultParamName,
 				Consts.Rewriter.StoredLambdaClassName, Consts.Rewriter.BuildersClassName);
 			var rewriter = new ComposeMethodRewriter(options,
 				new MethodGenerationContext(ImmutableArray<MethodParameterInfo>.Empty, false, false),
-				new RewriterSession(0),
+				new RewriterSession(0, NullDiagnosticReporter.Instance),
 				semanticModel, Array.Empty<IMethodCallHandler>(), WellKnownFunctionRegistry.Empty);
 			return rewriter.AppendComposableContextrelatedParameters(paramList, contextParamName, changedParamName);
 		}
