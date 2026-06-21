@@ -1,5 +1,6 @@
 ﻿using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Handlers;
+using DotNetCompose.SourceGenerators.Handlers.WellKnown;
 using DotNetCompose.SourceGenerators.Rewriters;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -24,6 +25,8 @@ namespace DotNetCompose.SourceGenerators
             new ComposableMethodCallHandler(),
             new DelegateMethodCallHandler(),
         };
+
+        private static readonly WellKnownFunctionRegistry WellKnownRegistry = WellKnownFunctionRegistry.Empty;
 
         public static void ExecuteComposeGenerator(Compilation compilation,
             ClassAndComposablesMethods classAndComposablesMethods,
@@ -89,7 +92,7 @@ namespace DotNetCompose.SourceGenerators
                                                        Consts.Rewriter.StoredLambdaClassName,
                                                        Consts.Rewriter.BuildersClassName)); 
                                        })
-                                       .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method, DefaultHandlerChain)))
+                                       .Select(pair => (Context: pair.Context, MethodBody: ComposeMethodRewriter.Rewrite(pair.Context, semanticModel, pair.Method, DefaultHandlerChain, WellKnownRegistry)))
                                        .ToImmutableArray();
 
                 sourceBuilder.WithIndent(() =>

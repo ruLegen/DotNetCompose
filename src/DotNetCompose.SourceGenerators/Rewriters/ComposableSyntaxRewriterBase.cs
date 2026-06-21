@@ -62,15 +62,18 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 		protected ComposableSyntaxRewriterBase(
 			ComposableMethodGeneratorContext ctx,
 			SemanticModel semanticModel,
-			IReadOnlyList<IMethodCallHandler> methodCallHandlers)
+			IReadOnlyList<IMethodCallHandler> methodCallHandlers,
+			WellKnownFunctionRegistry wellKnownRegistry)
 		{
 			_semanticModel = semanticModel;
 			_ctx = ctx;
 			_methodCallHandlers = methodCallHandlers;
+			_wellKnownRegistry = wellKnownRegistry;
 		}
 		protected SemanticModel _semanticModel;
 		protected ComposableMethodGeneratorContext _ctx;
 		protected readonly IReadOnlyList<IMethodCallHandler> _methodCallHandlers;
+		protected readonly WellKnownFunctionRegistry _wellKnownRegistry;
 
 		public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax method)
 		{
@@ -388,6 +391,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 				GeneratorContext = _ctx,
 				VisitNode = Visit,
 			};
+
+			if (_wellKnownRegistry.TryHandle(methodSymbol, node, context, out var wellKnownReplacement))
+				return wellKnownReplacement;
 
 			foreach (var handler in _methodCallHandlers)
 			{

@@ -16,8 +16,9 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 		internal ComposeMethodRewriter(
 			ComposableMethodGeneratorContext ctx,
 			SemanticModel semanticModel,
-			IReadOnlyList<IMethodCallHandler> methodCallHandlers)
-			: base(ctx, semanticModel, methodCallHandlers)
+			IReadOnlyList<IMethodCallHandler> methodCallHandlers,
+			WellKnownFunctionRegistry wellKnownRegistry)
+			: base(ctx, semanticModel, methodCallHandlers, wellKnownRegistry)
 		{
 		}
 
@@ -25,23 +26,24 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 			ComposableMethodGeneratorContext ctx,
 			SemanticModel semanticModel,
 			MethodDeclarationSyntax method,
-			IReadOnlyList<IMethodCallHandler> methodCallHandlers)
+			IReadOnlyList<IMethodCallHandler> methodCallHandlers,
+			WellKnownFunctionRegistry wellKnownRegistry)
 		{
-			ComposeMethodRewriter rewriter = new ComposeMethodRewriter(ctx, semanticModel, methodCallHandlers);
+			ComposeMethodRewriter rewriter = new ComposeMethodRewriter(ctx, semanticModel, methodCallHandlers, wellKnownRegistry);
 			return rewriter.Visit(method);
 		}
 
 		internal static ParameterListSyntax ReplaceAllComposableParameters(MethodDeclarationSyntax method, SemanticModel semanticModel, bool addAttributeToComposableParameters)
 		{
 			var tempCtx = new ComposableMethodGeneratorContext(Consts.Rewriter.ContextParamName, Consts.Rewriter.ChangedParamName);
-			var rewriter = new ComposeMethodRewriter(tempCtx, semanticModel, Array.Empty<IMethodCallHandler>());
+			var rewriter = new ComposeMethodRewriter(tempCtx, semanticModel, Array.Empty<IMethodCallHandler>(), WellKnownFunctionRegistry.Empty);
 			return rewriter.ReplaceAllComposableParameters(method, addAttributeToComposableParameters);
 		}
 
 		internal static ParameterListSyntax AppendComposableContextrelatedParameters(ParameterListSyntax paramList, SemanticModel semanticModel, string contextParamName, string changedParamName)
 		{
 			var tempCtx = new ComposableMethodGeneratorContext(contextParamName, changedParamName);
-			var rewriter = new ComposeMethodRewriter(tempCtx, semanticModel, Array.Empty<IMethodCallHandler>());
+			var rewriter = new ComposeMethodRewriter(tempCtx, semanticModel, Array.Empty<IMethodCallHandler>(), WellKnownFunctionRegistry.Empty);
 			return rewriter.AppendComposableContextrelatedParameters(paramList, contextParamName, changedParamName);
 		}
 	}
