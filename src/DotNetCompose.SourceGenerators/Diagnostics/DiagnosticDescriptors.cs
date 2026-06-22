@@ -113,7 +113,7 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
         public static readonly DiagnosticDescriptor DNC900_InternalError = new DiagnosticDescriptor(
             id: "DNC900",
             title: "Internal generator error",
-            messageFormat: "Internal error: conditional depth mismatch in generator",
+            messageFormat: "Internal error: {0}",
             category: Category + ".Internal",
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true);

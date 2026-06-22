@@ -101,7 +101,7 @@ namespace DotNetCompose.SourceGenerators
             })
             .Select(pair =>
             {
-                var body = ComposeMethodRewriter.Rewrite(pair.Options, pair.MethodCtx, pair.Session, semanticModel, pair.Method, DefaultHandlerChain, WellKnownRegistry);
+                var body = ComposeSyntaxRewriter.Rewrite(pair.Options, pair.MethodCtx, pair.Session, semanticModel, pair.Method, DefaultHandlerChain, WellKnownRegistry);
                 return (Session: pair.Session, MethodBody: pair.Session.HasErrors ? null : body);
             })
             .Where(x => x.MethodBody != null)

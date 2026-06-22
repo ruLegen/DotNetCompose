@@ -1,6 +1,6 @@
 ﻿using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Extensions;
-using DotNetCompose.SourceGenerators.Rewriters;
+using DotNetCompose.SourceGenerators.Pipeline;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -74,13 +74,12 @@ namespace DotNetCompose.SourceGenerators
 
                 ParameterListSyntax newParameterList = method.ParameterList;
                 if (hasAnyComposables)
-                    newParameterList = ComposeMethodRewriter.ReplaceAllComposableParameters(method, semanticModel, false);
+                    newParameterList = ParameterListTransformer.ReplaceAllComposableParameters(method, semanticModel, false);
 
                 /*TODO Add default state parameter*/
-                newParameterList = ComposeMethodRewriter.AppendComposableContextrelatedParameters(newParameterList,
-                                                                                                  semanticModel,
-                                                                                                  Consts.Rewriter.ContextParamName,
-                                                                                                  Consts.Rewriter.ChangedParamName);
+                newParameterList = ParameterListTransformer.AppendComposableContextrelatedParameters(newParameterList,
+                                                                                                   Consts.Rewriter.ContextParamName,
+                                                                                                   Consts.Rewriter.ChangedParamName);
                 sourceBuilder.AppendLine($"{methodModifiers} {method.ReturnType} {method.Identifier.ValueText}{newParameterList};");
             }
 
