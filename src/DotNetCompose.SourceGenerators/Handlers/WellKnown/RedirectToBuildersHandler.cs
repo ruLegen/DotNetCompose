@@ -8,7 +8,7 @@ using static DotNetCompose.SourceGenerators.Consts;
 
 namespace DotNetCompose.SourceGenerators.Handlers.WellKnown
 {
-    internal abstract class RedirectToBuildersHandler : WellKnownHandler
+    internal abstract class RedirectToBuildersHandler : WellKnownFunctionHandler
     {
         public override SyntaxNode Handle(
             InvocationExpressionSyntax invocation,

@@ -9,11 +9,11 @@ namespace DotNetCompose.SourceGenerators.Handlers
     internal sealed class WellKnownFunctionRegistry
     {
         public static readonly WellKnownFunctionRegistry Empty = new WellKnownFunctionRegistry(
-            new Dictionary<string, WellKnownHandler>(0));
+            new Dictionary<string, WellKnownFunctionHandler>(0));
 
-        private readonly Dictionary<string, WellKnownHandler> _handlers;
+        private readonly Dictionary<string, WellKnownFunctionHandler> _handlers;
 
-        private WellKnownFunctionRegistry(Dictionary<string, WellKnownHandler> handlers)
+        private WellKnownFunctionRegistry(Dictionary<string, WellKnownFunctionHandler> handlers)
             => _handlers = handlers;
 
         public bool TryHandle(
@@ -32,13 +32,20 @@ namespace DotNetCompose.SourceGenerators.Handlers
             return false;
         }
 
+        public static Builder EmptyBuilder => new Builder();
+
         internal sealed class Builder
         {
-            private readonly Dictionary<string, WellKnownHandler> _handlers = new();
+            private readonly Dictionary<string, WellKnownFunctionHandler> _handlers = new();
 
-            public Builder Register<T>() where T : WellKnownHandler, new()
+            public Builder Register<T>() where T : WellKnownFunctionHandler, new()
             {
                 var handler = new T();
+                return Register(handler);
+            }
+
+            public Builder Register(WellKnownFunctionHandler handler)
+            {
                 foreach (var name in handler.GetMetadataNames())
                     _handlers[name] = handler;
                 return this;

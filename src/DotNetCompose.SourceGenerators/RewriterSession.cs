@@ -10,17 +10,17 @@ namespace DotNetCompose.SourceGenerators
 {
     internal sealed class RewriterSession
     {
-        private int _currentGroupId;
-        private int _nextLambdaKey;
-        private int _conditionalDepth;
-        private bool _hasErrors;
-
         public RewriterSession(int initialGroupId, IDiagnosticReporter diagnostics)
         {
             _currentGroupId = initialGroupId;
             InitialGroupId = initialGroupId;
             Diagnostics = diagnostics;
         }
+
+        private int _currentGroupId;
+        private int _nextLambdaKey;
+        private int _conditionalDepth;
+        private bool _hasErrors;
 
         public int InitialGroupId { get; }
         public IDiagnosticReporter Diagnostics { get; }

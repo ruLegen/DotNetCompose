@@ -17,10 +17,10 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         }
 
         internal static ParameterListSyntax AppendComposableContextrelatedParameters(
-            ParameterListSyntax paramList, string contextParamName, string changedParamName)
+            ParameterListSyntax paramList, string contextParamName, string changedParamName,string defaultParamName)
         {
             return DefaultSignatureRewriter.AppendComposableContextrelatedParameters(
-                paramList, contextParamName, changedParamName);
+                paramList, contextParamName, changedParamName, defaultParamName);
         }
     }
 }

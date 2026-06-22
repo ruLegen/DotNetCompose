@@ -1,7 +1,7 @@
 using DotNetCompose.SourceGenerators.Diagnostics;
+using DotNetCompose.SourceGenerators.Pipeline;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
 
 namespace DotNetCompose.SourceGenerators.Handlers
 {
@@ -13,14 +13,14 @@ namespace DotNetCompose.SourceGenerators.Handlers
             MethodGenerationContext methodCtx,
             RewriterSession session,
             IDiagnosticReporter diagnostics,
-            Func<SyntaxNode, SyntaxNode> visitNode)
+            NodeTransformer visitNode)
         {
             SemanticModel = semanticModel;
             Options = options;
             MethodCtx = methodCtx;
             Session = session;
             Diagnostics = diagnostics;
-            VisitNode = visitNode;
+            NodeTransformer = visitNode;
         }
 
         public SemanticModel SemanticModel { get; }
@@ -28,7 +28,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
         public MethodGenerationContext MethodCtx { get; }
         public RewriterSession Session { get; }
         public IDiagnosticReporter Diagnostics { get; }
-        public Func<SyntaxNode, SyntaxNode> VisitNode { get; }
+        public NodeTransformer NodeTransformer { get; }
     }
 
     internal interface IMethodCallHandler

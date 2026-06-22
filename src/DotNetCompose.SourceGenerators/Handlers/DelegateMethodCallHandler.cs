@@ -45,10 +45,10 @@ namespace DotNetCompose.SourceGenerators.Handlers
             DelegateMethodCallInfo delegateMethodCallInfo,
             MethodCallHandlerContext context)
         {
-            var options = context.Options;
-            var methodCtx = context.MethodCtx;
-            var session = context.Session;
-            var semanticModel = context.SemanticModel;
+            RewriterOptions options = context.Options;
+            MethodGenerationContext methodCtx = context.MethodCtx;
+            RewriterSession session = context.Session;
+            SemanticModel semanticModel = context.SemanticModel;
 
             InvocationExpressionSyntax? invocation = null;
             if (delegateMethodCallInfo.IsSimpleMemberAccessCall || delegateMethodCallInfo.IsDirectCall)
@@ -57,7 +57,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             }
             else if (delegateMethodCallInfo.IsNullSafeCall)
             {
-                var conditionalAccess = expression as ConditionalAccessExpressionSyntax;
+                ConditionalAccessExpressionSyntax conditionalAccess = expression as ConditionalAccessExpressionSyntax;
                 invocation = conditionalAccess?.WhenNotNull as InvocationExpressionSyntax;
             }
 
@@ -80,7 +80,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                    {
                          SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                          SyntaxFactory.Argument(changedArg),
-                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
+                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.DefaultParamName)),
                    }
                 );
                 result = invocationSyntax.WithArgumentList(newArguments);
@@ -92,7 +92,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.DefaultParamName)),
                     }
                 ));
             }
@@ -112,7 +112,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                       new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(Rewriter.DefaultParamName)),
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.DefaultParamName)),
                     });
 
                 result = conditionalAccessExpression.WithWhenNotNull(

@@ -1,5 +1,6 @@
 ﻿using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Pipeline;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,12 +15,20 @@ namespace DotNetCompose.SourceGenerators
     [Generator(LanguageNames.CSharp)]
     public partial class ComposeSourceGenerator : IIncrementalGenerator
     {
+        private static readonly IComposePipeline _pipeline = new ComposePipelineBuilder()
+            .SetStrategies(StrategyContainer.Default) 
+            .AddMethodCallHandler<Handlers.ComposableMethodCallHandler>()
+            .AddMethodCallHandler<Handlers.DelegateMethodCallHandler>()
+            //.AddWellKnownHandler<Handlers.WellKnown.CurrentContextHandler>()
+            .AddOutput(new ComposeGeneratorOutputHandler())
+            .Build();
+
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
 #if DEBUG
             if (!Debugger.IsAttached)
             {
-               // Debugger.Launch();
+                 Debugger.Launch();
             }
 #endif
             IncrementalValuesProvider<MethodFullNameAndDeclaration> composableMethodsDeclarations = context
@@ -28,7 +37,7 @@ namespace DotNetCompose.SourceGenerators
                     static (node, token) => node is MethodDeclarationSyntax,
                     static (ctx, token) =>
                     {
-                        var decl = ctx.TargetNode as MethodDeclarationSyntax;
+                        MethodDeclarationSyntax decl = (MethodDeclarationSyntax)ctx.TargetNode;
                         return new(ctx.TargetSymbol.GetFullMetadataName(), decl, ComputeContentHash(decl));
                     });
 
@@ -125,18 +134,26 @@ namespace DotNetCompose.SourceGenerators
                 validationResults.Where(static r => r is ClassResult { IsValid: true })
                                  .Select(static (r, _) => ((ClassResult)r).Class)
                                  .Combine(context.CompilationProvider),
-                static (spc, source) => ComposeGenerator.ExecuteComposeGenerator(source.Right, source.Left, spc)
+                static (spc, source) => _pipeline.Execute(spc, source.Right, source.Left)
             );
         }
 
-        private static int ComputeContentHash(MethodDeclarationSyntax? method)
+        private static int ComputeContentHash(MethodDeclarationSyntax method)
         {
-            if (method == null) return 0;
             int hash = 0;
-            foreach (SyntaxToken token in method.DescendantTokens())
+            foreach (var node in method.DescendantNodes(descendIntoTrivia: false))
             {
-                foreach (char c in token.Text)
-                    hash = unchecked(hash * 31 + c);
+                hash = unchecked(hash * 31 + (int)node.RawKind);
+                if (node is IdentifierNameSyntax id)
+                {
+                    foreach (char c in id.Identifier.ValueText)
+                        hash = unchecked(hash * 31 + c);
+                }
+                else if (node is LiteralExpressionSyntax lit)
+                {
+                    foreach (char c in lit.Token.ValueText)
+                        hash = unchecked(hash * 31 + c);
+                }
             }
             return hash;
         }

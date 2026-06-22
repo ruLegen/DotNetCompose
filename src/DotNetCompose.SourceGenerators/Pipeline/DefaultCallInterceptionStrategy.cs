@@ -18,7 +18,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 context.MethodCtx,
                 context.Session,
                 context.Diagnostics,
-                context.VisitNode);
+                context.NodeTransformer);
 
             if (context.WellKnownRegistry.TryHandle(methodSymbol, node, handlerContext, out var wellKnownReplacement))
                 return wellKnownReplacement;
@@ -44,7 +44,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 context.MethodCtx,
                 context.Session,
                 context.Diagnostics,
-                context.VisitNode);
+                context.NodeTransformer);
 
             foreach (IMethodCallHandler handler in context.MethodCallHandlers)
             {

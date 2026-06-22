@@ -13,9 +13,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
     {
         public MethodDeclarationSyntax RewriteSignature(MethodDeclarationSyntax method, TransformationContext context)
         {
-            var options = context.Options;
-            var methodCtx = context.MethodCtx;
-            var semanticModel = context.SemanticModel;
+            RewriterOptions options = context.Options;
+            MethodGenerationContext methodCtx = context.MethodCtx;
+            SemanticModel semanticModel = context.SemanticModel;
 
             bool hasAnyComposables = methodCtx.Parameters.Any(p => p.IsComposable);
 
@@ -33,7 +33,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                                 ? p.WithDefault(null)
                                 : p)));
             }
-            newParameterList = AppendComposableContextrelatedParameters(newParameterList, options.ContextVarName, options.ChangedVarName);
+            newParameterList = AppendComposableContextrelatedParameters(newParameterList, options.ContextVarName, options.ChangedVarName, options.DefaultParamName);
 
             MethodDeclarationSyntax newMethod = method
                 .WithParameterList(newParameterList)
@@ -73,7 +73,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         }
 
         internal static ParameterListSyntax AppendComposableContextrelatedParameters(
-            ParameterListSyntax paramList, string contextParamName, string changedParamName)
+            ParameterListSyntax paramList, string contextParamName, string changedParamName, string defaultParamName)
         {
             SeparatedSyntaxList<ParameterSyntax> newArguments = paramList.Parameters.AddRange(new ParameterSyntax[]
             {
@@ -92,7 +92,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxFactory.Parameter(default,
                     default,
                     SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName).WithTrailingSpace(),
-                    SyntaxFactory.Identifier(Consts.Rewriter.DefaultParamName),
+                    SyntaxFactory.Identifier(defaultParamName),
                     default),
             });
 

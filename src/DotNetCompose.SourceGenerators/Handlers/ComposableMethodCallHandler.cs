@@ -86,20 +86,19 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 ImmutableArray<ParameterSyntax> lambdaParameters;
                 bool isCaptureAnything = false;
                 CSharpSyntaxNode newBody = default;
-                Func<SyntaxNode, SyntaxNode?> visit = context.VisitNode ?? (n => n);
                 if (arg.Expression is SimpleLambdaExpressionSyntax simpleLambdaExpression)
                 {
                     lambdaParameters = ImmutableArray.Create<ParameterSyntax>(simpleLambdaExpression.Parameter);
                     DataFlowAnalysis analizeInfo = semanticModel.AnalyzeDataFlow(simpleLambdaExpression.Body);
                     isCaptureAnything = analizeInfo.CapturedInside.Length > 0;
-                    newBody = (CSharpSyntaxNode)visit(simpleLambdaExpression.Body);
+                    newBody = (CSharpSyntaxNode)context.NodeTransformer.Transform(simpleLambdaExpression.Body);
                 }
                 else if (arg.Expression is ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression)
                 {
                     lambdaParameters = parenthesizedLambdaExpression.ParameterList.Parameters.ToImmutableArray();
                     DataFlowAnalysis analizeInfo = semanticModel.AnalyzeDataFlow(parenthesizedLambdaExpression.Body);
                     isCaptureAnything = analizeInfo.CapturedInside.Length > 0;
-                    newBody = (CSharpSyntaxNode)visit(parenthesizedLambdaExpression.Body);
+                    newBody = (CSharpSyntaxNode)context.NodeTransformer.Transform(parenthesizedLambdaExpression.Body);
                 }
                 else
                 {

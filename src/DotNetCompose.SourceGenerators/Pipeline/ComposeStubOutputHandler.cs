@@ -1,32 +1,28 @@
-﻿using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Extensions;
-using DotNetCompose.SourceGenerators.Pipeline;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using static DotNetCompose.SourceGenerators.ComposeSourceGenerator;
 
-namespace DotNetCompose.SourceGenerators
+namespace DotNetCompose.SourceGenerators.Pipeline
 {
-    internal class ComposeStubGenerator
+    internal sealed class ComposeStubOutputHandler : IOutputHandler
     {
-        public static void ExecuteStubGenerator(Compilation compilation, ClassAndComposablesMethods classAndComposablesMethods, SourceProductionContext context)
+        public void Handle(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input, PipelineContext context)
         {
-            string typeName = classAndComposablesMethods.ClassName;
-            string sourceCode = GenerateStubComposablesMethods(classAndComposablesMethods, compilation);
+            string typeName = input.ClassName;
+            string sourceCode = GenerateStubComposablesMethods(input, compilation);
 
             if (!string.IsNullOrEmpty(sourceCode))
             {
-                context.AddSource($"{typeName.Replace('.', '_')}.Stubs.g.cs", SourceText.From(sourceCode, Encoding.UTF8));
+                spc.AddSource($"{typeName.Replace('.', '_')}.Stubs.g.cs", SourceText.From(sourceCode, Encoding.UTF8));
             }
         }
-
 
         private static string GenerateStubComposablesMethods(ClassAndComposablesMethods classAndComposablesMethods, Compilation compilation)
         {
@@ -47,7 +43,6 @@ namespace DotNetCompose.SourceGenerators
 
             StringBuilder sourceBuilder = new StringBuilder();
 
-            // Add using directives from original file
             SyntaxNode root = firstMethod.SyntaxTree.GetRoot();
             IEnumerable<UsingDirectiveSyntax> usings = root.DescendantNodes().OfType<UsingDirectiveSyntax>();
             foreach (UsingDirectiveSyntax usingDirective in usings.Distinct(UsingDerectiveComparerByName.Default))
@@ -76,10 +71,10 @@ namespace DotNetCompose.SourceGenerators
                 if (hasAnyComposables)
                     newParameterList = ParameterListTransformer.ReplaceAllComposableParameters(method, semanticModel, false);
 
-                /*TODO Add default state parameter*/
                 newParameterList = ParameterListTransformer.AppendComposableContextrelatedParameters(newParameterList,
-                                                                                                   Consts.Rewriter.ContextParamName,
-                                                                                                   Consts.Rewriter.ChangedParamName);
+                                                                                                    Consts.Rewriter.ContextParamName,
+                                                                                                    Consts.Rewriter.ChangedParamName,
+                                                                                                    Consts.Rewriter.DefaultParamName);
                 sourceBuilder.AppendLine($"{methodModifiers} {method.ReturnType} {method.Identifier.ValueText}{newParameterList};");
             }
 

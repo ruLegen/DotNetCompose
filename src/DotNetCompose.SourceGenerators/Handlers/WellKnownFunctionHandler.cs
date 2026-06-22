@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 
 namespace DotNetCompose.SourceGenerators.Handlers
 {
-    internal abstract class WellKnownHandler
+    internal abstract class WellKnownFunctionHandler
     {
         public abstract ImmutableArray<string> GetMetadataNames();
 

@@ -5,7 +5,7 @@ using System.Collections.Immutable;
 
 namespace DotNetCompose.SourceGenerators.Handlers.WellKnown
 {
-    internal sealed class CurrentContextHandler : WellKnownHandler
+    internal sealed class CurrentContextHandler : WellKnownFunctionHandler
     {
         public override ImmutableArray<string> GetMetadataNames()
             => ImmutableArray.Create("DotNetCompose.Runtime.Composables.CurrentContext");

@@ -1,5 +1,6 @@
 using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Helpers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
@@ -8,13 +9,19 @@ using static DotNetCompose.SourceGenerators.Consts;
 
 namespace DotNetCompose.SourceGenerators.Pipeline
 {
-    internal sealed class DefaultStableParameterOptimizer : IStableParameterOptimizer
+    internal sealed class DefaultParameterChangedTransformer : IParameterChangedTransformer
     {
-        public BlockSyntax OptimizeStableParameters(BlockSyntax body, TransformationContext context)
+        /// <summary>
+        /// Adds check for parameter changes
+        /// </summary>
+        /// <param name="body"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public BlockSyntax TransformParameters(BlockSyntax body, TransformationContext context)
         {
-            var methodCtx = context.MethodCtx;
-            var options = context.Options;
-            var session = context.Session;
+            MethodGenerationContext methodCtx = context.MethodCtx;
+            RewriterOptions options = context.Options;
+            RewriterSession session = context.Session;
 
             var normalParams = methodCtx.Parameters
                 .Select((p, i) => (Param: p, Index: i))
@@ -28,8 +35,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             if (!allStable || !anyNormalParams)
                 return body;
 
-            using var prologueStmts = ListPool<StatementSyntax>.Get();
-            var stateVarNames = new List<string>();
+            using ListPoolObject<StatementSyntax> prologueStmts = ListPool<StatementSyntax>.Get();
+            using ListPoolObject<string> stateVarNames = ListPool<string>.Get();
             string ctxVar = options.ContextVarName;
             string changedVar = options.ChangedVarName;
 
@@ -131,9 +138,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             }
 
             ExpressionSyntax? condition = null;
-            foreach (var stateVar in stateVarNames)
+            foreach (string stateVar in stateVarNames)
             {
-                var eqToSame = SyntaxFactory.BinaryExpression(
+                BinaryExpressionSyntax eqToSame = SyntaxFactory.BinaryExpression(
                     SyntaxKind.EqualsExpression,
                     SyntaxFactory.IdentifierName(stateVar),
                     SyntaxFactory.MemberAccessExpression(
@@ -141,7 +148,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
                         SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.SameField)));
 
-                var eqToStatic = SyntaxFactory.BinaryExpression(
+                BinaryExpressionSyntax eqToStatic = SyntaxFactory.BinaryExpression(
                     SyntaxKind.EqualsExpression,
                     SyntaxFactory.IdentifierName(stateVar),
                     SyntaxFactory.MemberAccessExpression(
@@ -149,7 +156,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
                         SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.StaticField)));
 
-                var eq = SyntaxFactory.ParenthesizedExpression(
+                ParenthesizedExpressionSyntax eq = SyntaxFactory.ParenthesizedExpression(
                     SyntaxFactory.BinaryExpression(
                         SyntaxKind.LogicalOrExpression,
                         eqToSame,
@@ -182,10 +189,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxFactory.ElseClause(
                     SyntaxFactory.Block(body.Statements)));
 
-            using var allStmts = ListPool<StatementSyntax>.Get();
-            allStmts.AddRange(prologueStmts);
-            allStmts.Add(skipStatement);
 
+            IEnumerable<StatementSyntax> allStmts = Enumerable.Concat(prologueStmts, new StatementSyntax[] { skipStatement });
             return SyntaxFactory.Block(allStmts).WithTrailingNewLine();
         }
     }

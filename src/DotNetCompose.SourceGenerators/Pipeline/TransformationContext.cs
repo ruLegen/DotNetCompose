@@ -1,15 +1,12 @@
 using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Handlers;
 using Microsoft.CodeAnalysis;
-using System;
 using System.Collections.Generic;
 
 namespace DotNetCompose.SourceGenerators.Pipeline
 {
     internal sealed class TransformationContext
     {
-        private Func<SyntaxNode, SyntaxNode> _visitNode;
-
         public TransformationContext(
             SemanticModel semanticModel,
             RewriterOptions options,
@@ -17,7 +14,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             RewriterSession session,
             IReadOnlyList<IMethodCallHandler> methodCallHandlers,
             WellKnownFunctionRegistry wellKnownRegistry,
-            Func<SyntaxNode, SyntaxNode> visitNode)
+            NodeTransformer visitNode,
+            StrategyContainer strategies)
         {
             SemanticModel = semanticModel;
             Options = options;
@@ -25,7 +23,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             Session = session;
             MethodCallHandlers = methodCallHandlers;
             WellKnownRegistry = wellKnownRegistry;
-            _visitNode = visitNode;
+            NodeTransformer = visitNode;
+            Strategies = strategies;
         }
 
         public SemanticModel SemanticModel { get; }
@@ -34,12 +33,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         public RewriterSession Session { get; }
         public IReadOnlyList<IMethodCallHandler> MethodCallHandlers { get; }
         public WellKnownFunctionRegistry WellKnownRegistry { get; }
-        public Func<SyntaxNode, SyntaxNode> VisitNode => _visitNode;
+        public NodeTransformer NodeTransformer { get; }
         public IDiagnosticReporter Diagnostics => Session.Diagnostics;
-
-        public void SetVisitNode(Func<SyntaxNode, SyntaxNode> visitNode)
-        {
-            _visitNode = visitNode;
-        }
+        public StrategyContainer Strategies { get; }
     }
 }
