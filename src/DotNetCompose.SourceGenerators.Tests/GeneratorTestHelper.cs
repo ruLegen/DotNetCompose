@@ -89,4 +89,16 @@ public static class GeneratorTestHelper
         }
         return builder.ToImmutable();
     }
+
+    public static Task RunSnapshotTest(string sourceFileName, string? verifyFileName = null)
+    {
+        if (string.IsNullOrEmpty(verifyFileName))
+            verifyFileName = sourceFileName;
+
+        string inputFileName = sourceFileName + ".cs";
+        string outputFileName = verifyFileName + ".g";
+        string source = LoadSource(inputFileName);
+        string result = RunSingleGenerator(source);
+        return Verifier.Verify(result).UseFileName(outputFileName);
+    }
 }
