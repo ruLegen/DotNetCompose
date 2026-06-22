@@ -24,7 +24,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             _controlFlow = strategies.ControlFlow;
             _callInterceptor = strategies.CallInterception;
             _defaultValueSubstitutor = strategies.DefaultValueSubstitutor;
-            _stableParameterOptimizer = strategies.StableParameterCheckTransformer;
+            _parameterChangeTransformer = strategies.StableParameterCheckTransformer;
         }
 
         private TransformationContext? _ctx;
@@ -33,7 +33,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
         private readonly IControlFlowStrategy _controlFlow;
         private readonly ICallInterceptionStrategy _callInterceptor;
         private readonly IDefaultValueSubstitutor _defaultValueSubstitutor;
-        private readonly IParameterChangedTransformer _stableParameterOptimizer;
+        private readonly IParameterChangedTransformer _parameterChangeTransformer;
 
         public void SetContext(TransformationContext ctx) => _ctx = ctx;
         private TransformationContext Ctx => _ctx!;
@@ -70,7 +70,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
                 var visitedBody = (BlockSyntax)base.VisitBlock(node);
 
                 visitedBody = _defaultValueSubstitutor.SubstituteDefaults(visitedBody, Ctx);
-                visitedBody = _stableParameterOptimizer.TransformParameters(visitedBody, Ctx);
+                visitedBody = _parameterChangeTransformer.TransformParameters(visitedBody, Ctx);
                 visitedBody = _bodyWrapping.WrapMethodBody(visitedBody, Ctx);
 
                 return visitedBody;
