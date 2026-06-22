@@ -5,12 +5,6 @@ using System;
 
 namespace DotNetCompose.SourceGenerators.Handlers
 {
-    internal enum InterceptionResult
-    {
-        Continue,
-        Handled,
-    }
-
     internal sealed class MethodCallHandlerContext
     {
         public MethodCallHandlerContext(
@@ -39,7 +33,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
     internal interface IMethodCallHandler
     {
-        InterceptionResult Handle(
+        bool TryHandle(
             ExpressionSyntax expression,
             IMethodSymbol methodSymbol,
             MethodCallHandlerContext context,

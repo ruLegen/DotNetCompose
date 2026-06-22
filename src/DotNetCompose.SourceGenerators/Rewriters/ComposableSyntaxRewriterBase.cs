@@ -360,7 +360,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
 			foreach (var handler in _methodCallHandlers)
 			{
-				if (handler.Handle(node, methodSymbol, context, out var replacement) == InterceptionResult.Handled)
+				if (handler.TryHandle(node, methodSymbol, context, out var replacement))
 				{
 					return replacement;
 				}
@@ -385,7 +385,7 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
 			foreach (var handler in _methodCallHandlers)
 			{
-				if (handler.Handle(node, methodSymbol, context, out var replacement) == InterceptionResult.Handled)
+				if (handler.TryHandle(node, methodSymbol, context, out var replacement))
 				{
 					return replacement;
 				}

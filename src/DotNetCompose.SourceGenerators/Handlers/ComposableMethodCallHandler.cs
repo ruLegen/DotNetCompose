@@ -16,7 +16,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 {
     internal class ComposableMethodCallHandler : IMethodCallHandler
     {
-        public InterceptionResult Handle(
+        public bool TryHandle(
             ExpressionSyntax expression,
             IMethodSymbol methodSymbol,
             MethodCallHandlerContext context,
@@ -25,14 +25,14 @@ namespace DotNetCompose.SourceGenerators.Handlers
             replacement = null;
 
             if (methodSymbol.MethodKind != MethodKind.Ordinary)
-                return InterceptionResult.Continue;
+                return false;
             if (!methodSymbol.IsComposableFunction())
-                return InterceptionResult.Continue;
+                return false;
             if (expression is not InvocationExpressionSyntax invocationExpression)
-                return InterceptionResult.Continue;
+                return false;
 
             replacement = ProcessComposableCall(invocationExpression, methodSymbol, context);
-            return InterceptionResult.Handled;
+            return true;
         }
 
         private InvocationExpressionSyntax ProcessComposableCall(

@@ -16,7 +16,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
     internal class DelegateMethodCallHandler : IMethodCallHandler
     {
-        public InterceptionResult Handle(
+        public bool TryHandle(
             ExpressionSyntax expression,
             IMethodSymbol methodSymbol,
             MethodCallHandlerContext context,
@@ -25,19 +25,19 @@ namespace DotNetCompose.SourceGenerators.Handlers
             replacement = null;
 
             if (methodSymbol.MethodKind != MethodKind.DelegateInvoke)
-                return InterceptionResult.Continue;
+                return false;
 
             DelegateMethodCallInfo? delegateMethodCallInfo = GetDelegateMethodCallInfo(expression, methodSymbol);
             if (delegateMethodCallInfo == null)
-                return InterceptionResult.Continue;
+                return false;
 
             bool isComposableArgumentCall = context.MethodCtx.Parameters
                 .FirstOrDefault(p => p.Name == delegateMethodCallInfo.RecieverObjectName)?.IsComposable ?? false;
             if (!isComposableArgumentCall)
-                return InterceptionResult.Continue;
+                return false;
 
             replacement = ProcessDelegateCall(expression, delegateMethodCallInfo, context);
-            return InterceptionResult.Handled;
+            return true;
         }
 
         private ExpressionSyntax ProcessDelegateCall(
