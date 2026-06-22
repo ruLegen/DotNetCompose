@@ -1,0 +1,54 @@
+﻿using DotNetCompose.Runtime;
+
+namespace DotNetCompose.Playground
+{
+    internal partial class NotStaticClass
+    {
+        public partial class Builders
+        {
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            public void ComposableTest(int i, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            {
+                try
+                {
+                    __ctx?.StartRestartableGroup(180292881);
+                    byte __i_state = __changed[0];
+                    if (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                    {
+                        __i_state = __ctx.Changed(i) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    if ((__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
+                    {
+                        __ctx.SkipToGroupEnd();
+                    }
+                    else
+                    {
+                    }
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(180292881);
+                }
+            }
+            [DotNetCompose.Runtime.ComposeGeneratedAttribute]
+            private void ComposableTest2(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            {
+                try
+                {
+                    __ctx?.StartRestartableGroup(374287711);
+                    action.Invoke(i);
+                    action(i);
+                    action?.Invoke(i);
+                }
+                finally
+                {
+                    __ctx?.EndRestartableGroup(374287711);
+                }
+            }
+            static class __StoredLambda
+            {
+            }
+        }
+    }
+}

@@ -121,4 +121,14 @@ public class ComposeGeneratorCompilationTests
         Assert.Contains("MyIntProvider.Value", result);
         Assert.Contains("ShouldUseDefault", result);
     }
+
+
+    [Fact]
+    public void NonStaticClass_IsTransformed()
+    {
+        var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
+        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        Assert.Contains("__ctx", result);
+        Assert.Contains("IComposeContext", result);
+    }
 }

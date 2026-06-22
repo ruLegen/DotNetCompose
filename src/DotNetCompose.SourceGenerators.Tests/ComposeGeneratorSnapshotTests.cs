@@ -96,4 +96,12 @@ public class ComposeGeneratorSnapshotTests
         var result = GeneratorTestHelper.RunSingleGenerator(source);
         return Verifier.Verify(result).UseFileName("ComposableWithDefault.g");
     }
+
+    [Fact]
+    public Task NonStaticClassComposableTransformation()
+    {
+        var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
+        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        return Verifier.Verify(result).UseFileName("NotStaticClass.g");
+    }
 }
