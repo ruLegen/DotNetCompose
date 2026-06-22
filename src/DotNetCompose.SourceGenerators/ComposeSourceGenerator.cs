@@ -28,7 +28,7 @@ namespace DotNetCompose.SourceGenerators
 #if DEBUG
             if (!Debugger.IsAttached)
             {
-                 Debugger.Launch();
+                // Debugger.Launch();
             }
 #endif
             IncrementalValuesProvider<MethodFullNameAndDeclaration> composableMethodsDeclarations = context

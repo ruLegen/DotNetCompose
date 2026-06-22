@@ -115,7 +115,7 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
             title: "Internal generator error",
             messageFormat: "Internal error: {0}",
             category: Category + ".Internal",
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
     }
 }
