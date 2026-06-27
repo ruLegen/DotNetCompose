@@ -7,7 +7,7 @@ namespace TestNs
         public partial class Builders
         {
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void WithDefault([Default<MyIntProvider>] int x, string nonDefault, int someNondefaultInt, [Default<MyIntProvider>] int someOther, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            public static void WithDefault([Default<MyIntProvider>] int x, string nonDefault, int someNondefaultInt, [Default<MyIntProvider>] int someOther, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
@@ -57,11 +57,19 @@ namespace TestNs
                 }
                 finally
                 {
-                    __ctx?.EndRestartableGroup(-917303168);
+                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(-917303168);
+                    if (scopeUpdater != null)
+                    {
+                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
+                        scopeUpdater.UpdateScope(context =>
+                        {
+                            WithDefault(x, nonDefault, someNondefaultInt, someOther, context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                        });
+                    }
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void Caller(int y, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            public static void Caller(int y, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
@@ -91,7 +99,15 @@ namespace TestNs
                 }
                 finally
                 {
-                    __ctx?.EndRestartableGroup(-1313269180);
+                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(-1313269180);
+                    if (scopeUpdater != null)
+                    {
+                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
+                        scopeUpdater.UpdateScope(context =>
+                        {
+                            Caller(y, context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                        });
+                    }
                 }
             }
             static class __StoredLambda

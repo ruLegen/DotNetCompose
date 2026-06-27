@@ -87,13 +87,19 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     default,
                     SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName).WithTrailingSpace(),
                     SyntaxFactory.Identifier(changedParamName),
-                    default),
+                    SyntaxFactory.EqualsValueClause(
+                        SyntaxFactory.LiteralExpression(
+                            SyntaxKind.DefaultLiteralExpression,
+                            SyntaxFactory.Token(SyntaxKind.DefaultKeyword)))),
 
                 SyntaxFactory.Parameter(default,
                     default,
                     SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName).WithTrailingSpace(),
                     SyntaxFactory.Identifier(defaultParamName),
-                    default),
+                    SyntaxFactory.EqualsValueClause(
+                        SyntaxFactory.LiteralExpression(
+                            SyntaxKind.DefaultLiteralExpression,
+                            SyntaxFactory.Token(SyntaxKind.DefaultKeyword)))),
             });
 
             return paramList.WithParameters(newArguments);

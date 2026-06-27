@@ -1,5 +1,6 @@
 ﻿using DotNetCompose.Runtime;
 using System.Diagnostics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 namespace DotNetCompose.Playground
 {
     internal class Program
@@ -19,6 +20,9 @@ namespace DotNetCompose.Playground
                 }
                 context1.Tree();
             }
+
+
+
         }
 
         public static void Test(Span<int> changed)
@@ -84,9 +88,10 @@ namespace DotNetCompose.Playground
             GroupStackIndecies.Pop();
         }
 
-        public void EndRestartableGroup(int groupId)
+        public IComposeUpdateScope? EndRestartableGroup(int groupId)
         {
             EndGroup(groupId);
+            return null;
         }
 
         private void Start(int id, bool restartable = false)
@@ -135,6 +140,6 @@ namespace DotNetCompose.Playground
             var g = Groups.GroupBy(g => g.Parent);
         }
 
-       
+
     }
 }

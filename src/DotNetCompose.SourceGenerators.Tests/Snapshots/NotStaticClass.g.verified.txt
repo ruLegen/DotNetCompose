@@ -7,7 +7,7 @@ namespace DotNetCompose.Playground
         public partial class Builders
         {
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public void ComposableTest(int i, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            public void ComposableTest(int i, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
@@ -28,11 +28,19 @@ namespace DotNetCompose.Playground
                 }
                 finally
                 {
-                    __ctx?.EndRestartableGroup(180292881);
+                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(180292881);
+                    if (scopeUpdater != null)
+                    {
+                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
+                        scopeUpdater.UpdateScope(context =>
+                        {
+                            ComposableTest(i, context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                        });
+                    }
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            private void ComposableTest2(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            private void ComposableTest2(int i, [Composable] Action<int> action, DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
@@ -43,7 +51,15 @@ namespace DotNetCompose.Playground
                 }
                 finally
                 {
-                    __ctx?.EndRestartableGroup(374287711);
+                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(374287711);
+                    if (scopeUpdater != null)
+                    {
+                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
+                        scopeUpdater.UpdateScope(context =>
+                        {
+                            ComposableTest2(i, action, context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                        });
+                    }
                 }
             }
             static class __StoredLambda

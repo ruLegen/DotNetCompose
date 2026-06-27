@@ -13,18 +13,26 @@ namespace DotNetCompose.Runtime
         public const byte Same = 2;
         public const byte Static = 3;
 
+        public const byte FORCE = 1;
+
         private readonly byte _force;
         private readonly Span<byte> _parametersState;
 
         public static ComposableArgumentsState Empty => default;
+        public static ComposableArgumentsState Force => new ComposableArgumentsState(FORCE);
         public ComposableArgumentsState()
         {
             _parametersState = Span<byte>.Empty;
             _force = 0;
         }
-        public ComposableArgumentsState(Span<byte> parameterStates, byte force = 0)
+        public ComposableArgumentsState(Span<byte> parameterStates)
         {
             _parametersState = parameterStates;
+            _force = 0;
+        }
+        private ComposableArgumentsState(byte force)
+        {
+            _parametersState = Span<byte>.Empty;
             _force = force;
         }
 
@@ -39,5 +47,7 @@ namespace DotNetCompose.Runtime
                 return (byte)((res & (byte)(_force - 1)) | _force);
             }
         }
+
+      
     }
 }

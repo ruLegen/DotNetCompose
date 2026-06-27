@@ -58,6 +58,12 @@ namespace DotNetCompose.SourceGenerators
             public const string DifferentField = "Different";
             public const string UncertainField = "Uncertain";
             public const string StaticField = "Static";
+            public const string ForceField = "Force";
+        }
+        public static class ComposeUpdateScope
+        {
+            public const string FullName = "DotNetCompose.Runtime.IComposeUpdateScope";
+            public const string UpdateScopeMethod = "UpdateScope";
         }
         public static class ComposableArgumentsDefaultState
         {

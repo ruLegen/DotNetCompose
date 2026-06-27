@@ -7,7 +7,7 @@ namespace TestNs
         public partial class Builders
         {
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void A(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            public static void A(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
@@ -15,11 +15,19 @@ namespace TestNs
                 }
                 finally
                 {
-                    __ctx?.EndRestartableGroup(-1053874766);
+                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(-1053874766);
+                    if (scopeUpdater != null)
+                    {
+                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
+                        scopeUpdater.UpdateScope(context =>
+                        {
+                            A(context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                        });
+                    }
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void B(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            public static void B(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
@@ -27,11 +35,19 @@ namespace TestNs
                 }
                 finally
                 {
-                    __ctx?.EndRestartableGroup(-650590239);
+                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(-650590239);
+                    if (scopeUpdater != null)
+                    {
+                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
+                        scopeUpdater.UpdateScope(context =>
+                        {
+                            B(context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                        });
+                    }
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            public static void C(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+            public static void C(DotNetCompose.Runtime.IComposeContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
@@ -39,7 +55,15 @@ namespace TestNs
                 }
                 finally
                 {
-                    __ctx?.EndRestartableGroup(2078293116);
+                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(2078293116);
+                    if (scopeUpdater != null)
+                    {
+                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
+                        scopeUpdater.UpdateScope(context =>
+                        {
+                            C(context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                        });
+                    }
                 }
             }
             static class __StoredLambda

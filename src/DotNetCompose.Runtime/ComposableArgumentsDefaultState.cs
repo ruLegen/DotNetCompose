@@ -10,7 +10,6 @@ namespace DotNetCompose.Runtime
 
         public static ComposableArgumentsDefaultState Empty => default;
 
-        private readonly ReadOnlySpan<byte> _state;
 
         public ComposableArgumentsDefaultState()
         {
@@ -22,10 +21,14 @@ namespace DotNetCompose.Runtime
             _state = state;
         }
 
+        private readonly ReadOnlySpan<byte> _state;
+
         public byte this[int index]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _state.Length > index ? _state[index] : (byte)0;
         }
+
+        public byte[] CloneValues() => _state.ToArray();
     }
 }

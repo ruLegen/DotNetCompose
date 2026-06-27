@@ -10,7 +10,7 @@ namespace DotNetCompose.Runtime
         void EndRoot();
 
         void StartRestartableGroup(int groupId);
-        void EndRestartableGroup(int groupId);
+        IComposeUpdateScope? EndRestartableGroup(int groupId);
 
 
         void StartReplaceableGroup(int groupId);

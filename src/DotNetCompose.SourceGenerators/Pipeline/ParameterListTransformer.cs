@@ -1,6 +1,7 @@
 using DotNetCompose.SourceGenerators.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections.Immutable;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
 
 namespace DotNetCompose.SourceGenerators.Pipeline
@@ -13,7 +14,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             var methodParams = method.GetParametersInfos(semanticModel);
             return DefaultSignatureRewriter.ReplaceAllComposableParameters(
                 method, addAttributeToComposableParameters, semanticModel,
-                new MethodGenerationContext(methodParams, false, false));
+                new MethodGenerationContext(string.Empty, ImmutableArray<string>.Empty, methodParams, false, false));
         }
 
         internal static ParameterListSyntax AppendComposableContextrelatedParameters(

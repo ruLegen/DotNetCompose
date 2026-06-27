@@ -4,6 +4,8 @@ using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxEx
 namespace DotNetCompose.SourceGenerators
 {
     internal sealed record MethodGenerationContext(
+        string MethodName,
+        ImmutableArray<string> TypeParameterNames,
         ImmutableArray<MethodParameterInfo> Parameters,
         bool HasDefaultParams,
         bool HasUnstableParam

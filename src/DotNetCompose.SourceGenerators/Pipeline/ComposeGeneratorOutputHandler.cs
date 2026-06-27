@@ -81,7 +81,14 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         Consts.Rewriter.StoredLambdaClassName,
                         Consts.Rewriter.BuildersClassName);
 
+                    string methodName = m.Identifier.ValueText;
+                    var typeParamNames = m.TypeParameterList?.Parameters
+                        .Select(tp => tp.Identifier.ValueText)
+                        .ToImmutableArray() ?? ImmutableArray<string>.Empty;
+
                     MethodGenerationContext methodCtx = new MethodGenerationContext(
+                        methodName,
+                        typeParamNames,
                         methodParams,
                         methodParams.Any(p => p.DefaultProviderType != null),
                         hasUnstable);
