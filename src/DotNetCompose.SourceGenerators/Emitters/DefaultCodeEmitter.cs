@@ -35,6 +35,9 @@ namespace DotNetCompose.SourceGenerators.Emitters
             using IndentedTextWriter indentWriter = new IndentedTextWriter(writer, _indentWhitespace);
             IndentedTextWriter sourceBuilder = new IndentedTextWriter(writer);
 
+            sourceBuilder.AppendLineRaw(ToolInfo.GeneratedFileHeader);
+            sourceBuilder.AppendLine();
+
             foreach (UsingDirectiveSyntax usingDirective in input.Usings)
             {
                 sourceBuilder.AppendLine(usingDirective.WithoutTrivia().ToFullString());

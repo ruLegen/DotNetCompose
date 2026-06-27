@@ -6,6 +6,8 @@
     <LangVersion>10.0</LangVersion>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
+    <Version>1.0.0</Version>
+    <Product>DotNetCompose</Product>
 
   </PropertyGroup>
 

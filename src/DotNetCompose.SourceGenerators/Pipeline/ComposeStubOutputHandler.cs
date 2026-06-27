@@ -43,6 +43,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
             StringBuilder sourceBuilder = new StringBuilder();
 
+            sourceBuilder.AppendLine(Consts.ToolInfo.GeneratedFileHeader);
+
             SyntaxNode root = firstMethod.SyntaxTree.GetRoot();
             IEnumerable<UsingDirectiveSyntax> usings = root.DescendantNodes().OfType<UsingDirectiveSyntax>();
             foreach (UsingDirectiveSyntax usingDirective in usings.Distinct(UsingDerectiveComparerByName.Default))
