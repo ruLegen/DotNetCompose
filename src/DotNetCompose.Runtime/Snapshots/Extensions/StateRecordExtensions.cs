@@ -27,7 +27,7 @@ namespace DotNetCompose.Runtime.Snapshots
                         (T)s.FirstStateRecord,
                         syncSnapshot.Id,
                         syncSnapshot.Invalid)
-                    ?? Snapshot.ReadError<T>();
+                    ?? throw new InvalidOperationException("Readable snapshot record not found");
                 }
             }
         }
@@ -37,7 +37,7 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             snapshot.ReadObserver?.Invoke(state);
             return Snapshot.ReadableSilent(record, snapshot.Id, snapshot.Invalid)
-                ?? Snapshot.ReadError<T>();
+                ?? throw new InvalidOperationException("Readable snapshot record not found");
         }
 
         internal static StateRecord FindYoungestOr(this StateRecord record,

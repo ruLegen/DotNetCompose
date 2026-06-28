@@ -33,7 +33,7 @@ namespace DotNetCompose.Runtime.Tests
         public void Enter_TakesSnapshot_InsideCurrentIsDifferent()
         {
             var state = new SnapshotMutableState<int>(0,
-                StructuralEqualityPolicy<int>.Default);
+                StructuralPolicy<int>.Default);
 
             Snapshot.GlobalSnapshot.Enter(() =>
             {
@@ -46,7 +46,7 @@ namespace DotNetCompose.Runtime.Tests
         public void TakeMutableSnapshot_ModifyAndApply_ChangesVisibleAfterNotification()
         {
             var state = new SnapshotMutableState<int>(10,
-                NeverEqualPolicy<int>.Instance);
+                NeverEqualPolicy<int>.Default);
             var readValue = 0;
 
             using var ms = Snapshot.TakeMutableSnapshot();
@@ -63,7 +63,7 @@ namespace DotNetCompose.Runtime.Tests
         public void ProvideReadObserver_ReceivesReadCallback()
         {
             var state = new SnapshotMutableState<int>(7,
-                StructuralEqualityPolicy<int>.Default);
+                StructuralPolicy<int>.Default);
             var readObjects = new List<object>();
 
             Snapshot.Observe(
@@ -79,7 +79,7 @@ namespace DotNetCompose.Runtime.Tests
         public void ProvideWriteObserver_ReceivesWriteCallback()
         {
             var state = new SnapshotMutableState<int>(0,
-                NeverEqualPolicy<int>.Instance);
+                NeverEqualPolicy<int>.Default);
             var writeObjects = new List<object>();
 
             Snapshot.Observe(
@@ -95,7 +95,7 @@ namespace DotNetCompose.Runtime.Tests
         public void WithoutReadObservation_SuppressesReadObserver()
         {
             var state = new SnapshotMutableState<int>(3,
-                StructuralEqualityPolicy<int>.Default);
+                StructuralPolicy<int>.Default);
             var readObserved = false;
 
             Snapshot.Observe(
@@ -117,7 +117,7 @@ namespace DotNetCompose.Runtime.Tests
         public void RegisterApplyObserver_FiresOnGlobalAdvance()
         {
             var state = new SnapshotMutableState<int>(1,
-                NeverEqualPolicy<int>.Instance);
+                NeverEqualPolicy<int>.Default);
             var observedStates = new List<HashSet<IStateObject>>();
 
             using var handle = Snapshot.RegisterApplyObserver(
@@ -134,7 +134,7 @@ namespace DotNetCompose.Runtime.Tests
         public void RegisterApplyObserver_Dispose_Unregisters()
         {
             var state = new SnapshotMutableState<int>(5,
-                NeverEqualPolicy<int>.Instance);
+                NeverEqualPolicy<int>.Default);
             var callCount = 0;
 
             var handle = Snapshot.RegisterApplyObserver(

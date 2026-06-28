@@ -6,7 +6,7 @@ namespace DotNetCompose.Runtime.Snapshots
     {
         public static SnapshotMutableState<T> Create<T>(T value, ISnapshotMutationPolicy<T>? policy)
         {
-            policy ??= StructuralEqualityPolicy<T>.Default;
+            policy ??= (typeof(T).IsValueType ? StructuralPolicy<T>.Default : ReferentialPolicy<T>.Default);
             return new SnapshotMutableState<T>(value, policy);
         }
     }

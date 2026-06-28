@@ -107,12 +107,6 @@ namespace DotNetCompose.Runtime.Tests
             Assert.Equal(3, ids.Count);
         }
 
-        [Fact]
-        public void Clone_ReturnsSame()
-        {
-            var a = SnapshotIdSet.Empty.Set(42);
-            var b = a.Clone();
-            Assert.Same(a, b);
-        }
+
     }
 }

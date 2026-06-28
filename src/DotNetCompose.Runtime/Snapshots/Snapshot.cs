@@ -65,19 +65,19 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public T Enter<T>(Func<T> block)
         {
-            var previous = MakeCurrent();
+            var previous = Push();
             try { return block(); }
-            finally { RestoreCurrent(previous); }
+            finally { Pop(previous); }
         }
 
         public void Enter(Action block)
         {
-            var previous = MakeCurrent();
+            var previous = Push();
             try { block(); }
-            finally { RestoreCurrent(previous); }
+            finally { Pop(previous); }
         }
 
-        internal virtual Snapshot? MakeCurrent()
+        internal virtual Snapshot? Push()
         {
             var stack = _threadSnapshot.Value;
             if (stack == null)
@@ -90,7 +90,7 @@ namespace DotNetCompose.Runtime.Snapshots
             return previous;
         }
 
-        internal virtual void RestoreCurrent(Snapshot? previous)
+        internal virtual void Pop(Snapshot? previous)
         {
             var stack = _threadSnapshot.Value;
             if (stack != null && stack.Count > 0)
@@ -163,7 +163,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
                 var globalId = NextSnapshotId++;
                 OpenSnapshots = OpenSnapshots.Clear(previousGlobal.Id);
-                GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots.Clone(), null, null);
+                GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots, null, null);
                 previousGlobal.Dispose();
                 OpenSnapshots = OpenSnapshots.Set(globalId);
             }
@@ -414,7 +414,7 @@ namespace DotNetCompose.Runtime.Snapshots
             {
                 var globalId = NextSnapshotId++;
                 OpenSnapshots = OpenSnapshots.Clear(previousGlobal.Id);
-                GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots.Clone(), null, null);
+                GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots, null, null);
                 previousGlobal.Dispose();
                 OpenSnapshots = OpenSnapshots.Set(globalId);
             }
@@ -451,10 +451,7 @@ namespace DotNetCompose.Runtime.Snapshots
             return null;
         }
 
-        internal static T ReadError<T>()
-        {
-            throw new InvalidOperationException("Readable snapshot record not found");
-        }
+
 
         internal static T ReadCurrent<T>(T record, Snapshot snapshot)
             where T : StateRecord
@@ -474,7 +471,7 @@ namespace DotNetCompose.Runtime.Snapshots
             return result ?? record;
         }
 
-        internal static StateRecord? UsedLocked(IStateObject state)
+        internal static StateRecord? TryFindReusableRecord(IStateObject state)
         {
             var current = state.FirstStateRecord;
             while (current != null)
@@ -509,7 +506,7 @@ namespace DotNetCompose.Runtime.Snapshots
             else
             {
                 nonObservable = previous.TakeNestedSnapshot(null);
-                nonObservable.MakeCurrent();
+                nonObservable.Push();
             }
         }
 
@@ -528,7 +525,7 @@ namespace DotNetCompose.Runtime.Snapshots
             }
             else
             {
-                nonObservable.RestoreCurrent(previous);
+                nonObservable.Pop(previous);
                 nonObservable.Dispose();
             }
         }

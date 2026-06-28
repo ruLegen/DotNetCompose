@@ -20,8 +20,8 @@ namespace DotNetCompose.Playground
             }
 
             Console.WriteLine("Hello, World!");
-            var state = new SnapshotMutableState<int>(0, StructuralEqualityPolicy<int>.Default);
-            var state2 = new SnapshotMutableState<int>(0, StructuralEqualityPolicy<int>.Default);
+            var state = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
+            var state2 = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
             var s = Snapshot.TakeMutableSnapshot();
 
             state.Value = 1;

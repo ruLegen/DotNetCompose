@@ -6,15 +6,19 @@ namespace DotNetCompose.Runtime.Composer
 {
     internal class RecomposeScopeImpl : IComposeUpdateScope
     {
-        private const int UsedFlag = 0x001;
-        private const int DefaultsInScopeFlag = 0x002;
-        private const int DefaultsInvalidFlag = 0x004;
-        private const int RequiresRecomposeFlag = 0x008;
-        private const int SkippedFlag = 0x010;
-        private const int RereadingFlag = 0x020;
-        private const int ForcedRecomposeFlag = 0x040;
+        [Flags]
+        private enum ScopeFlags
+        {
+            Used = 1,
+            DefaultsInScope = 2,
+            DefaultsInvalid = 4,
+            RequiresRecompose = 8,
+            Skipped = 16,
+            Rereading = 32,
+            ForcedRecompose = 64,
+        }
 
-        private int _flags;
+        private ScopeFlags _flags;
         private int _currentToken;
         private RecomposeScopeOwner? _owner;
         private Action<IComposerContext>? _block;
@@ -36,38 +40,38 @@ namespace DotNetCompose.Runtime.Composer
 
         public bool Used
         {
-            get => GetFlag(UsedFlag);
-            set => SetFlag(UsedFlag, value);
+            get => _flags.HasFlag(ScopeFlags.Used);
+            set => SetFlag(ScopeFlags.Used, value);
         }
 
         public bool DefaultsInScope
         {
-            get => GetFlag(DefaultsInScopeFlag);
-            set => SetFlag(DefaultsInScopeFlag, value);
+            get => _flags.HasFlag(ScopeFlags.DefaultsInScope);
+            set => SetFlag(ScopeFlags.DefaultsInScope, value);
         }
 
         public bool DefaultsInvalid
         {
-            get => GetFlag(DefaultsInvalidFlag);
-            set => SetFlag(DefaultsInvalidFlag, value);
+            get => _flags.HasFlag(ScopeFlags.DefaultsInvalid);
+            set => SetFlag(ScopeFlags.DefaultsInvalid, value);
         }
 
         public bool RequiresRecompose
         {
-            get => GetFlag(RequiresRecomposeFlag);
-            set => SetFlag(RequiresRecomposeFlag, value);
+            get => _flags.HasFlag(ScopeFlags.RequiresRecompose);
+            set => SetFlag(ScopeFlags.RequiresRecompose, value);
         }
 
         public bool Skipped
         {
-            get => GetFlag(SkippedFlag);
-            private set => SetFlag(SkippedFlag, value);
+            get => _flags.HasFlag(ScopeFlags.Skipped);
+            private set => SetFlag(ScopeFlags.Skipped, value);
         }
 
         public bool ForcedRecompose
         {
-            get => GetFlag(ForcedRecomposeFlag);
-            set => SetFlag(ForcedRecomposeFlag, value);
+            get => _flags.HasFlag(ScopeFlags.ForcedRecompose);
+            set => SetFlag(ScopeFlags.ForcedRecompose, value);
         }
 
         public bool CanRecompose => _block != null;
@@ -146,9 +150,7 @@ namespace DotNetCompose.Runtime.Composer
             _block = updater;
         }
 
-        private bool GetFlag(int flag) => (_flags & flag) != 0;
-
-        private void SetFlag(int flag, bool value)
+        private void SetFlag(ScopeFlags flag, bool value)
         {
             if (value)
                 _flags |= flag;

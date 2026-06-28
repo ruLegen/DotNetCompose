@@ -12,18 +12,18 @@ namespace DotNetCompose.Runtime.Snapshots
             get => Readable().Value;
             set
             {
-                WithCurrent(record =>
+                var snapshot = Snapshot.Current;
+                var record = Snapshot.ReadCurrent(_next, snapshot);
+                if (!Policy.Equivalent(record.Value, value))
                 {
-                    if (!Policy.Equivalent(record.Value, value))
+                    using (Snapshot.Lock())
                     {
-                        Overwritable(record, rec =>
-                        {
-                            rec.Value = value;
-                            return rec;
-                        });
+                        snapshot = Snapshot.Current;
+                        record = OverwritableRecord(snapshot, record);
+                        record.Value = value;
                     }
-                    return record;
-                });
+                    Snapshot.NotifyWrite(snapshot, this);
+                }
             }
         }
 
@@ -64,7 +64,9 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public override string ToString()
         {
-            return WithCurrent(rec => $"MutableState(value={rec.Value})#{GetHashCode()}");
+            var snapshot = Snapshot.Current;
+            var record = Snapshot.ReadCurrent(_next, snapshot);
+            return $"MutableState(value={record.Value})#{GetHashCode()}";
         }
 
         private StateStateRecord Readable()
@@ -81,29 +83,8 @@ namespace DotNetCompose.Runtime.Snapshots
                 var lockedResult = Snapshot.ReadableSilent<StateStateRecord>(
                     _next, syncSnapshot.Id, syncSnapshot.Invalid);
                 if (lockedResult != null) return lockedResult;
-                return Snapshot.ReadError<StateStateRecord>();
+                throw new InvalidOperationException("Readable snapshot record not found");
             }
-        }
-
-        private R WithCurrent<R>(Func<StateStateRecord, R> block)
-        {
-            var snapshot = Snapshot.Current;
-            var record = Snapshot.ReadCurrent(_next, snapshot);
-            return block(record);
-        }
-
-        private R Overwritable<R>(StateStateRecord candidate, Func<StateStateRecord, R> block)
-        {
-            Snapshot snapshot;
-            R result;
-            using (Snapshot.Lock())
-            {
-                snapshot = Snapshot.Current;
-                var rec = OverwritableRecord(snapshot, candidate);
-                result = block(rec);
-            }
-            Snapshot.NotifyWrite(snapshot, this);
-            return result;
         }
 
         private StateStateRecord OverwritableRecord(Snapshot snapshot, StateStateRecord candidate)
@@ -124,7 +105,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
         private StateStateRecord NewOverwritableRecordLocked()
         {
-            var used = Snapshot.UsedLocked(this);
+            var used = Snapshot.TryFindReusableRecord(this);
             if (used != null)
             {
                 _next.SnapshotId = long.MaxValue;

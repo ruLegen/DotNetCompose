@@ -94,7 +94,7 @@ namespace DotNetCompose.Runtime
         public static void InsertMovableContent<TParam>(MovableContent<TParam> content, TParam param)
             => throw new NotImplementedException("Use composable version");
 
-        public static SnapshotMutableState<T> mutableStateOf<T>(T value, ISnapshotMutationPolicy<T>? policy = null)
+        public static SnapshotMutableState<T> CreateMutableState<T>(T value, ISnapshotMutationPolicy<T>? policy = null)
         {
             return Snapshots.SnapshotMutableStateFactory.Create(value, policy);
         }

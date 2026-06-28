@@ -8,14 +8,14 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void Constructor_SetsInitialValue()
         {
-            var state = new SnapshotMutableState<int>(42, StructuralEqualityPolicy<int>.Default);
+            var state = new SnapshotMutableState<int>(42, StructuralPolicy<int>.Default);
             Assert.Equal(42, state.Value);
         }
 
         [Fact]
         public void SetValue_GetValue_ReturnsUpdated()
         {
-            var state = new SnapshotMutableState<string>("hello", StructuralEqualityPolicy<string>.Default);
+            var state = new SnapshotMutableState<string>("hello", StructuralPolicy<string>.Default);
             using var mutable = Snapshot.TakeMutableSnapshot();
             mutable.Enter(() => state.Value = "world");
             mutable.Apply();
@@ -25,7 +25,7 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void SetValue_SameValue_StructuralPolicy_DoesNotCreateNewRecord()
         {
-            var state = new SnapshotMutableState<int>(5, StructuralEqualityPolicy<int>.Default);
+            var state = new SnapshotMutableState<int>(5, StructuralPolicy<int>.Default);
             var recordBefore = state.FirstStateRecord;
 
             state.Value = 5;
@@ -36,7 +36,7 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void SetValue_NeverEqualPolicy_AlwaysCreatesNewRecord()
         {
-            var state = new SnapshotMutableState<int>(0, NeverEqualPolicy<int>.Instance);
+            var state = new SnapshotMutableState<int>(0, NeverEqualPolicy<int>.Default);
             var recordBefore = state.FirstStateRecord;
 
             using var mutable = Snapshot.TakeMutableSnapshot();
@@ -50,7 +50,7 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void ReadObserver_FiresOnGet()
         {
-            var state = new SnapshotMutableState<int>(10, StructuralEqualityPolicy<int>.Default);
+            var state = new SnapshotMutableState<int>(10, StructuralPolicy<int>.Default);
             var readObjects = new List<object>();
 
             Snapshot.Observe(
@@ -65,7 +65,7 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void WriteObserver_FiresOnSet()
         {
-            var state = new SnapshotMutableState<int>(1, NeverEqualPolicy<int>.Instance);
+            var state = new SnapshotMutableState<int>(1, NeverEqualPolicy<int>.Default);
             var writeObjects = new List<object>();
 
             Snapshot.Observe(
@@ -80,7 +80,7 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void MultipleWrites_CreatesRecordChain()
         {
-            var state = new SnapshotMutableState<int>(0, NeverEqualPolicy<int>.Instance);
+            var state = new SnapshotMutableState<int>(0, NeverEqualPolicy<int>.Default);
 
             using (var m1 = Snapshot.TakeMutableSnapshot())
             {

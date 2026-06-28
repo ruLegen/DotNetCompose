@@ -1,24 +1,18 @@
+using System;
+
 namespace DotNetCompose.Runtime.Snapshots
 {
-    public abstract class SnapshotApplyResult
+    public readonly record struct SnapshotApplyResult 
     {
-        public static readonly SnapshotApplyResult Success = new SuccessResult();
-        public static SnapshotApplyResult Failure(string message) => new FailureResult(message);
+        public static SnapshotApplyResult Success => new(true, null);
+        public static SnapshotApplyResult Failure(string message) => new(false, message);
 
-        public abstract bool Succeeded { get; }
-
-        private SnapshotApplyResult() { }
-
-        public sealed class SuccessResult : SnapshotApplyResult
+        private SnapshotApplyResult(bool succeeded, string? message)
         {
-            public override bool Succeeded => true;
+            Succeeded = succeeded;
+            Message = message;
         }
-
-        public sealed class FailureResult : SnapshotApplyResult
-        {
-            public string Message { get; }
-            internal FailureResult(string message) { Message = message; }
-            public override bool Succeeded => false;
-        }
+        public bool Succeeded { get; }
+        public string? Message { get; }
     }
 }

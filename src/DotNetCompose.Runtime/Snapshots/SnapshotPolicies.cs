@@ -2,9 +2,9 @@ using System.Collections.Generic;
 
 namespace DotNetCompose.Runtime.Snapshots
 {
-    public class StructuralEqualityPolicy<T> : ISnapshotMutationPolicy<T>
+    public class StructuralPolicy<T> : ISnapshotMutationPolicy<T>
     {
-        public static readonly StructuralEqualityPolicy<T> Default = new();
+        public static readonly StructuralPolicy<T> Default = new();
 
         public bool Equivalent(T a, T b)
         {
@@ -16,10 +16,9 @@ namespace DotNetCompose.Runtime.Snapshots
         public T? Merge(T previous, T current, T applied) => default;
     }
 
-    public class ReferentialEqualityPolicy<T> : ISnapshotMutationPolicy<T>
-        where T : class
+    public class ReferentialPolicy<T> : ISnapshotMutationPolicy<T>
     {
-        public static readonly ReferentialEqualityPolicy<T> Instance = new();
+        public static readonly ReferentialPolicy<T> Default = new();
 
         public bool Equivalent(T a, T b) => ReferenceEquals(a, b);
 
@@ -28,7 +27,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
     public class NeverEqualPolicy<T> : ISnapshotMutationPolicy<T>
     {
-        public static readonly NeverEqualPolicy<T> Instance = new();
+        public static readonly NeverEqualPolicy<T> Default = new();
 
         public bool Equivalent(T a, T b) => false;
 

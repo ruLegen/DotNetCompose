@@ -6,14 +6,13 @@ namespace DotNetCompose.Runtime.Snapshots
     {
         public const long Invalid = 0;
         public const long Initial = 1;
-        public const long Preexisting = 1;
-        public const long Size = 128L;
+        private const long AlignmentSize = 128L;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static long AlignToLowerBound(long id)
         {
-            var aligned = (id / Size) * Size;
-            return aligned < 0 ? long.MaxValue - Size + 1 : aligned;
+            var aligned = (id / AlignmentSize) * AlignmentSize;
+            return aligned < 0 ? long.MaxValue - AlignmentSize + 1 : aligned;
         }
     }
 }

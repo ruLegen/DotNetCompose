@@ -61,7 +61,6 @@ namespace DotNetCompose.Runtime.Snapshots
 
             var observers = new List<Action<HashSet<IStateObject>, Snapshot>>();
             HashSet<IStateObject>? globalModified = null;
-            bool failed = false;
             SnapshotApplyResult? failureResult = null;
 
             using (Snapshot.Lock())
@@ -86,7 +85,6 @@ namespace DotNetCompose.Runtime.Snapshots
                         OpenSnapshots.Clear(GlobalSnapshot.Id));
                     if (!result.Succeeded)
                     {
-                        failed = true;
                         failureResult = result;
                     }
                     else
@@ -102,7 +100,8 @@ namespace DotNetCompose.Runtime.Snapshots
                 }
             }
 
-            if (failed) return failureResult!;
+            if (failureResult.HasValue) 
+                return failureResult.Value;
 
             Applied = true;
 

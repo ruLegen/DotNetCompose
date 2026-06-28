@@ -203,8 +203,6 @@ namespace DotNetCompose.Runtime.Snapshots
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public SnapshotIdSet Clone() => this;
-
         public override string ToString() =>
             $"SnapshotIdSet([{string.Join(",", this)}])";
 
