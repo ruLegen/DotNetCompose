@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using DotNetCompose.Runtime.Composer;
 
 namespace DotNetCompose.Runtime
 {
     public interface IComposeUpdateScope
     {
-        void UpdateScope(Action<IComposeContext> scopeUpdater);
+        void UpdateScope(Action<IComposerContext> scopeUpdater);
     }
 }

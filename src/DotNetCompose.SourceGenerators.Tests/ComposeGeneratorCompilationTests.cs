@@ -28,7 +28,7 @@ public class ComposeGeneratorCompilationTests
         var result = GeneratorTestHelper.RunSingleGenerator(source);
 
         Assert.Contains("__ctx", result);
-        Assert.Contains("IComposeContext", result);
+        Assert.Contains("IComposerContext", result);
     }
 
     [Fact]
@@ -129,6 +129,6 @@ public class ComposeGeneratorCompilationTests
         var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
         var result = GeneratorTestHelper.RunSingleGenerator(source);
         Assert.Contains("__ctx", result);
-        Assert.Contains("IComposeContext", result);
+        Assert.Contains("IComposerContext", result);
     }
 }

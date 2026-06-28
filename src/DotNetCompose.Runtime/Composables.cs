@@ -2,6 +2,11 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using DotNetCompose.Runtime.Composer;
+using DotNetCompose.Runtime.Effects;
+using DotNetCompose.Runtime.Snapshots;
 
 namespace DotNetCompose.Runtime
 {
@@ -10,28 +15,88 @@ namespace DotNetCompose.Runtime
         public partial class Builders
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static IComposeContext CurrentContext(IComposeContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default) => context;
+            public static IComposerContext CurrentContext(IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default) => context;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static T Remember<T>(object key, Func<T> creator, IComposeContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
+            public static T Remember<T>(object key, Func<T> creator, IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
             {
-                return creator.Invoke();
+                var invalid = context.Changed(key);
+                var slot = context.RememberedValue();
+                if (ReferenceEquals(slot, ComposerStatics.Empty) || invalid)
+                {
+                    var value = creator();
+                    context.UpdateRememberedValue(value);
+                    return value;
+                }
+                return (T)slot!;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void ComposeNode<T, K>(Func<T> factory, Action<T> updater, IComposeContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
+            public static void ComposeNode<T, K>(Func<T> factory, Action<T> updater, IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
             {
+            }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void DisposableEffect(object? key1, Func<DisposableEffectScope, DisposableEffectResult> effect,
+                IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
+            {
+                var invalid = context.Changed(key1);
+                var slot = context.RememberedValue();
+                if (ReferenceEquals(slot, ComposerStatics.Empty) || invalid)
+                {
+                    var impl = new DisposableEffectImpl(effect);
+                    context.UpdateRememberedValue(impl);
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void LaunchedEffect(object? key1, Func<CancellationToken, ValueTask> block,
+                IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
+            {
+                var invalid = context.Changed(key1);
+                var slot = context.RememberedValue();
+                if (ReferenceEquals(slot, ComposerStatics.Empty) || invalid)
+                {
+                    var job = new LaunchedEffectJob(block);
+                    context.UpdateRememberedValue(job);
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void InsertMovableContent<TParam>(MovableContent<TParam> content, TParam param,
+                IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
+            {
+                if (context is GapComposer composer)
+                {
+                    composer.InsertMovableContent(content, param);
+                }
             }
         }
 
         [Composable, ComposableIgnore]
-        public static IComposeContext? CurrentContext() => throw new NotImplementedException("Internal usage only");
+        public static IComposerContext? CurrentContext() => throw new NotImplementedException("Internal usage only");
 
         [Composable, ComposableIgnore]
         public static void ComposeNode<T, K>(Func<T> factory, Action<T> updater) => throw new NotImplementedException("Use composable version");
 
         [Composable, ComposableIgnore]
         public static T Remember<T>(object key, Func<T> creator) => throw new NotImplementedException("Use composable version");
+
+        [Composable, ComposableIgnore]
+        public static void DisposableEffect(object? key1, Func<DisposableEffectScope, DisposableEffectResult> effect)
+            => throw new NotImplementedException("Use composable version");
+
+        [Composable, ComposableIgnore]
+        public static void LaunchedEffect(object? key1, Func<CancellationToken, ValueTask> block)
+            => throw new NotImplementedException("Use composable version");
+
+        [Composable, ComposableIgnore]
+        public static void InsertMovableContent<TParam>(MovableContent<TParam> content, TParam param)
+            => throw new NotImplementedException("Use composable version");
+
+        public static SnapshotMutableState<T> mutableStateOf<T>(T value, ISnapshotMutationPolicy<T>? policy = null)
+        {
+            return Snapshots.SnapshotMutableStateFactory.Create(value, policy);
+        }
     }
 }

@@ -6,4 +6,8 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotNetCompose.Runtime.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -1,28 +1,23 @@
 ﻿using DotNetCompose.Runtime;
+using DotNetCompose.Runtime.Composer;
+using DotNetCompose.Runtime.CompositionLocal;
+using DotNetCompose.Runtime.Snapshots;
 using System.Diagnostics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 namespace DotNetCompose.Playground
 {
     internal class Program
     {
         static void Main(string[] args)
         {
-            ComposeContext context1 = new ComposeContext();
+            var composer = new GapComposer();
+
 
             for (int i = 0; i < 2; i++)
             {
-                //Composables.CurrentContext?.StartGroup(3);
-                using (var r = ComposeScope.CreateScope(context1))
+                composer.ComposeContent((ctx, _, _) =>
                 {
-                    //TestClass.Builders.EmptyComposable(0, context1, 3);
-                    //TestClass23.Builders.DD2
-                    //TestClass.Builders.dd(context1, 0);
-                }
-                context1.Tree();
+                });
             }
-
-
-
         }
 
         public static void Test(Span<int> changed)
@@ -39,7 +34,7 @@ namespace DotNetCompose.Playground
     }
 
 
-    class ComposeContext : IComposeContext
+    class ComposeContext : IComposerContext
     {
         private const int ROOT_KEY = -1000;
 
@@ -68,12 +63,12 @@ namespace DotNetCompose.Playground
             EndGroup(groupId);
         }
 
-        public void StartMoveableGroup(int groupId)
+        public void StartMovableGroup(int groupId)
         {
             Start(groupId, false);
         }
 
-        public void EndMoveableGroup(int groupId)
+        public void EndMovableGroup(int groupId)
         {
             EndGroup(groupId);
         }
@@ -133,6 +128,53 @@ namespace DotNetCompose.Playground
         public void SkipToGroupEnd()
         {
             _skipped = true;
+        }
+
+        public void StartGroup(int key) => Start(key);
+        public void EndGroup() => GroupStackIndecies.Pop();
+
+        public object? RememberedValue()
+        {
+            if (!GroupStackIndecies.TryPeek(out int index))
+                return null;
+            var group = Groups[index];
+            return group.LastValues.TryGetValue("__remembered", out var v) ? v : null;
+        }
+
+        public void UpdateRememberedValue(object? value)
+        {
+            if (GroupStackIndecies.TryPeek(out int index))
+                Groups[index].LastValues["__remembered"] = value;
+        }
+
+        public void CreateNode<T>(Func<T> factory) where T : class { }
+        public void ApplyNode<T>(Action<T> block, object? value) { }
+
+        public void ComposeContent(ComposableAction content)
+        {
+            StartRoot();
+            try { content(this, default, default); }
+            finally { EndRoot(); }
+        }
+
+        public bool Inserting => false;
+        public bool IsComposing { get; private set; }
+
+        public void Dispose() { }
+
+        public void StartProviders(ProvidedValue[] values)
+        {
+            // Hand-written compose context - no CompositionLocal support
+        }
+
+        public void EndProviders()
+        {
+            // Hand-written compose context - no CompositionLocal support
+        }
+
+        public T Consume<T>(CompositionLocal<T> key)
+        {
+            return default!;
         }
 
         public void Tree()

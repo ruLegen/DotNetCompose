@@ -38,15 +38,15 @@ namespace DotNetCompose.SourceGenerators
 
         public static class ComposeContext
         {
-            public const string FullName  = "DotNetCompose.Runtime.IComposeContext";
+            public const string FullName  = "DotNetCompose.Runtime.Composer.IComposerContext";
             public const string StartRestartableGroupMethod  = "StartRestartableGroup";
             public const string EndRestartableGroupMethod  = "EndRestartableGroup";
 
             public const string StartReplaceableGroupMethod  = "StartReplaceableGroup";
             public const string EndReplaceableGroupMethod  = "EndReplaceableGroup";
 
-            public const string StartMovableGroupMethod  = "StartRestartableGroup";
-            public const string EndMovableGroupMethod  = "StartRestartableGroup";
+            public const string StartMovableGroupMethod  = "StartMovableGroup";
+            public const string EndMovableGroupMethod  = "EndMovableGroup";
 
             public const string ChangedMethod = "Changed";
             public const string SkippingProperty = "Skipping";

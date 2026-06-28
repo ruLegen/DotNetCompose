@@ -17,6 +17,7 @@ namespace DotNetCompose.SourceGenerators
     {
         private static readonly IComposePipeline _pipeline = new ComposePipelineBuilder()
             .SetStrategies(StrategyContainer.Default) 
+            .AddMethodCallHandler<Handlers.MovableContentInvokeHandler>()
             .AddMethodCallHandler<Handlers.ComposableMethodCallHandler>()
             .AddMethodCallHandler<Handlers.DelegateMethodCallHandler>()
             //.AddWellKnownHandler<Handlers.WellKnown.CurrentContextHandler>()

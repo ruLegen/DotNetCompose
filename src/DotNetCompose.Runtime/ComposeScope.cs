@@ -2,17 +2,18 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using DotNetCompose.Runtime.Composer;
 
 namespace DotNetCompose.Runtime
 {
     // ComposeScope.cs
     public static class ComposeScope
     {
-        private static readonly AsyncLocal<IComposeContext?> _currentContext = new AsyncLocal<IComposeContext?>();
+        private static readonly AsyncLocal<IComposerContext?> _currentContext = new AsyncLocal<IComposerContext?>();
 
-        public static IComposeContext? GetCurrentContext() => _currentContext.Value;
+        public static IComposerContext? GetCurrentContext() => _currentContext.Value;
 
-        //public static IComposeContext GetCurrentOrCreate()
+        //public static IComposerContext GetCurrentOrCreate()
         //{
         //    if (_currentContext.Value == null)
         //    {
@@ -21,7 +22,7 @@ namespace DotNetCompose.Runtime
         //    return _currentContext.Value;
         //}
 
-        public static IDisposable CreateScope(IComposeContext newContext)
+        public static IDisposable CreateScope(IComposerContext newContext)
         {
             var previous = _currentContext.Value;
             _currentContext.Value = newContext;

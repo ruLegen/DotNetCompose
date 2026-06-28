@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using DotNetCompose.Runtime.Composer;
 
 namespace DotNetCompose.Runtime
 {
     public static class ComposeHelpers
     {
-        private static Dictionary<IComposeContext, Dictionary<int, ComposableLambdaWrapper>> _cache 
-            = new Dictionary<IComposeContext, Dictionary<int, ComposableLambdaWrapper>>();
-        public static ComposableLambdaWrapper GetLambda(IComposeContext ctx, int key, Func<Delegate> factory)
+        private static Dictionary<IComposerContext, Dictionary<int, ComposableLambdaWrapper>> _cache 
+            = new Dictionary<IComposerContext, Dictionary<int, ComposableLambdaWrapper>>();
+        public static ComposableLambdaWrapper GetLambda(IComposerContext ctx, int key, Func<Delegate> factory)
         {
             if (!_cache.TryGetValue(ctx, out var labmdaWrapperCaches))
             {

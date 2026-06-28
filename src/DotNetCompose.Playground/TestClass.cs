@@ -1,4 +1,5 @@
 ﻿using DotNetCompose.Runtime;
+using DotNetCompose.Runtime.Composer;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -15,12 +16,12 @@ namespace DotNetCompose.Playground
     {
         public partial class Builders
         {
-            public static void IgnoredComposable(IComposeContext _ctx, ComposableArgumentsState changed = default,ComposableArgumentsDefaultState __defaultParamState = default)
+            public static void IgnoredComposable(IComposerContext _ctx, ComposableArgumentsState changed = default,ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 Console.WriteLine("Print");
             }
 
-            public static void IgnoredComposable2(IComposeContext _ctx, ComposableArgumentsState changed = default,ComposableArgumentsDefaultState __defaultParamState = default)
+            public static void IgnoredComposable2(IComposerContext _ctx, ComposableArgumentsState changed = default,ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 Console.WriteLine("Print2");
             }
