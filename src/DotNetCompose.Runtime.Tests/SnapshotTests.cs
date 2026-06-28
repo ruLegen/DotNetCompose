@@ -33,7 +33,7 @@ namespace DotNetCompose.Runtime.Tests
         public void Enter_TakesSnapshot_InsideCurrentIsDifferent()
         {
             var state = new SnapshotMutableState<int>(0,
-                StructuralEqualityPolicy<int>.Instance);
+                StructuralEqualityPolicy<int>.Default);
 
             Snapshot.GlobalSnapshot.Enter(() =>
             {
@@ -63,7 +63,7 @@ namespace DotNetCompose.Runtime.Tests
         public void ProvideReadObserver_ReceivesReadCallback()
         {
             var state = new SnapshotMutableState<int>(7,
-                StructuralEqualityPolicy<int>.Instance);
+                StructuralEqualityPolicy<int>.Default);
             var readObjects = new List<object>();
 
             Snapshot.Observe(
@@ -95,7 +95,7 @@ namespace DotNetCompose.Runtime.Tests
         public void WithoutReadObservation_SuppressesReadObserver()
         {
             var state = new SnapshotMutableState<int>(3,
-                StructuralEqualityPolicy<int>.Instance);
+                StructuralEqualityPolicy<int>.Default);
             var readObserved = false;
 
             Snapshot.Observe(

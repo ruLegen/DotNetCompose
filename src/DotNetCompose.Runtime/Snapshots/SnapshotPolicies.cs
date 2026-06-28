@@ -4,7 +4,7 @@ namespace DotNetCompose.Runtime.Snapshots
 {
     public class StructuralEqualityPolicy<T> : ISnapshotMutationPolicy<T>
     {
-        public static readonly StructuralEqualityPolicy<T> Instance = new();
+        public static readonly StructuralEqualityPolicy<T> Default = new();
 
         public bool Equivalent(T a, T b)
         {

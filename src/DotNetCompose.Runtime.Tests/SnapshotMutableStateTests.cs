@@ -8,14 +8,14 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void Constructor_SetsInitialValue()
         {
-            var state = new SnapshotMutableState<int>(42, StructuralEqualityPolicy<int>.Instance);
+            var state = new SnapshotMutableState<int>(42, StructuralEqualityPolicy<int>.Default);
             Assert.Equal(42, state.Value);
         }
 
         [Fact]
         public void SetValue_GetValue_ReturnsUpdated()
         {
-            var state = new SnapshotMutableState<string>("hello", StructuralEqualityPolicy<string>.Instance);
+            var state = new SnapshotMutableState<string>("hello", StructuralEqualityPolicy<string>.Default);
             using var mutable = Snapshot.TakeMutableSnapshot();
             mutable.Enter(() => state.Value = "world");
             mutable.Apply();
@@ -25,7 +25,7 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void SetValue_SameValue_StructuralPolicy_DoesNotCreateNewRecord()
         {
-            var state = new SnapshotMutableState<int>(5, StructuralEqualityPolicy<int>.Instance);
+            var state = new SnapshotMutableState<int>(5, StructuralEqualityPolicy<int>.Default);
             var recordBefore = state.FirstStateRecord;
 
             state.Value = 5;
@@ -50,7 +50,7 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void ReadObserver_FiresOnGet()
         {
-            var state = new SnapshotMutableState<int>(10, StructuralEqualityPolicy<int>.Instance);
+            var state = new SnapshotMutableState<int>(10, StructuralEqualityPolicy<int>.Default);
             var readObjects = new List<object>();
 
             Snapshot.Observe(

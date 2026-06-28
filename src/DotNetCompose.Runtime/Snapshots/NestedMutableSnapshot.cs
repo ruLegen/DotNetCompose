@@ -37,6 +37,8 @@ namespace DotNetCompose.Runtime.Snapshots
                 if (result.Succeeded)
                 {
                     CloseLocked();
+                    _parent.Invalid = _parent.Invalid.Clear(Id).AndNot(PreviousIds);
+                    _parent.RecordPrevious(Id);
                     foreach (var state in modified)
                         _parent.RecordModified(state);
                 }

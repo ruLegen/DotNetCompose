@@ -18,7 +18,29 @@ namespace DotNetCompose.Playground
                 {
                 });
             }
+
+            Console.WriteLine("Hello, World!");
+            var state = new SnapshotMutableState<int>(0, StructuralEqualityPolicy<int>.Default);
+            var s = Snapshot.TakeMutableSnapshot();
+
+            state.Value = 1;
+            PrintState("Befor snap", state);
+            s.Enter(() =>
+            {
+                state.Value = 2;
+                PrintState("In snap 1", state);
+                var rr = Snapshot.TakeMutableSnapshot();
+                rr.Enter(() =>
+                {
+                    state.Value++;
+                    PrintState("In snap 2", state);
+                });
+            });
+            PrintState("after snap", state);
+            Console.ReadLine();
         }
+
+        static void PrintState<T>(string msg, SnapshotMutableState<T> state) => Console.WriteLine(msg + " " + state.ToString());
 
         public static void Test(Span<int> changed)
         {

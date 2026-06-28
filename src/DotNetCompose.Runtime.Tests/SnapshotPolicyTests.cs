@@ -7,14 +7,14 @@ namespace DotNetCompose.Runtime.Tests
         [Fact]
         public void StructuralEquality_EqualValues_ReturnsTrue()
         {
-            var policy = StructuralEqualityPolicy<int>.Instance;
+            var policy = StructuralEqualityPolicy<int>.Default;
             Assert.True(policy.Equivalent(42, 42));
         }
 
         [Fact]
         public void StructuralEquality_DifferentValues_ReturnsFalse()
         {
-            var policy = StructuralEqualityPolicy<int>.Instance;
+            var policy = StructuralEqualityPolicy<int>.Default;
             Assert.False(policy.Equivalent(1, 2));
         }
 

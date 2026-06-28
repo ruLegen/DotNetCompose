@@ -41,7 +41,7 @@ namespace DotNetCompose.Runtime.Snapshots
                     Invalid = currentInvalid.Set(newId);
                     return new NestedMutableSnapshot(
                         newId,
-                        currentInvalid.AddRange(Id + 1, newId),
+                        currentInvalid,
                         MergeReadObserver(readObserver, ReadObserver),
                         MergeWriteObserver(writeObserver, WriteObserver),
                         this
@@ -166,7 +166,15 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             Sync(() =>
             {
-                Invalid = Invalid.Set(id);
+                PreviousIds = PreviousIds.Set(id);
+            });
+        }
+
+        internal void RecordPreviousList(SnapshotIdSet ids)
+        {
+            Sync(() =>
+            {
+                PreviousIds = PreviousIds.Or(ids);
             });
         }
 
@@ -246,6 +254,13 @@ namespace DotNetCompose.Runtime.Snapshots
                         state.FirstStateRecord,
                         snapshot.Id - 1,
                         invalid);
+
+                    if (previous != null &&
+                        previous.SnapshotId == globalRecord.SnapshotId)
+                    {
+                        appliedRecord.SnapshotId = GlobalSnapshot.Id;
+                        continue;
+                    }
 
                     var merged = state.MergeRecords(
                         previous ?? globalRecord,

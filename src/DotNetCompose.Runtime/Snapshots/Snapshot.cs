@@ -35,6 +35,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public long Id { get; set; }
         internal SnapshotIdSet Invalid { get; set; } = SnapshotIdSet.Empty;
+        internal SnapshotIdSet PreviousIds { get; set; } = SnapshotIdSet.Empty;
         internal bool Disposed { get; set; }
         internal int _pinningTrackingHandle = -1;
         internal bool IsPinned => _pinningTrackingHandle >= 0;
