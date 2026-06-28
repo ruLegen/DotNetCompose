@@ -26,15 +26,16 @@ namespace DotNetCompose.Runtime.Snapshots
             var modified = Modified;
             if (modified == null || modified.Count == 0)
             {
-                Sync(() => CloseLocked());
+                using (Snapshot.Lock()) CloseLocked();
                 Applied = true;
                 return SnapshotApplyResult.Success;
             }
 
-            var mergeResult = Sync(() =>
+            SnapshotApplyResult mergeResult;
+            using (Snapshot.Lock())
             {
-                var result = InnerApplyLocked(this, modified, _parent.Invalid);
-                if (result.Succeeded)
+                mergeResult = InnerApplyLocked(this, modified, _parent.Invalid);
+                if (mergeResult.Succeeded)
                 {
                     CloseLocked();
                     _parent.Invalid = _parent.Invalid.Clear(Id).AndNot(PreviousIds);
@@ -42,8 +43,7 @@ namespace DotNetCompose.Runtime.Snapshots
                     foreach (var state in modified)
                         _parent.RecordModified(state);
                 }
-                return result;
-            });
+            }
 
             if (mergeResult.Succeeded)
             {

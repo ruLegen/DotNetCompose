@@ -21,14 +21,18 @@ namespace DotNetCompose.Playground
 
             Console.WriteLine("Hello, World!");
             var state = new SnapshotMutableState<int>(0, StructuralEqualityPolicy<int>.Default);
+            var state2 = new SnapshotMutableState<int>(0, StructuralEqualityPolicy<int>.Default);
             var s = Snapshot.TakeMutableSnapshot();
 
             state.Value = 1;
             PrintState("Befor snap", state);
+            PrintState("Befor snap", state2);
             s.Enter(() =>
             {
+                state2.Value = 333;
                 state.Value = 2;
                 PrintState("In snap 1", state);
+                PrintState("In snap 1_2", state2);
                 var rr = Snapshot.TakeMutableSnapshot();
                 rr.Enter(() =>
                 {
@@ -42,6 +46,14 @@ namespace DotNetCompose.Playground
 
         static void PrintState<T>(string msg, SnapshotMutableState<T> state) => Console.WriteLine(msg + " " + state.ToString());
 
+        int t()
+        {
+            IDisposable f = null;
+            using (f)
+            {
+                return 9;
+            }
+        }
         public static void Test(Span<int> changed)
         {
             Span<int> parameters = stackalloc int[4];

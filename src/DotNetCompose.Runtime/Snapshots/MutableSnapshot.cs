@@ -33,7 +33,7 @@ namespace DotNetCompose.Runtime.Snapshots
             ValidateNotDisposed();
             return Advance(() =>
             {
-                return Sync(() =>
+                using (Snapshot.Lock())
                 {
                     var newId = NextSnapshotId++;
                     OpenSnapshots = OpenSnapshots.Set(newId);
@@ -46,7 +46,7 @@ namespace DotNetCompose.Runtime.Snapshots
                         MergeWriteObserver(writeObserver, WriteObserver),
                         this
                     );
-                });
+                }
             });
         }
 
@@ -61,8 +61,10 @@ namespace DotNetCompose.Runtime.Snapshots
 
             var observers = new List<Action<HashSet<IStateObject>, Snapshot>>();
             HashSet<IStateObject>? globalModified = null;
+            bool failed = false;
+            SnapshotApplyResult? failureResult = null;
 
-            Sync(() =>
+            using (Snapshot.Lock())
             {
                 ValidateOpen(this);
                 var previousGlobal = GlobalSnapshot;
@@ -83,18 +85,24 @@ namespace DotNetCompose.Runtime.Snapshots
                     var result = InnerApplyLocked(this, modified,
                         OpenSnapshots.Clear(GlobalSnapshot.Id));
                     if (!result.Succeeded)
-                        return result;
-
-                    CloseLocked();
-                    var prevMod = previousGlobal.Modified;
-                    AdvanceGlobalSnapshot();
-                    Modified = null;
-                    previousGlobal.Modified = null;
-                    observers.AddRange(ApplyObservers);
-                    globalModified = prevMod;
+                    {
+                        failed = true;
+                        failureResult = result;
+                    }
+                    else
+                    {
+                        CloseLocked();
+                        var prevMod = previousGlobal.Modified;
+                        AdvanceGlobalSnapshot();
+                        Modified = null;
+                        previousGlobal.Modified = null;
+                        observers.AddRange(ApplyObservers);
+                        globalModified = prevMod;
+                    }
                 }
-                return null;
-            });
+            }
+
+            if (failed) return failureResult!;
 
             Applied = true;
 
@@ -126,7 +134,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 finally { PendingApplyObserverCount--; }
             }
 
-            Sync(() =>
+            using (Snapshot.Lock())
             {
                 ReleasePinnedSnapshotLocked();
                 if (globalModified != null)
@@ -135,7 +143,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 if (modified != null)
                     foreach (var s in modified)
                         ProcessForUnusedRecordsLocked(s);
-            });
+            }
 
             return SnapshotApplyResult.Success;
         }
@@ -164,18 +172,18 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal void RecordPrevious(long id)
         {
-            Sync(() =>
+            using (Snapshot.Lock())
             {
                 PreviousIds = PreviousIds.Set(id);
-            });
+            }
         }
 
         internal void RecordPreviousList(SnapshotIdSet ids)
         {
-            Sync(() =>
+            using (Snapshot.Lock())
             {
                 PreviousIds = PreviousIds.Or(ids);
-            });
+            }
         }
 
         private T Advance<T>(Func<T> value)
@@ -185,11 +193,11 @@ namespace DotNetCompose.Runtime.Snapshots
             if (!Applied && !Disposed)
             {
                 var previousId = Id;
-                Sync(() =>
+                using (Snapshot.Lock())
                 {
                     Id = NextSnapshotId++;
                     OpenSnapshots = OpenSnapshots.Set(Id);
-                });
+                }
                 Invalid = Invalid.AddRange(previousId + 1, Id);
             }
             return result;

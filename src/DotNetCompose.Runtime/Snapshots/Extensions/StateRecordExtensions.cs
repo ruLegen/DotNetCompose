@@ -16,15 +16,20 @@ namespace DotNetCompose.Runtime.Snapshots
             var snapshot = Snapshot.Current;
             snapshot.ReadObserver?.Invoke(state);
             return Snapshot.ReadableSilent(record, snapshot.Id, snapshot.Invalid)
-                ?? Snapshot.Sync(() =>
+                ?? SyncReadableFallback(state);
+
+            T SyncReadableFallback(IStateObject s)
+            {
+                using (Snapshot.Lock())
                 {
                     var syncSnapshot = Snapshot.Current;
                     return Snapshot.ReadableSilent<T>(
-                        (T)state.FirstStateRecord,
+                        (T)s.FirstStateRecord,
                         syncSnapshot.Id,
                         syncSnapshot.Invalid)
                     ?? Snapshot.ReadError<T>();
-                });
+                }
+            }
         }
 
         public static T Readable<T>(this T record, IStateObject state, Snapshot snapshot)

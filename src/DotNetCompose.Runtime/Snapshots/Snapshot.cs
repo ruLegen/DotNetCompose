@@ -14,11 +14,20 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal static long NextSnapshotId
         {
-            get { lock (_lock) { return _nextSnapshotId; } }
-            set { lock (_lock) { _nextSnapshotId = value; } }
+            get => _nextSnapshotId;
+            set => _nextSnapshotId = value;
         }
 
         private static long _nextSnapshotId = SnapshotId.Initial + 1;
+
+        internal readonly struct LockStruct : IDisposable
+        {
+            private readonly object _toRelease;
+            internal LockStruct(object lockObj) { _toRelease = lockObj; Monitor.Enter(lockObj); }
+            public void Dispose() => Monitor.Exit(_toRelease);
+        }
+
+        internal static LockStruct Lock() => new LockStruct(_lock);
         internal static MutableSnapshot GlobalSnapshot;
         internal static SnapshotIdSet OpenSnapshots { get; set; } = SnapshotIdSet.Empty;
         internal static SnapshotDoubleIndexHeap PinningTable { get; } = new();
@@ -50,7 +59,7 @@ namespace DotNetCompose.Runtime.Snapshots
             if (id != SnapshotId.Invalid)
             {
                 var pinned = invalid.IsEmpty ? id : invalid.Lowest(id);
-                _pinningTrackingHandle = Sync(() => PinningTable.Add(pinned));
+                using (Lock()) _pinningTrackingHandle = PinningTable.Add(pinned);
             }
         }
 
@@ -147,7 +156,7 @@ namespace DotNetCompose.Runtime.Snapshots
             var previousGlobal = GlobalSnapshot;
             HashSet<IStateObject>? modified = null;
 
-            Sync(() =>
+            using (Lock())
             {
                 previousGlobal = GlobalSnapshot;
                 modified = previousGlobal.Modified;
@@ -157,7 +166,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots.Clone(), null, null);
                 previousGlobal.Dispose();
                 OpenSnapshots = OpenSnapshots.Set(globalId);
-            });
+            }
 
             if (modified != null && modified.Count > 0)
             {
@@ -177,13 +186,13 @@ namespace DotNetCompose.Runtime.Snapshots
                 }
             }
 
-            Sync(() =>
+            using (Lock())
             {
                 CheckAndOverwriteUnusedRecordsLocked();
                 if (modified != null)
                     foreach (var state in modified)
                         ProcessForUnusedRecordsLocked(state);
-            });
+            }
         }
 
         public static ObserverHandle RegisterApplyObserver(
@@ -401,14 +410,14 @@ namespace DotNetCompose.Runtime.Snapshots
             Func<SnapshotIdSet, T> block)
         {
             var result = block(OpenSnapshots.Clear(previousGlobal.Id));
-            Sync(() =>
+            using (Lock())
             {
                 var globalId = NextSnapshotId++;
                 OpenSnapshots = OpenSnapshots.Clear(previousGlobal.Id);
                 GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots.Clone(), null, null);
                 previousGlobal.Dispose();
                 OpenSnapshots = OpenSnapshots.Set(globalId);
-            });
+            }
             return result;
         }
 
@@ -418,16 +427,6 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal static void ProcessForUnusedRecordsLocked(IStateObject state)
         {
-        }
-
-        internal static T Sync<T>(Func<T> block)
-        {
-            lock (_lock) { return block(); }
-        }
-
-        internal static void Sync(Action block)
-        {
-            lock (_lock) { block(); }
         }
 
         internal static T? ReadableSilent<T>(T record, long snapshotId, SnapshotIdSet invalid)
@@ -577,10 +576,10 @@ namespace DotNetCompose.Runtime.Snapshots
             if (!Disposed)
             {
                 Disposed = true;
-                Sync(() =>
+                using (Lock())
                 {
                     ReleasePinnedSnapshotLocked();
-                });
+                }
             }
         }
 

@@ -38,7 +38,6 @@ namespace DotNetCompose.Runtime.Snapshots
             Policy = policy;
             _next = new StateStateRecord(Snapshot.Current.Id, value);
         }
-
         public void PrependStateRecord(StateRecord value)
         {
             _next = (StateStateRecord)value;
@@ -74,20 +73,16 @@ namespace DotNetCompose.Runtime.Snapshots
             snapshot.ReadObserver?.Invoke(this);
             var result = Snapshot.ReadableSilent(_next, snapshot.Id, snapshot.Invalid);
             if (result != null)
-            {
-                var readableObserver = snapshot.ReadObserver;
                 return result;
-            }
 
-            return Snapshot.Sync(() =>
+            using (Snapshot.Lock())
             {
                 var syncSnapshot = Snapshot.Current;
-                var result = Snapshot.ReadableSilent<StateStateRecord>(
+                var lockedResult = Snapshot.ReadableSilent<StateStateRecord>(
                     _next, syncSnapshot.Id, syncSnapshot.Invalid);
-                if (result != null) return result;
-                Snapshot.ReadError<StateStateRecord>();
-                return null!;
-            });
+                if (lockedResult != null) return lockedResult;
+                return Snapshot.ReadError<StateStateRecord>();
+            }
         }
 
         private R WithCurrent<R>(Func<StateStateRecord, R> block)
@@ -99,17 +94,16 @@ namespace DotNetCompose.Runtime.Snapshots
 
         private R Overwritable<R>(StateStateRecord candidate, Func<StateStateRecord, R> block)
         {
-            var snapshot = Snapshot.Current;
-            return Snapshot.Sync(() =>
+            Snapshot snapshot;
+            R result;
+            using (Snapshot.Lock())
             {
                 snapshot = Snapshot.Current;
                 var rec = OverwritableRecord(snapshot, candidate);
-                var result = block(rec);
-                return result;
-            }).Also(val =>
-            {
-                Snapshot.NotifyWrite(snapshot, this);
-            });
+                result = block(rec);
+            }
+            Snapshot.NotifyWrite(snapshot, this);
+            return result;
         }
 
         private StateStateRecord OverwritableRecord(Snapshot snapshot, StateStateRecord candidate)
@@ -121,7 +115,8 @@ namespace DotNetCompose.Runtime.Snapshots
             if (candidate.SnapshotId == id)
                 return candidate;
 
-            var newData = Snapshot.Sync(() => NewOverwritableRecordLocked());
+            StateStateRecord newData;
+            using (Snapshot.Lock()) newData = NewOverwritableRecordLocked();
             newData.SnapshotId = id;
             snapshot.RecordModified(this);
             return newData;
