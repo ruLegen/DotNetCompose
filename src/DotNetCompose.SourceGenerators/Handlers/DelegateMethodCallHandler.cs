@@ -75,15 +75,15 @@ namespace DotNetCompose.SourceGenerators.Handlers
             if (delegateMethodCallInfo.IsSimpleMemberAccessCall)
             {
                 var invocationSyntax = expression as InvocationExpressionSyntax;
-                ArgumentListSyntax newArguments = invocationSyntax.ArgumentList.AddArguments(
-                   new ArgumentSyntax[]
-                   {
-                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
-                         SyntaxFactory.Argument(changedArg),
-                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.DefaultParamName)),
-                   }
-                );
-                result = invocationSyntax.WithArgumentList(newArguments);
+                    ArgumentListSyntax newArguments = invocationSyntax.ArgumentList.AddArguments(
+                       new ArgumentSyntax[]
+                       {
+                             SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
+                             SyntaxFactory.Argument(changedArg),
+                             SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
+                       }
+                    );
+                    result = invocationSyntax.WithArgumentList(newArguments);
             }
             else if (delegateMethodCallInfo.IsDirectCall)
             {
@@ -92,7 +92,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.DefaultParamName)),
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
                     }
                 ));
             }
@@ -112,7 +112,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                       new ArgumentSyntax[]{
                         SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                         SyntaxFactory.Argument(changedArg),
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.DefaultParamName)),
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
                     });
 
                 result = conditionalAccessExpression.WithWhenNotNull(
