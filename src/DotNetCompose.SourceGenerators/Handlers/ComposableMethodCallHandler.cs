@@ -265,11 +265,11 @@ namespace DotNetCompose.SourceGenerators.Handlers
             {
                 var byteExprs = defaultStateBytes.Select(b => (ExpressionSyntax)
                     SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(b)));
-                var arrayExpr = SyntaxFactory.ArrayCreationExpression(
+                var arrayExpr = SyntaxFactory.StackAllocArrayCreationExpression(
                     SyntaxFactory.ArrayType(
                         SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
-                        SyntaxFactory.SingletonList(SyntaxFactory.ArrayRankSpecifier())))
-                    .WithInitializer(SyntaxFactory.InitializerExpression(
+                        SyntaxFactory.SingletonList(SyntaxFactory.ArrayRankSpecifier())),
+                    SyntaxFactory.InitializerExpression(
                         SyntaxKind.ArrayInitializerExpression,
                         SyntaxFactory.SeparatedList(byteExprs)));
                 var stateCreation = SyntaxFactory.ObjectCreationExpression(
