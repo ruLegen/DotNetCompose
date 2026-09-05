@@ -1,6 +1,5 @@
 ﻿using DotNetCompose.Runtime;
 using DotNetCompose.Runtime.Composer;
-using DotNetCompose.Runtime.CompositionLocal;
 using DotNetCompose.Runtime.Snapshots;
 using System.Diagnostics;
 namespace DotNetCompose.Playground
@@ -9,15 +8,10 @@ namespace DotNetCompose.Playground
     {
         static void Main(string[] args)
         {
-            var composer = new GapComposer();
-
 
             for (int i = 0; i < 2; i++)
             {
-                composer.ComposeContent((ctx, _, _) =>
-                {
-                });
-            }
+                           }
 
             Console.WriteLine("Hello, World!");
             var state = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
@@ -195,21 +189,6 @@ namespace DotNetCompose.Playground
         public bool IsComposing { get; private set; }
 
         public void Dispose() { }
-
-        public void StartProviders(ProvidedValue[] values)
-        {
-            // Hand-written compose context - no CompositionLocal support
-        }
-
-        public void EndProviders()
-        {
-            // Hand-written compose context - no CompositionLocal support
-        }
-
-        public T Consume<T>(CompositionLocal<T> key)
-        {
-            return default!;
-        }
 
         public void Tree()
         {

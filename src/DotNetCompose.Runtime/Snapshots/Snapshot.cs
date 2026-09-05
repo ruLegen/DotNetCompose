@@ -224,32 +224,6 @@ namespace DotNetCompose.Runtime.Snapshots
             });
         }
 
-        internal static void RegisterStateToScopeMapping(
-            IStateObject state,
-            RecomposeScopeImpl scope)
-        {
-            if (_stateToScopes == null)
-                _stateToScopes = new Dictionary<IStateObject, List<WeakReference<RecomposeScopeImpl>>>();
-
-            if (!_stateToScopes.ContainsKey(state))
-                _stateToScopes[state] = new List<WeakReference<RecomposeScopeImpl>>();
-
-            _stateToScopes[state].Add(new WeakReference<RecomposeScopeImpl>(scope));
-        }
-
-        internal static void InvalidateScopesForState(IStateObject state)
-        {
-            lock (_lock)
-            {
-                if (_stateToScopes != null && _stateToScopes.TryGetValue(state, out var scopes))
-                {
-                    foreach (var weakRef in scopes)
-                        if (weakRef.TryGetTarget(out var scope))
-                            scope.Invalidate();
-                }
-            }
-        }
-
         internal static Action<object>? SnapshotReadObserver
         {
             get => _snapshotReadObserver;
@@ -258,7 +232,6 @@ namespace DotNetCompose.Runtime.Snapshots
 
         private static Action<object>? _snapshotReadObserver;
 
-        private static Dictionary<IStateObject, List<WeakReference<RecomposeScopeImpl>>>? _stateToScopes;
 
         internal static void ObserveReads(
             Action<object>? readObserver,

@@ -1,4 +1,3 @@
-using DotNetCompose.Runtime.CompositionLocal;
 
 namespace DotNetCompose.Runtime.Composer
 {
@@ -32,23 +31,5 @@ namespace DotNetCompose.Runtime.Composer
 
         bool Inserting { get; }
         bool IsComposing { get; }
-
-        // --- CompositionLocal support ---
-
-        /// <summary>
-        /// Starts a provider scope, merging the given values into the current CompositionLocal map.
-        /// Must be paired with a call to <see cref="EndProviders"/>.
-        /// </summary>
-        void StartProviders(ProvidedValue[] values);
-
-        /// <summary>
-        /// Ends the current provider scope and restores the previous CompositionLocal map.
-        /// </summary>
-        void EndProviders();
-
-        /// <summary>
-        /// Reads the current value of the given CompositionLocal from the nearest provider scope.
-        /// </summary>
-        T Consume<T>(CompositionLocal<T> key);
     }
 }

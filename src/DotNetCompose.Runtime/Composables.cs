@@ -12,6 +12,8 @@ namespace DotNetCompose.Runtime
 {
     public static class Composables
     {
+        internal static readonly object Empty = new object();
+
         public partial class Builders
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -22,7 +24,7 @@ namespace DotNetCompose.Runtime
             {
                 var invalid = context.Changed(key);
                 var slot = context.RememberedValue();
-                if (ReferenceEquals(slot, ComposerStatics.Empty) || invalid)
+                if (ReferenceEquals(slot, Empty) || invalid)
                 {
                     var value = creator();
                     context.UpdateRememberedValue(value);
@@ -36,39 +38,17 @@ namespace DotNetCompose.Runtime
             {
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void DisposableEffect(object? key1, Func<DisposableEffectScope, DisposableEffectResult> effect,
-                IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
-            {
-                var invalid = context.Changed(key1);
-                var slot = context.RememberedValue();
-                if (ReferenceEquals(slot, ComposerStatics.Empty) || invalid)
-                {
-                    var impl = new DisposableEffectImpl(effect);
-                    context.UpdateRememberedValue(impl);
-                }
-            }
-
+           
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void LaunchedEffect(object? key1, Func<CancellationToken, ValueTask> block,
                 IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
             {
                 var invalid = context.Changed(key1);
                 var slot = context.RememberedValue();
-                if (ReferenceEquals(slot, ComposerStatics.Empty) || invalid)
+                if (ReferenceEquals(slot, Empty) || invalid)
                 {
                     var job = new LaunchedEffectJob(block);
                     context.UpdateRememberedValue(job);
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void InsertMovableContent<TParam>(MovableContent<TParam> content, TParam param,
-                IComposerContext context, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState defaultState = default)
-            {
-                if (context is GapComposer composer)
-                {
-                    composer.InsertMovableContent(content, param);
                 }
             }
         }
@@ -83,15 +63,7 @@ namespace DotNetCompose.Runtime
         public static T Remember<T>(object key, Func<T> creator) => throw new NotImplementedException("Use composable version");
 
         [Composable, ComposableIgnore]
-        public static void DisposableEffect(object? key1, Func<DisposableEffectScope, DisposableEffectResult> effect)
-            => throw new NotImplementedException("Use composable version");
-
-        [Composable, ComposableIgnore]
         public static void LaunchedEffect(object? key1, Func<CancellationToken, ValueTask> block)
-            => throw new NotImplementedException("Use composable version");
-
-        [Composable, ComposableIgnore]
-        public static void InsertMovableContent<TParam>(MovableContent<TParam> content, TParam param)
             => throw new NotImplementedException("Use composable version");
 
         public static SnapshotMutableState<T> CreateMutableState<T>(T value, ISnapshotMutationPolicy<T>? policy = null)
