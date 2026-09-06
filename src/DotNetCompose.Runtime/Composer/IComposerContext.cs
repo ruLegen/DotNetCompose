@@ -1,7 +1,9 @@
 
+using System;
+
 namespace DotNetCompose.Runtime.Composer
 {
-    public interface IComposerContext : System.IDisposable
+    public interface IComposerContext : IDisposable
     {
         void StartRoot();
         void EndRoot();
