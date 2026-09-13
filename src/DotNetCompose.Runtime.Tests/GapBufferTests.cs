@@ -213,6 +213,21 @@ namespace DotNetCompose.Runtime.Tests
         }
 
         [Fact]
+        public void SlotMap_SmallCapacity_ResizeDoesNotOverwrite()
+        {
+            var gap = new GapBuffer<int>(2);
+            var map = new GapBufferSlotMap<int>(gap);
+
+            var r0 = map.Insert(10);
+            var r1 = map.Insert(20);
+            var r2 = map.Insert(30);
+
+            Assert.Equal(10, map.Get(r0));
+            Assert.Equal(20, map.Get(r1));
+            Assert.Equal(30, map.Get(r2));
+        }
+
+        [Fact]
         public void SlotMap_InsertCausesResize()
         {
             var gap = new GapBuffer<int>();

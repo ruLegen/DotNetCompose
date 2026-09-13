@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 {
@@ -17,9 +18,9 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public Action<int, int, int>? OnElementsMoved { get; set; }
 
-        public GapBuffer()
+        public GapBuffer(int capacity = DefaultCapacity)
         {
-            _buffer = new T[DefaultCapacity];
+            _buffer = new T[capacity];
             _gapEndPos = _buffer.Length;
         }
 
@@ -46,9 +47,10 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             }
         }
 
-        public T GetAtPhysical(int physicalIndex) => _buffer[physicalIndex];
+        public T GetAtRawIndex(int physicalIndex) => _buffer[physicalIndex];
 
         public void SetAtPhysical(int physicalIndex, T item) => _buffer[physicalIndex] = item;
+
 
         public int Insert(int index, T item)
         {
@@ -85,7 +87,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         {
             if (index < 0 || index > Count) return;
 
-            var collection = items as ICollection<T> ?? new List<T>(items);
+            ICollection<T> collection = items as ICollection<T> ?? new List<T>(items);
             int insertCount = collection.Count;
             if (insertCount == 0) return;
 
@@ -122,8 +124,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         public void RemoveRange(int index, int length)
         {
             if (length < 1) return;
-            var idx = index + length - 1;
-            for (var i = 0; i < length; i++) RemoveAt(idx--);
+            int idx = index + length - 1;
+            for (int i = 0; i < length; i++) RemoveAt(idx--);
         }
 
         public void Clear()
@@ -140,12 +142,12 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             if (requestedCapacity > 0)
             {
                 var newBuffer = new T[requestedCapacity];
-                var newGapEnd = newBuffer.Length - (_buffer.Length - _gapEndPos);
+                int newGapEnd = newBuffer.Length - (_buffer.Length - _gapEndPos);
 
                 Array.Copy(_buffer, 0, newBuffer, 0, _gapStartPos);
                 Array.Copy(_buffer, _gapEndPos, newBuffer, newGapEnd, newBuffer.Length - newGapEnd);
 
-                var afterGapCount = _buffer.Length - _gapEndPos;
+                int afterGapCount = _buffer.Length - _gapEndPos;
                 if (afterGapCount > 0)
                     OnElementsMoved?.Invoke(_gapEndPos, newGapEnd, afterGapCount);
 
@@ -162,7 +164,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public int IndexOf(T item)
         {
-            var foundAt = Array.IndexOf(_buffer, item, 0, _gapStartPos);
+            int foundAt = Array.IndexOf(_buffer, item, 0, _gapStartPos);
             if (foundAt > -1) return foundAt;
 
             foundAt = Array.IndexOf(_buffer, item, _gapEndPos, _buffer.Length - _gapEndPos);
@@ -182,8 +184,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
             if (index < _gapStartPos)
             {
-                var offset = _gapStartPos - index;
-                var sizeDiff = GapSize < offset ? GapSize : offset;
+                int offset = _gapStartPos - index;
+                int sizeDiff = GapSize < offset ? GapSize : offset;
                 Array.Copy(_buffer, index, _buffer, _gapEndPos - offset, offset);
                 OnElementsMoved?.Invoke(index, _gapEndPos - offset, offset);
                 _gapStartPos -= offset;
@@ -192,8 +194,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             }
             else
             {
-                var count = index - _gapStartPos;
-                var deltaIndex = index > _gapEndPos ? index : _gapEndPos;
+                int count = index - _gapStartPos;
+                int deltaIndex = index > _gapEndPos ? index : _gapEndPos;
                 Array.Copy(_buffer, _gapEndPos, _buffer, _gapStartPos, count);
                 OnElementsMoved?.Invoke(_gapEndPos, _gapStartPos, count);
                 _gapStartPos += count;
@@ -206,11 +208,12 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         {
             if (requiredGapSize <= GapSize) return;
 
-            var newCapacity = (Count + requiredGapSize) * 2;
+            int newCapacity = (Count + requiredGapSize) * 2;
             if (newCapacity < DefaultCapacity) newCapacity = DefaultCapacity;
             SetCapacity(newCapacity);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void BoundsCheck(int index)
         {
             if (index < 0 || index >= Count) throw new BufferAccessException(index, Count);

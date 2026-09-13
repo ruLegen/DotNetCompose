@@ -1,26 +1,23 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 {
     public class GapBufferSlotMap<T>
     {
-        private readonly GapBuffer<T> _source;
-
-        private int[] _handleToPhysical;
-        private int[] _physicalToHandle;
-        private int[] _generation;
-
-        private int _nextNewId;
-        private int _count;
-        private int _freeHead = -1;
-
         private const int DefaultCapacity = 16;
+        public GapBufferSlotMap(int initialCapacity = DefaultCapacity) 
+            : this(new GapBuffer<T>(initialCapacity))
+        {
+        }
 
-        public GapBufferSlotMap(GapBuffer<T> source, int initialCapacity = DefaultCapacity)
+        public GapBufferSlotMap(GapBuffer<T> source)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _source.OnElementsMoved = OnElementsMoved;
 
+            int initialCapacity = _source.Capacity;
             _handleToPhysical = new int[initialCapacity];
             _physicalToHandle = new int[initialCapacity];
             _generation = new int[initialCapacity];
@@ -33,19 +30,35 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public int Count => _count;
 
+        private readonly GapBuffer<T> _source;
+
+        private int[] _handleToPhysical;
+        private int[] _physicalToHandle;
+        private int[] _generation;
+
+        private int _count;
+        private int _freeHead = -1;
+
+        public IEnumerable<T> GetEnumerable()
+        {
+            for (int i = 0; i < _source.Count; i++)
+            {
+                yield return _source[i];
+            }
+        }
         public GapBufferItemAnchor Insert(T item)
         {
             int physicalIndex = _source.Insert(_source.Count, item);
-            return Register(physicalIndex);
+            return Track(physicalIndex);
         }
 
         public GapBufferItemAnchor Insert(int position, T item)
         {
             int physicalIndex = _source.Insert(position, item);
-            return Register(physicalIndex);
+            return Track(physicalIndex);
         }
 
-        public GapBufferItemAnchor Register(int physicalIndex)
+        private GapBufferItemAnchor Track(int physicalIndex)
         {
             int id = AllocateId();
             _generation[id]++;
@@ -66,7 +79,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
                 throw new InvalidOperationException("Stale or invalid handle.");
 
             int physicalIndex = _handleToPhysical[handle.Id];
-            return _source.GetAtPhysical(physicalIndex);
+            return _source.GetAtRawIndex(physicalIndex);
         }
 
         public void Set(GapBufferItemAnchor handle, T item)
@@ -145,19 +158,20 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
                 return id;
             }
 
-            int newCapacity = _handleToPhysical.Length * 2;
+            int oldCapacity = _handleToPhysical.Length;
+            int newCapacity = oldCapacity * 2;
+
             Array.Resize(ref _handleToPhysical, newCapacity);
             Array.Resize(ref _physicalToHandle, newCapacity);
             Array.Resize(ref _generation, newCapacity);
 
-            for (int i = _nextNewId; i < newCapacity - 1; i++)
+            for (int i = oldCapacity; i < newCapacity - 1; i++)
                 _handleToPhysical[i] = i + 1;
             _handleToPhysical[newCapacity - 1] = -1;
-            _freeHead = _nextNewId;
 
+            _freeHead = oldCapacity;
             int newId = _freeHead;
             _freeHead = _handleToPhysical[newId];
-            _nextNewId = newId + 1;
             return newId;
         }
 

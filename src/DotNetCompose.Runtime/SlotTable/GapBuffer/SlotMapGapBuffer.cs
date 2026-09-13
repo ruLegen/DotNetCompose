@@ -2,14 +2,14 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 {
     public class SlotMapGapBuffer<T> : IPhysicalGapBuffer<T>, IStableGapBuffer<T>
     {
-        private readonly GapBuffer<T> _buffer;
-        private readonly GapBufferSlotMap<T> _handles;
-
         public SlotMapGapBuffer(int initialCapacity = 16)
         {
-            _buffer = new GapBuffer<T>();
-            _handles = new GapBufferSlotMap<T>(_buffer, initialCapacity);
+            _buffer = new GapBuffer<T>(initialCapacity);
+            _handles = new GapBufferSlotMap<T>(_buffer);
         }
+
+        private readonly GapBuffer<T> _buffer;
+        private readonly GapBufferSlotMap<T> _handles;
 
         public int Count => _buffer.Count;
         public int Capacity => _buffer.Capacity;
@@ -21,7 +21,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             _buffer.RemoveAtPhysical(physicalIndex);
 
         public T Get(int physicalIndex) =>
-            _buffer.GetAtPhysical(physicalIndex);
+            _buffer.GetAtRawIndex(physicalIndex);
 
         public void Set(int physicalIndex, T item) =>
             _buffer.SetAtPhysical(physicalIndex, item);
