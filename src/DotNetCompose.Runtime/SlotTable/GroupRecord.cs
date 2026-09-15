@@ -1,4 +1,6 @@
+using DotNetCompose.Runtime.SlotTable.GapBuffer;
 using System;
+using System.Runtime.InteropServices;
 
 namespace DotNetCompose.Runtime
 {
@@ -15,14 +17,15 @@ namespace DotNetCompose.Runtime
         HasMovableContent = 64,
     }
 
+    [StructLayout(LayoutKind.Auto)]
     internal struct GroupRecord
     {
         public int Key;
         public GroupFlags Flags;
         public int NodeCount;
-        public int ParentAnchor;
+        public GapBufferItemAnchor ParentAnchor;
         public int Size;
-        public int DataAnchor;
+        public GapBufferItemAnchor DataAnchor;
 
         public bool IsNode => (Flags & GroupFlags.Node) != 0;
         public bool HasObjectKey => (Flags & GroupFlags.ObjectKey) != 0;

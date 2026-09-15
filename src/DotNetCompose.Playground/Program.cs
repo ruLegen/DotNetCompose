@@ -1,18 +1,17 @@
 ﻿using DotNetCompose.Runtime;
 using DotNetCompose.Runtime.Composer;
+using DotNetCompose.Runtime.SlotTable;
+using DotNetCompose.Runtime.SlotTable.GapBuffer;
 using DotNetCompose.Runtime.Snapshots;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 namespace DotNetCompose.Playground
 {
     internal class Program
     {
         static void Main(string[] args)
         {
-
-            for (int i = 0; i < 2; i++)
-            {
-                           }
-
+            TestGap();
             Console.WriteLine("Hello, World!");
             var state = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
             var state2 = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
@@ -36,6 +35,57 @@ namespace DotNetCompose.Playground
             });
             PrintState("after snap", state);
             Console.ReadLine();
+        }
+
+        private static void TestGap()
+        {
+            GapBuffer<int> b = new();
+            GapBufferSlotMap<int> i = new(b);
+            List<GapBufferItemAnchor> anchors = new();
+            foreach (int x in Enumerable.Range(0, 10))
+            {
+                anchors.Add(i.Insert(0, x));
+            }
+
+            string d = string.Join(" | ", Enumerable.Range(0, b.Count).Select(f => b[f]));
+            string r = string.Join(" | ", anchors.Select(a=> i.Get(a)));
+
+            ComposerSlotTable composerSlotTable = new ComposerSlotTable();
+            ComposerSlotTable.Writer writer = composerSlotTable.OpenWriter();
+            writer.StartGroup(0, "Root1");
+                writer.StartGroup(1, "key1");
+                writer.EndGroup();
+
+                writer.StartGroup(2, "G2");
+                    writer.StartNode(3, "Node3");
+                    writer.EndGroup();
+                    writer.StartNode(4, "Node4");
+                        writer.AppendSlot("Node4NewSlot");
+                        writer.UpdateSlot("Node4Updated");
+                    writer.EndGroup();
+
+                    writer.StartGroup(44);
+                        writer.StartGroup(45);
+                        writer.EndGroup();
+                    writer.AppendSlot("44_slot");
+                    writer.EndGroup();
+
+                    writer.StartNode(5, "Node5");
+                    writer.EndGroup();
+                writer.EndGroup();
+                writer.AppendSlot("RootNewSlot");
+                writer.UpdateSlot("RootUpdated");
+            writer.EndGroup();
+            writer.Close();
+
+        }
+
+        private static void Print<T>(List<T> str)
+        {
+            foreach (var item in str)
+            {
+                Console.WriteLine(item.ToString());
+            }
         }
 
         static void PrintState<T>(string msg, SnapshotMutableState<T> state) => Console.WriteLine(msg + " " + state.ToString());

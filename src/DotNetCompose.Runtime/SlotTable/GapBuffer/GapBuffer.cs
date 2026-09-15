@@ -7,22 +7,37 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
     /// <summary>
     /// Modified version of https://github.com/kcartlidge/GapBuffer/blob/main/GapBuffer/GapBuffer.cs
     /// </summary>
+    /// <remarks>
+    /// Index - is a logical position of an object without counting a gap
+    /// Address - is a raw index in buffer. It includes a gap
+    /// </remarks>
     /// <typeparam name="T"></typeparam>
-    public class GapBuffer<T>
+    public sealed class GapBuffer<T>
     {
-        private const int DefaultCapacity = 10;
-
-        private T[] _buffer;
-        private int _gapEndPos;
-        private int _gapStartPos;
-
-        public Action<int, int, int>? OnElementsMoved { get; set; }
+        private const int DefaultCapacity = 16;
 
         public GapBuffer(int capacity = DefaultCapacity)
         {
             _buffer = new T[capacity];
             _gapEndPos = _buffer.Length;
         }
+
+        public T this[int index]
+        {
+            get
+            {
+                BoundsCheck(index);
+                return index >= _gapStartPos ? _buffer[index + GapSize] : _buffer[index];
+            }
+            set
+            {
+                BoundsCheck(index);
+                if (index >= _gapStartPos) _buffer[index + GapSize] = value;
+                else _buffer[index] = value;
+            }
+        }
+
+        public Action<int, int, int>? OnElementsMoved { get; set; }
 
         public int Capacity => _buffer.Length;
 
@@ -32,25 +47,9 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public int Length => Count;
 
-        public T this[int virtualIndex]
-        {
-            get
-            {
-                BoundsCheck(virtualIndex);
-                return virtualIndex >= _gapStartPos ? _buffer[virtualIndex + GapSize] : _buffer[virtualIndex];
-            }
-            set
-            {
-                BoundsCheck(virtualIndex);
-                if (virtualIndex >= _gapStartPos) _buffer[virtualIndex + GapSize] = value;
-                else _buffer[virtualIndex] = value;
-            }
-        }
-
-        public T GetAtRawIndex(int physicalIndex) => _buffer[physicalIndex];
-
-        public void SetAtPhysical(int physicalIndex, T item) => _buffer[physicalIndex] = item;
-
+        private T[] _buffer;
+        private int _gapEndPos;
+        private int _gapStartPos;
 
         public int Insert(int index, T item)
         {
@@ -64,25 +63,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             return index;
         }
 
-        public void RemoveAtPhysical(int physicalIndex)
-        {
-            if (physicalIndex < 0 || physicalIndex >= _buffer.Length) return;
-
-            int logicalIndex = physicalIndex < _gapStartPos
-                ? physicalIndex
-                : physicalIndex - GapSize;
-
-            if (logicalIndex < 0 || logicalIndex >= Count) return;
-
-            MoveGap(logicalIndex);
-            _buffer[_gapEndPos] = default!;
-            _gapEndPos++;
-        }
-
-        public void Add(T item) => Insert(Count, item);
-
+        public int Add(T item) => Insert(Count, item);
         public void AddRange(IEnumerable<T> items) => InsertRange(Count, items);
-
         public void InsertRange(int index, IEnumerable<T> items)
         {
             if (index < 0 || index > Count) return;
@@ -111,21 +93,58 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
             _gapStartPos += insertCount;
         }
+        public void Reserve(int index, int count)
+        {
+            if (index < 0 || index > Count) return;
+            if (count <= 0) return;
 
+            MoveGap(index);
+            ResizeGap(count);
+            _gapStartPos += count;
+        }
         public void RemoveAt(int index)
         {
             if (index < 0 || index >= Count) return;
 
             MoveGap(index);
-            _buffer[_gapEndPos] = default!;
+            _buffer[_gapEndPos] = default;
             _gapEndPos++;
         }
-
         public void RemoveRange(int index, int length)
         {
             if (length < 1) return;
             int idx = index + length - 1;
             for (int i = 0; i < length; i++) RemoveAt(idx--);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T GetAtAddress(int address) => _buffer[address];
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetAtAddressRef(int address) => ref _buffer[address];
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetAtAddress(int address, T item) => _buffer[address] = item;
+        public void RemoveAtAddress(int address)
+        {
+            if (address < 0 || address >= _buffer.Length) return;
+
+            int logicalIndex = address < _gapStartPos
+                ? address
+                : address - GapSize;
+
+            if (logicalIndex < 0 || logicalIndex >= Count) return;
+
+            MoveGap(logicalIndex);
+            _buffer[_gapEndPos] = default;
+            _gapEndPos++;
+        }
+        public int AddressToIndex(int address)
+        {
+            int logicalIndex = address < _gapStartPos
+              ? address
+              : address - GapSize;
+            return logicalIndex;
         }
 
         public void Clear()
@@ -173,6 +192,13 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             return -1;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+        public int AddressOf(int index)
+        {
+            return index >= _gapStartPos 
+                ? index + GapSize 
+                : index;
+        }
         private void MoveGap(int index)
         {
             if (index == _gapStartPos) return;
@@ -218,5 +244,6 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         {
             if (index < 0 || index >= Count) throw new BufferAccessException(index, Count);
         }
+
     }
 }

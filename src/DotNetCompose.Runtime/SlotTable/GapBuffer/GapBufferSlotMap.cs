@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 {
@@ -18,13 +19,13 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             _source.OnElementsMoved = OnElementsMoved;
 
             int initialCapacity = _source.Capacity;
-            _handleToPhysical = new int[initialCapacity];
-            _physicalToHandle = new int[initialCapacity];
+            _handleToAddress = new int[initialCapacity];
+            _addressToHandle = new int[initialCapacity];
             _generation = new int[initialCapacity];
 
             for (int i = 0; i < initialCapacity - 1; i++)
-                _handleToPhysical[i] = i + 1;
-            _handleToPhysical[initialCapacity - 1] = -1;
+                _handleToAddress[i] = i + 1;
+            _handleToAddress[initialCapacity - 1] = -1;
             _freeHead = 0;
         }
 
@@ -32,8 +33,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         private readonly GapBuffer<T> _source;
 
-        private int[] _handleToPhysical;
-        private int[] _physicalToHandle;
+        private int[] _handleToAddress;
+        private int[] _addressToHandle;
         private int[] _generation;
 
         private int _count;
@@ -52,20 +53,20 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             return Track(physicalIndex);
         }
 
-        public GapBufferItemAnchor Insert(int position, T item)
+        public GapBufferItemAnchor Insert(int index, T item)
         {
-            int physicalIndex = _source.Insert(position, item);
+            int physicalIndex = _source.Insert(index, item);
             return Track(physicalIndex);
         }
 
-        private GapBufferItemAnchor Track(int physicalIndex)
+        public GapBufferItemAnchor Track(int address)
         {
             int id = AllocateId();
             _generation[id]++;
 
-            _handleToPhysical[id] = physicalIndex;
-            EnsurePhysicalCapacity(physicalIndex);
-            _physicalToHandle[physicalIndex] = id;
+            _handleToAddress[id] = address;
+            EnsurePhysicalCapacity(address);
+            _addressToHandle[address] = id;
             _count++;
 
             return new GapBufferItemAnchor(id, _generation[id]);
@@ -73,79 +74,93 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public T Get(GapBufferItemAnchor handle)
         {
-            if (!handle.IsValid)
-                throw new ArgumentException("Invalid handle: generation is 0.", nameof(handle));
-            if (handle.Id >= _handleToPhysical.Length || _generation[handle.Id] != handle.Generation)
-                throw new InvalidOperationException("Stale or invalid handle.");
+            EnsureValid(handle);
 
-            int physicalIndex = _handleToPhysical[handle.Id];
-            return _source.GetAtRawIndex(physicalIndex);
+            int address = _handleToAddress[handle.Id];
+            return _source.GetAtAddress(address);
+        }
+        public ref T GetRef(GapBufferItemAnchor handle)
+        {
+            EnsureValid(handle);
+
+            int address = _handleToAddress[handle.Id];
+            return ref _source.GetAtAddressRef(address);
         }
 
         public void Set(GapBufferItemAnchor handle, T item)
         {
-            if (!handle.IsValid)
-                throw new ArgumentException("Invalid handle: generation is 0.", nameof(handle));
-            if (handle.Id >= _handleToPhysical.Length || _generation[handle.Id] != handle.Generation)
-                throw new InvalidOperationException("Stale or invalid handle.");
+            EnsureValid(handle);    
 
-            int physicalIndex = _handleToPhysical[handle.Id];
-            _source.SetAtPhysical(physicalIndex, item);
+            int address = _handleToAddress[handle.Id];
+            _source.SetAtAddress(address, item);
+        }
+
+
+        public int IndexOf(GapBufferItemAnchor handle)
+        {
+            if (handle.Id < 0)
+                return -1;
+            
+            if(handle.Id < _handleToAddress.Length)
+            {
+                int address = _handleToAddress[handle.Id];
+                return _source.AddressToIndex(address);
+            }
+            return -1;
         }
 
         public void Remove(GapBufferItemAnchor handle)
         {
-            if (!handle.IsValid || handle.Id >= _handleToPhysical.Length)
-                throw new ArgumentException("Invalid handle.", nameof(handle));
-            if (_generation[handle.Id] != handle.Generation)
-                throw new InvalidOperationException("Stale handle.");
+            if (!IsValidAnchor(handle)) 
+                throw new InvalidOperationException("Stale or invalid handle.");
 
-            int physicalIndex = _handleToPhysical[handle.Id];
-            _source.RemoveAtPhysical(physicalIndex);
+            int address = _handleToAddress[handle.Id];
+            _source.RemoveAtAddress(address);
 
             _generation[handle.Id]++;
             FreeId(handle.Id);
             _count--;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsValidAnchor(GapBufferItemAnchor handle)
         {
-            return handle.IsValid
-                && handle.Id < _handleToPhysical.Length
+            return handle.Generation > 0
+                && handle.Id < _handleToAddress.Length
                 && _generation[handle.Id] == handle.Generation;
         }
 
-        private void OnElementsMoved(int fromPhysical, int toPhysical, int count)
+        private void OnElementsMoved(int fromAddress, int toAddress, int count)
         {
-            if (fromPhysical == toPhysical) return;
+            if (fromAddress == toAddress) return;
 
-            if (fromPhysical < toPhysical)
+            if (fromAddress < toAddress)
             {
                 for (int i = count - 1; i >= 0; i--)
-                    MovePhysical(fromPhysical + i, toPhysical + i);
+                    MoveAddress(fromAddress + i, toAddress + i);
             }
             else
             {
                 for (int i = 0; i < count; i++)
-                    MovePhysical(fromPhysical + i, toPhysical + i);
+                    MoveAddress(fromAddress + i, toAddress + i);
             }
         }
 
-        private void MovePhysical(int oldPos, int newPos)
+        private void MoveAddress(int oldPos, int newPos)
         {
             EnsurePhysicalCapacity(Math.Max(oldPos, newPos));
 
-            int handleId = _physicalToHandle[oldPos];
-            _physicalToHandle[oldPos] = -1;
+            int handleId = _addressToHandle[oldPos];
+            _addressToHandle[oldPos] = -1;
 
             if (handleId != -1)
             {
-                _handleToPhysical[handleId] = newPos;
-                _physicalToHandle[newPos] = handleId;
+                _handleToAddress[handleId] = newPos;
+                _addressToHandle[newPos] = handleId;
             }
             else
             {
-                _physicalToHandle[newPos] = -1;
+                _addressToHandle[newPos] = -1;
             }
         }
 
@@ -154,42 +169,49 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             if (_freeHead != -1)
             {
                 int id = _freeHead;
-                _freeHead = _handleToPhysical[id];
+                _freeHead = _handleToAddress[id];
                 return id;
             }
 
-            int oldCapacity = _handleToPhysical.Length;
+            int oldCapacity = _handleToAddress.Length;
             int newCapacity = oldCapacity * 2;
 
-            Array.Resize(ref _handleToPhysical, newCapacity);
-            Array.Resize(ref _physicalToHandle, newCapacity);
+            Array.Resize(ref _handleToAddress, newCapacity);
+            Array.Resize(ref _addressToHandle, newCapacity);
             Array.Resize(ref _generation, newCapacity);
 
             for (int i = oldCapacity; i < newCapacity - 1; i++)
-                _handleToPhysical[i] = i + 1;
-            _handleToPhysical[newCapacity - 1] = -1;
+                _handleToAddress[i] = i + 1;
+            _handleToAddress[newCapacity - 1] = -1;
 
             _freeHead = oldCapacity;
             int newId = _freeHead;
-            _freeHead = _handleToPhysical[newId];
+            _freeHead = _handleToAddress[newId];
             return newId;
         }
 
         private void FreeId(int id)
         {
-            _handleToPhysical[id] = _freeHead;
+            _handleToAddress[id] = _freeHead;
             _freeHead = id;
         }
 
-        private void EnsurePhysicalCapacity(int physicalIndex)
+        private void EnsurePhysicalCapacity(int address)
         {
-            if (physicalIndex >= _physicalToHandle.Length)
+            if (address >= _addressToHandle.Length)
             {
-                int newCapacity = Math.Max(physicalIndex + 1, _physicalToHandle.Length * 2);
-                Array.Resize(ref _handleToPhysical, newCapacity);
-                Array.Resize(ref _physicalToHandle, newCapacity);
+                int newCapacity = Math.Max(address + 1, _addressToHandle.Length * 2);
+                Array.Resize(ref _handleToAddress, newCapacity);
+                Array.Resize(ref _addressToHandle, newCapacity);
                 Array.Resize(ref _generation, newCapacity);
             }
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EnsureValid(GapBufferItemAnchor handle)
+        {
+            if (!IsValidAnchor(handle))
+                throw new InvalidOperationException("Stale or invalid handle.");
+        }
+
     }
 }
