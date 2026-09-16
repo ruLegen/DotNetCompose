@@ -38,14 +38,14 @@ namespace DotNetCompose.Runtime.Tests
         public void Anchor_GenerationZero_IsInvalid()
         {
             var anchor = new GapBufferItemAnchor(0, 0);
-            Assert.False(anchor.IsValid);
+            Assert.False(new GapBufferSlotMap<int>().IsValidAnchor(anchor));
         }
 
         [Fact]
-        public void Anchor_GenerationPositive_IsValid()
+        public void Anchor_PositiveGenerationWithoutAllocatedHandle_IsInvalid()
         {
             var anchor = new GapBufferItemAnchor(1, 1);
-            Assert.True(anchor.IsValid);
+            Assert.False(new GapBufferSlotMap<int>().IsValidAnchor(anchor));
         }
 
         // ========== GapBufferSlotMap: Basic ==========
@@ -57,7 +57,7 @@ namespace DotNetCompose.Runtime.Tests
             var map = new GapBufferSlotMap<string>(gap);
 
             var r = map.Insert("hello");
-            Assert.True(r.IsValid);
+            Assert.True(map.IsValidAnchor(r));
             Assert.Equal("hello", map.Get(r));
         }
 
@@ -91,7 +91,7 @@ namespace DotNetCompose.Runtime.Tests
             Assert.Equal("b", map.Get(r2));
 
             var r3 = map.Insert("c");
-            Assert.True(r3.IsValid);
+            Assert.True(map.IsValidAnchor(r3));
             Assert.Equal("c", map.Get(r3));
             Assert.NotEqual(r1, r3);
         }

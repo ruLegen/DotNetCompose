@@ -1,148 +1,147 @@
 ﻿using DotNetCompose.Runtime.SlotTable.GapBuffer;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Text;
-using System.Xml.Linq;
 
 namespace DotNetCompose.Runtime.SlotTable
 {
     public partial class ComposerSlotTable
     {
-        public sealed class Writer
+        /// <summary>Appends groups and writes the slots of the currently open group.</summary>
+        public sealed class Writer : IDisposable
         {
-            private static readonly GroupRecord EmptyGroup = new();
-            private static readonly object Empty = new();
-            public Writer(ComposerSlotTable table)
+            internal Writer(ComposerSlotTable table)
             {
                 Table = table;
                 _groups = table._groups;
                 _slots = table._slots;
-
-                _currentGroupDataAnchor = _slots.InsertStable(0, null);
             }
 
             public readonly ComposerSlotTable Table;
             private readonly SlotMapGapBuffer<GroupRecord> _groups;
             private readonly SlotMapGapBuffer<object?> _slots;
+            private readonly Stack<GapBufferItemAnchor> _groupStack = new();
+            public bool Closed { get; private set; }
 
-            private readonly Stack<GapBufferItemAnchor> _groupStacks = new Stack<GapBufferItemAnchor>();
-            private readonly Stack<GapBufferItemAnchor> _slotStartsStack = new Stack<GapBufferItemAnchor>();
-            private readonly Stack<int> _slotWriteCountStack = new Stack<int>();
+            public void StartGroup() => StartGroup(0);
+            public void StartGroup(int key) => StartGroupCore(key, Empty, Empty, Empty, false);
+            public void StartGroup(int key, object? objectKey) => StartGroupCore(key, objectKey, Empty, Empty, false);
+            public void StartGroup(int key, object? objectKey, object? aux) => StartGroupCore(key, objectKey, aux, Empty, false);
+            public void StartNode(int key, object? node) => StartGroupCore(key, Empty, Empty, node, true);
 
-            private GapBufferItemAnchor _currentGroupDataAnchor;
-            private int _currentGroupSlotSize = 0;
-            private int _totalSlotInsertion = 0;
-
-            //Group management operations
-            public void StartGroup() => StartGroup(0, Empty, Empty, false);
-            public void StartGroup(int key) => StartGroup(key, Empty, Empty, false);
-            public void StartGroup(int key, object? objectKey) => StartGroup(key, objectKey, Empty, false);
-            public void StartNode(int key, object? node) => StartGroup(key, Empty, node, true);
-
-            private void StartGroup(int key, object? objectKey, object? auxData, bool isNode)
+            private void StartGroupCore(int key, object? objectKey, object? aux, object? node, bool isNode)
             {
-                int minSlotNeeded = 0;
-                bool hasAux = auxData != Empty;
-                bool hasObjectKey = objectKey != Empty;
-                GroupFlags flags = GroupFlags.None;
-                if (isNode)
-                {
-                    flags |= GroupFlags.Node;
-                    minSlotNeeded++;
-                }
-                if (hasObjectKey)
-                {
-                    flags |= GroupFlags.ObjectKey;
-                    minSlotNeeded++;
-                }
-                if (hasAux)
-                {
-                    flags |= GroupFlags.Aux;
-                    minSlotNeeded++;
-                }
-
-                if (!_groupStacks.TryPeek(out GapBufferItemAnchor parentGroupAnchor))
-                    parentGroupAnchor = GapBufferItemAnchor.Empty;
-
-                GroupRecord groupRecord = new()
+                EnsureOpen();
+                GroupRecord group = new GroupRecord
                 {
                     Key = key,
-                    Flags = flags,
                     Size = 1,
-                    NodeCount = isNode ? 1 : 0,
-                    ParentAnchor = parentGroupAnchor,
-                    DataAnchor = GapBufferItemAnchor.Empty, // Set later
+                    ParentAnchor = _groupStack.TryPeek(out GapBufferItemAnchor parent) ? parent : GapBufferItemAnchor.Empty,
+                    DataAnchor = GapBufferItemAnchor.Empty,
+                    Flags = (isNode ? GroupFlags.Node : GroupFlags.None)
+                        | (!ReferenceEquals(objectKey, Empty) ? GroupFlags.ObjectKey : GroupFlags.None)
+                        | (!ReferenceEquals(aux, Empty) ? GroupFlags.Aux : GroupFlags.None)
                 };
 
-                _slotWriteCountStack.Push(_currentGroupSlotSize);
-
-                int slotStartIndex = _totalSlotInsertion;
-                _currentGroupSlotSize = 0;
-
-                if (minSlotNeeded > 0)
-                {
-                    if (isNode) _slots.Insert(slotStartIndex + (_currentGroupSlotSize++), auxData);
-                    if (hasObjectKey) _slots.Insert(slotStartIndex + (_currentGroupSlotSize++), objectKey);
-                    if (hasAux) _slots.Insert(slotStartIndex + (_currentGroupSlotSize++), auxData);
-
-                    _totalSlotInsertion += _currentGroupSlotSize;
-                }
-
-                groupRecord.DataAnchor = _slots.Track(_slots.GetAddressOfIndex(slotStartIndex));
-
-                GapBufferItemAnchor addedGroupAnchor = _groups.InsertStable(_groups.Count, groupRecord);
-                _groupStacks.Push(addedGroupAnchor);
+                // New groups are appended in preorder. Their data initially goes at the end.
+                if (group.IsNode) AppendMetadata(ref group, node);
+                if (group.HasObjectKey) AppendMetadata(ref group, objectKey);
+                if (group.HasAux) AppendMetadata(ref group, aux);
+                _groupStack.Push(_groups.InsertStable(_groups.Count, group));
             }
+
+            private void AppendMetadata(ref GroupRecord group, object? value)
+            {
+                if (group.DataAnchor == GapBufferItemAnchor.Empty)
+                    group.DataAnchor = _slots.InsertStable(_slots.Count, value);
+                else
+                    _slots.Insert(_slots.Count, value);
+            }
+
             public void EndGroup()
             {
-                GapBufferItemAnchor openedGroupAnchor = _groupStacks.Pop();
-                ref GroupRecord currentGroup = ref _groups.GetRef(openedGroupAnchor);
-                GapBufferItemAnchor parentGroupAnchor = currentGroup.ParentAnchor;
-                if (parentGroupAnchor != GapBufferItemAnchor.Empty)
+                EnsureGroup();
+                GroupRecord group = _groups.Get(_groupStack.Pop());
+                if (group.ParentAnchor != GapBufferItemAnchor.Empty)
                 {
-                    ref GroupRecord parentGroup = ref _groups.GetRef(parentGroupAnchor);
-                    parentGroup.Size += currentGroup.Size;
-                    parentGroup.NodeCount += currentGroup.NodeCount;
+                    ref GroupRecord parent = ref _groups.GetRef(group.ParentAnchor);
+                    parent.Size += group.Size;
+                    parent.NodeCount += group.IsNode ? 1 : group.NodeCount;
                 }
-                _currentGroupSlotSize = _slotWriteCountStack.Pop();
-                // update NodeCount
-                // update Size
             }
-            public void SkipGroup() { }
-            public void RemoveGroup() { }
 
+            public void SkipGroup()
+            {
+                EnsureOpen();
+                throw new NotSupportedException("Editing existing groups is not implemented.");
+            }
+
+            public void RemoveGroup()
+            {
+                EnsureOpen();
+                throw new NotSupportedException("Editing existing groups is not implemented.");
+            }
 
             public void AppendSlot(object? value)
             {
-                GapBufferItemAnchor openedGroupAnchor = _groupStacks.Peek();
-                ref GroupRecord currentGroup = ref _groups.GetRef(openedGroupAnchor);
-                GapBufferItemAnchor dataStartAnchor = currentGroup.DataAnchor;
-                int insertIndex = _slots.GetIndexOfAnchor(dataStartAnchor) + _currentGroupSlotSize;
-                _slots.Insert(insertIndex, value);
-                _currentGroupSlotSize++;
-                _totalSlotInsertion++;
+                EnsureGroup();
+                GapBufferItemAnchor anchor = _groupStack.Peek();
+                ref GroupRecord group = ref _groups.GetRef(anchor);
+                if (group.DataAnchor == GapBufferItemAnchor.Empty)
+                {
+                    // Empty parents can acquire their first slot after their children were written.
+                    // Locate the boundary without anchoring a gap or a non-existent item.
+                    int insertIndex = _slots.Count;
+                    for (int i = _groups.GetIndexOfAnchor(anchor) + 1; i < _groups.Count; i++)
+                    {
+                        GroupRecord next = _groups.Get(_groups.GetAddressOfIndex(i));
+                        if (next.DataAnchor != GapBufferItemAnchor.Empty)
+                        {
+                            insertIndex = _slots.GetIndexOfAnchor(next.DataAnchor);
+                            break;
+                        }
+                    }
+                    group.DataAnchor = _slots.InsertStable(insertIndex, value);
+                }
+                else
+                {
+                    int index = _slots.GetIndexOfAnchor(group.DataAnchor) + group.MetadataSlotCount + group.SlotCount;
+                    _slots.Insert(index, value);
+                }
+                group.SlotCount++;
             }
+
+            /// <summary>Updates the last user slot appended to the current group.</summary>
             public void UpdateSlot(object? value)
             {
-                GapBufferItemAnchor openedGroupAnchor = _groupStacks.Peek();
-                ref GroupRecord currentGroup = ref _groups.GetRef(openedGroupAnchor);
-                GapBufferItemAnchor dataStartAnchor = currentGroup.DataAnchor;
-                int updateIndex = _slots.GetIndexOfAnchor(dataStartAnchor) + _currentGroupSlotSize-1;
-                _slots.Set(_slots.GetAddressOfIndex(updateIndex), value);
+                EnsureGroup();
+                GroupRecord group = _groups.Get(_groupStack.Peek());
+                if (group.SlotCount == 0)
+                    throw new InvalidOperationException("The current group has no user slot to update.");
+                int index = _slots.GetIndexOfAnchor(group.DataAnchor) + group.MetadataSlotCount + group.SlotCount - 1;
+                _slots.Set(_slots.GetAddressOfIndex(index), value);
             }
 
-            //Slot/data operations
-            //Navigation/traversal:
-            //Node operations
-
-            /////
-            ///
             public void Close()
             {
+                if (Closed) return;
+                if (_groupStack.Count != 0)
+                    throw new InvalidOperationException("Cannot close a writer with unclosed groups.");
                 Table.CloseWriter(this);
-                // Move Gap to the end
-                // so reader could 
+                Closed = true;
+            }
+
+            public void Dispose() => Close();
+
+            private void EnsureOpen()
+            {
+                if (Closed) throw new ObjectDisposedException(nameof(Writer));
+            }
+
+            private void EnsureGroup()
+            {
+                EnsureOpen();
+                if (_groupStack.Count == 0)
+                    throw new InvalidOperationException("No group is open.");
             }
         }
     }

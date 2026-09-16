@@ -1,16 +1,14 @@
 ﻿using DotNetCompose.Runtime.SlotTable.GapBuffer;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
-using System.Threading;
-using static DotNetCompose.Runtime.SlotTable.ComposerSlotTable;
 
 namespace DotNetCompose.Runtime.SlotTable
 {
     public partial class ComposerSlotTable
     {
         public ComposerSlotTable() { }
+
+        /// <summary>Distinguishes an absent slot from a slot containing null.</summary>
+        public static readonly object Empty = Composables.Empty;
 
 
         private readonly SlotMapGapBuffer<GroupRecord> _groups = new SlotMapGapBuffer<GroupRecord>();
@@ -50,7 +48,6 @@ namespace DotNetCompose.Runtime.SlotTable
         {
             if (writer.Table != this || _writing == false)
                 throw new InvalidOperationException("Unexpected Writer close");
-            // apply data to table
             _writing = false;
         }
     }

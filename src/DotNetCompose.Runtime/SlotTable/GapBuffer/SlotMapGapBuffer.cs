@@ -23,7 +23,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Remove(int physicalIndex) =>
-            _buffer.RemoveAtAddress(physicalIndex);
+            _handles.RemoveAtAddress(physicalIndex);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Get(int physicalIndex) =>
@@ -59,6 +59,11 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         internal GapBufferItemAnchor Track(int slotStart) =>
             _handles.Track(slotStart);
+
+        internal GapBufferItemAnchor GetAnchorAtIndex(int index) =>
+            _handles.AnchorAtAddress(_buffer.AddressOf(index));
+
+        public bool IsValidAnchor(GapBufferItemAnchor anchor) => _handles.IsValidAnchor(anchor);
 
         internal int GetAddressOfIndex(int index) =>
             _buffer.AddressOf(index);   

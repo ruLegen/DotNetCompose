@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -18,10 +17,12 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _source.OnElementsMoved = OnElementsMoved;
 
-            int initialCapacity = _source.Capacity;
+            int initialCapacity = Math.Max(1, _source.Capacity);
             _handleToAddress = new int[initialCapacity];
             _addressToHandle = new int[initialCapacity];
             _generation = new int[initialCapacity];
+            _active = new bool[initialCapacity];
+            Array.Fill(_addressToHandle, -1);
 
             for (int i = 0; i < initialCapacity - 1; i++)
                 _handleToAddress[i] = i + 1;
@@ -36,6 +37,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         private int[] _handleToAddress;
         private int[] _addressToHandle;
         private int[] _generation;
+        private bool[] _active;
 
         private int _count;
         private int _freeHead = -1;
@@ -55,17 +57,25 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public GapBufferItemAnchor Insert(int index, T item)
         {
+            if (index < 0 || index > _source.Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
             int physicalIndex = _source.Insert(index, item);
             return Track(physicalIndex);
         }
 
         public GapBufferItemAnchor Track(int address)
         {
+            ValidateAddress(address);
+            EnsurePhysicalCapacity(address);
+            int existing = _addressToHandle[address];
+            if (existing >= 0)
+                return new GapBufferItemAnchor(existing, _generation[existing]);
+
             int id = AllocateId();
             _generation[id]++;
+            _active[id] = true;
 
             _handleToAddress[id] = address;
-            EnsurePhysicalCapacity(address);
             _addressToHandle[address] = id;
             _count++;
 
@@ -98,35 +108,49 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public int IndexOf(GapBufferItemAnchor handle)
         {
-            if (handle.Id < 0)
+            if (handle == GapBufferItemAnchor.Empty)
                 return -1;
-            
-            if(handle.Id < _handleToAddress.Length)
-            {
-                int address = _handleToAddress[handle.Id];
-                return _source.AddressToIndex(address);
-            }
-            return -1;
+            EnsureValid(handle);
+            return _source.AddressToIndex(_handleToAddress[handle.Id]);
         }
 
         public void Remove(GapBufferItemAnchor handle)
         {
-            if (!IsValidAnchor(handle)) 
-                throw new InvalidOperationException("Stale or invalid handle.");
+            EnsureValid(handle);
+            RemoveAtAddress(_handleToAddress[handle.Id]);
+        }
 
-            int address = _handleToAddress[handle.Id];
+        internal GapBufferItemAnchor AnchorAtAddress(int address)
+        {
+            ValidateAddress(address);
+            if (address >= _addressToHandle.Length || _addressToHandle[address] < 0)
+                throw new InvalidOperationException("The element has no anchor.");
+            int id = _addressToHandle[address];
+            return new GapBufferItemAnchor(id, _generation[id]);
+        }
+
+        internal void RemoveAtAddress(int address)
+        {
+            ValidateAddress(address);
+            int id = address < _addressToHandle.Length ? _addressToHandle[address] : -1;
+            if (id >= 0)
+            {
+                // Detach before moving the gap: the removed item must not move its handle.
+                _addressToHandle[address] = -1;
+                _active[id] = false;
+                FreeId(id);
+                _count--;
+            }
             _source.RemoveAtAddress(address);
-
-            _generation[handle.Id]++;
-            FreeId(handle.Id);
-            _count--;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsValidAnchor(GapBufferItemAnchor handle)
         {
             return handle.Generation > 0
+                && handle.Id >= 0
                 && handle.Id < _handleToAddress.Length
+                && _active[handle.Id]
                 && _generation[handle.Id] == handle.Generation;
         }
 
@@ -177,8 +201,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             int newCapacity = oldCapacity * 2;
 
             Array.Resize(ref _handleToAddress, newCapacity);
-            Array.Resize(ref _addressToHandle, newCapacity);
             Array.Resize(ref _generation, newCapacity);
+            Array.Resize(ref _active, newCapacity);
 
             for (int i = oldCapacity; i < newCapacity - 1; i++)
                 _handleToAddress[i] = i + 1;
@@ -201,10 +225,17 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             if (address >= _addressToHandle.Length)
             {
                 int newCapacity = Math.Max(address + 1, _addressToHandle.Length * 2);
-                Array.Resize(ref _handleToAddress, newCapacity);
+                int oldCapacity = _addressToHandle.Length;
                 Array.Resize(ref _addressToHandle, newCapacity);
-                Array.Resize(ref _generation, newCapacity);
+                Array.Fill(_addressToHandle, -1, oldCapacity, newCapacity - oldCapacity);
             }
+        }
+
+        private void ValidateAddress(int address)
+        {
+            int index = _source.AddressToIndex(address);
+            if (address < 0 || index < 0 || index >= _source.Count || _source.AddressOf(index) != address)
+                throw new ArgumentOutOfRangeException(nameof(address));
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureValid(GapBufferItemAnchor handle)

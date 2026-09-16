@@ -26,6 +26,10 @@ namespace DotNetCompose.Runtime
         public GapBufferItemAnchor ParentAnchor;
         public int Size;
         public GapBufferItemAnchor DataAnchor;
+        // Only user slots; node, object key and aux are stored before these slots.
+        public int SlotCount;
+
+        public int MetadataSlotCount => (IsNode ? 1 : 0) + (HasObjectKey ? 1 : 0) + (HasAux ? 1 : 0);
 
         public bool IsNode => (Flags & GroupFlags.Node) != 0;
         public bool HasObjectKey => (Flags & GroupFlags.ObjectKey) != 0;
