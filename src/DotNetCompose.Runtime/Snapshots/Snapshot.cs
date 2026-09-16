@@ -58,41 +58,41 @@ namespace DotNetCompose.Runtime.Snapshots
             Invalid = invalid;
             if (id != SnapshotId.Invalid)
             {
-                var pinned = invalid.IsEmpty ? id : invalid.Lowest(id);
+                long pinned = invalid.IsEmpty ? id : invalid.Lowest(id);
                 using (Lock()) _pinningTrackingHandle = PinningTable.Add(pinned);
             }
         }
 
         public T Enter<T>(Func<T> block)
         {
-            var previous = Push();
+            Snapshot? previous = Push();
             try { return block(); }
             finally { Pop(previous); }
         }
 
         public void Enter(Action block)
         {
-            var previous = Push();
+            Snapshot? previous = Push();
             try { block(); }
             finally { Pop(previous); }
         }
 
         internal virtual Snapshot? Push()
         {
-            var stack = _threadSnapshot.Value;
+            Stack<Snapshot?>? stack = _threadSnapshot.Value;
             if (stack == null)
             {
                 stack = new Stack<Snapshot?>();
                 _threadSnapshot.Value = stack;
             }
-            var previous = stack.Count > 0 ? stack.Peek() : null;
+            Snapshot? previous = stack.Count > 0 ? stack.Peek() : null;
             stack.Push(this);
             return previous;
         }
 
         internal virtual void Pop(Snapshot? previous)
         {
-            var stack = _threadSnapshot.Value;
+            Stack<Snapshot?>? stack = _threadSnapshot.Value;
             if (stack != null && stack.Count > 0)
                 stack.Pop();
         }
@@ -101,7 +101,7 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             get
             {
-                var stack = _threadSnapshot.Value;
+                Stack<Snapshot?>? stack = _threadSnapshot.Value;
                 if (stack != null && stack.Count > 0)
                     return stack.Peek()!;
                 return GlobalSnapshot;
@@ -112,7 +112,7 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             get
             {
-                var stack = _threadSnapshot.Value;
+                Stack<Snapshot?>? stack = _threadSnapshot.Value;
                 return stack != null && stack.Count > 0;
             }
         }
@@ -139,6 +139,17 @@ namespace DotNetCompose.Runtime.Snapshots
             Action<object>? readObserver = null,
             Action<object>? writeObserver = null)
         {
+            if (ReferenceEquals(Current, GlobalSnapshot))
+            {
+                using (Lock())
+                {
+                    long id = NextSnapshotId++;
+                    MutableSnapshot snapshot = new MutableSnapshot(id, OpenSnapshots.Clear(GlobalSnapshot.Id), readObserver, writeObserver);
+                    OpenSnapshots = OpenSnapshots.Set(id);
+                    AdvanceGlobalSnapshot();
+                    return snapshot;
+                }
+            }
             if (Current is MutableSnapshot ms)
                 return ms.TakeNestedMutableSnapshot(readObserver, writeObserver);
             throw new InvalidOperationException("Cannot create a mutable snapshot from a read-only snapshot");
@@ -153,7 +164,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal static void AdvanceGlobalSnapshot()
         {
-            var previousGlobal = GlobalSnapshot;
+            MutableSnapshot previousGlobal = GlobalSnapshot;
             HashSet<IStateObject>? modified = null;
 
             using (Lock())
@@ -161,9 +172,10 @@ namespace DotNetCompose.Runtime.Snapshots
                 previousGlobal = GlobalSnapshot;
                 modified = previousGlobal.Modified;
 
-                var globalId = NextSnapshotId++;
+                long globalId = NextSnapshotId++;
                 OpenSnapshots = OpenSnapshots.Clear(previousGlobal.Id);
                 GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots, null, null);
+                previousGlobal.Applied = true;
                 previousGlobal.Dispose();
                 OpenSnapshots = OpenSnapshots.Set(globalId);
             }
@@ -173,8 +185,8 @@ namespace DotNetCompose.Runtime.Snapshots
                 PendingApplyObserverCount++;
                 try
                 {
-                    var observers = ApplyObservers.ToArray();
-                    foreach (var obs in observers)
+                    Action<HashSet<IStateObject>, Snapshot>[] observers = ApplyObservers.ToArray();
+                    foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
                     {
                         try { obs(modified, previousGlobal); }
                         catch { }
@@ -190,7 +202,7 @@ namespace DotNetCompose.Runtime.Snapshots
             {
                 CheckAndOverwriteUnusedRecordsLocked();
                 if (modified != null)
-                    foreach (var state in modified)
+                    foreach (IStateObject state in modified)
                         ProcessForUnusedRecordsLocked(state);
             }
         }
@@ -210,7 +222,7 @@ namespace DotNetCompose.Runtime.Snapshots
             Func<HashSet<IStateObject>, Snapshot, bool> predicate,
             Action<HashSet<IStateObject>, Snapshot> handler)
         {
-            var observer = new Action<HashSet<IStateObject>, Snapshot>((states, snapshot) =>
+            Action<HashSet<IStateObject>, Snapshot> observer = new Action<HashSet<IStateObject>, Snapshot>((states, snapshot) =>
             {
                 if (predicate(states, snapshot))
                     handler(states, snapshot);
@@ -244,12 +256,12 @@ namespace DotNetCompose.Runtime.Snapshots
                 return;
             }
 
-            var previous = _threadSnapshot.Value?.Count > 0 ? _threadSnapshot.Value.Peek() : null;
+            Snapshot? previous = _threadSnapshot.Value?.Count > 0 ? _threadSnapshot.Value.Peek() : null;
 
             if (previous is TransparentObserverMutableSnapshot toms && toms.CanBeReused)
             {
-                var prevRead = toms.ReadObserver;
-                var prevWrite = toms.WriteObserver;
+                Action<object>? prevRead = toms.ReadObserver;
+                Action<object>? prevWrite = toms.WriteObserver;
                 try
                 {
                     toms.ReadObserver = MergeReadObserver(readObserver, prevRead);
@@ -264,7 +276,7 @@ namespace DotNetCompose.Runtime.Snapshots
             }
             else if (previous is TransparentObserverSnapshot tos && tos.CanBeReused && readObserver != null)
             {
-                var prevRead = tos.ReadObserver;
+                Action<object>? prevRead = tos.ReadObserver;
                 try
                 {
                     tos.ReadObserver = MergeReadObserver(readObserver, prevRead);
@@ -317,12 +329,12 @@ namespace DotNetCompose.Runtime.Snapshots
             if (readObserver == null && writeObserver == null)
                 return block();
 
-            var previous = _threadSnapshot.Value?.Count > 0 ? _threadSnapshot.Value.Peek() : null;
+            Snapshot? previous = _threadSnapshot.Value?.Count > 0 ? _threadSnapshot.Value.Peek() : null;
 
             if (previous is TransparentObserverMutableSnapshot toms && toms.CanBeReused)
             {
-                var prevRead = toms.ReadObserver;
-                var prevWrite = toms.WriteObserver;
+                Action<object>? prevRead = toms.ReadObserver;
+                Action<object>? prevWrite = toms.WriteObserver;
                 try
                 {
                     toms.ReadObserver = MergeReadObserver(readObserver, prevRead);
@@ -337,7 +349,7 @@ namespace DotNetCompose.Runtime.Snapshots
             }
             else if (previous is TransparentObserverSnapshot tos && tos.CanBeReused && readObserver != null)
             {
-                var prevRead = tos.ReadObserver;
+                Action<object>? prevRead = tos.ReadObserver;
                 try
                 {
                     tos.ReadObserver = MergeReadObserver(readObserver, prevRead);
@@ -382,12 +394,13 @@ namespace DotNetCompose.Runtime.Snapshots
             MutableSnapshot previousGlobal,
             Func<SnapshotIdSet, T> block)
         {
-            var result = block(OpenSnapshots.Clear(previousGlobal.Id));
+            T result = block(OpenSnapshots.Clear(previousGlobal.Id));
             using (Lock())
             {
-                var globalId = NextSnapshotId++;
+                long globalId = NextSnapshotId++;
                 OpenSnapshots = OpenSnapshots.Clear(previousGlobal.Id);
                 GlobalSnapshot = new MutableSnapshot(globalId, OpenSnapshots, null, null);
+                previousGlobal.Applied = true;
                 previousGlobal.Dispose();
                 OpenSnapshots = OpenSnapshots.Set(globalId);
             }
@@ -410,18 +423,16 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal static StateRecord? ReadableSilent(StateRecord record, long snapshotId, SnapshotIdSet invalid)
         {
-            var current = record;
+            StateRecord? current = record;
+            StateRecord? result = null;
             while (current != null)
             {
-                if (!invalid.Get(current.SnapshotId) && current.SnapshotId <= snapshotId)
-                {
-                    var isInvalid = current.SnapshotId != SnapshotId.Invalid && current.SnapshotId <= snapshotId && invalid.Get(current.SnapshotId);
-                    if (!isInvalid)
-                        return current;
-                }
+                if (current.SnapshotId != SnapshotId.Invalid && current.SnapshotId <= snapshotId
+                    && !invalid.Get(current.SnapshotId) && (result == null || current.SnapshotId > result.SnapshotId))
+                    result = current;
                 current = current.Next;
             }
-            return null;
+            return result;
         }
 
 
@@ -440,13 +451,13 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal static StateRecord ReadCurrent(StateRecord record, Snapshot snapshot)
         {
-            var result = ReadableSilent(record, snapshot.Id, snapshot.Invalid);
+            StateRecord? result = ReadableSilent(record, snapshot.Id, snapshot.Invalid);
             return result ?? record;
         }
 
         internal static StateRecord? TryFindReusableRecord(IStateObject state)
         {
-            var current = state.FirstStateRecord;
+            StateRecord? current = state.FirstStateRecord;
             while (current != null)
             {
                 if (current.SnapshotId == long.MaxValue)
@@ -459,13 +470,28 @@ namespace DotNetCompose.Runtime.Snapshots
         internal static void NotifyWrite(Snapshot snapshot, IStateObject state)
         {
             snapshot.WriteObserver?.Invoke(state);
+            if (ReferenceEquals(snapshot.Root, GlobalSnapshot)) NotifyGlobalWrite(state);
+        }
+
+        public static ObserverHandle RegisterGlobalWriteObserver(Action<object> observer)
+        {
+            if (observer == null) throw new ArgumentNullException(nameof(observer));
+            lock (_lock) GlobalWriteObservers.Add(observer);
+            return new ObserverHandle(() => { lock (_lock) GlobalWriteObservers.Remove(observer); });
+        }
+
+        internal static void NotifyGlobalWrite(object state)
+        {
+            Action<object>[] observers;
+            lock (_lock) observers = GlobalWriteObservers.ToArray();
+            foreach (Action<object> observer in observers) observer(state);
         }
 
         internal static void MakeCurrentNonObservable(
             Snapshot previous,
             out Snapshot? nonObservable)
         {
-            var observer = previous.ReadObserver;
+            Action<object>? observer = previous.ReadObserver;
             if (previous is TransparentObserverMutableSnapshot toms && toms.CanBeReused)
             {
                 toms.ReadObserver = null;
@@ -505,18 +531,18 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public static void WithoutReadObservation(Action block)
         {
-            var previous = CurrentThreadSnapshot;
-            var observer = previous.ReadObserver;
-            MakeCurrentNonObservable(previous, out var nonObservable);
+            Snapshot previous = CurrentThreadSnapshot;
+            Action<object>? observer = previous.ReadObserver;
+            MakeCurrentNonObservable(previous, out Snapshot? nonObservable);
             try { block(); }
-            finally { RestoreNonObservable(previous, nonObservable, observer); }
+            finally { RestoreNonObservable(previous, nonObservable!, observer); }
         }
 
         public static Snapshot CurrentThreadSnapshot
         {
             get
             {
-                var stack = _threadSnapshot.Value;
+                Stack<Snapshot?>? stack = _threadSnapshot.Value;
                 return stack?.Count > 0 ? stack.Peek()! : Current;
             }
         }
@@ -526,7 +552,7 @@ namespace DotNetCompose.Runtime.Snapshots
             Action<object>? parentReadObserver,
             bool merge = true)
         {
-            var parent = merge ? parentReadObserver : null;
+            Action<object>? parent = merge ? parentReadObserver : null;
             if (readObserver != null && parent != null && readObserver != parent)
                 return state => { readObserver(state); parent(state); };
             return readObserver ?? parent;

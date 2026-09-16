@@ -23,7 +23,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             RewriterOptions options = context.Options;
             RewriterSession session = context.Session;
 
-            var normalParams = methodCtx.Parameters
+            List<(MethodDeclarationSyntaxExtensions.MethodParameterInfo Param, int Index)> normalParams = methodCtx.Parameters
                 .Select((p, i) => (Param: p, Index: i))
                 .Where(x => !x.Param.IsComposable)
                 .ToList();
@@ -40,14 +40,14 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             string ctxVar = options.ContextVarName;
             string changedVar = options.ChangedVarName;
 
-            foreach (var (param, index) in normalParams)
+            foreach ((MethodDeclarationSyntaxExtensions.MethodParameterInfo param, int index) in normalParams)
             {
                 string stateVar = $"__{param.Name}_state";
                 stateVarNames.Add(stateVar);
 
                 if (param.DefaultProviderType != null)
                 {
-                    var conditionalExpr = SyntaxFactory.ConditionalExpression(
+                    ConditionalExpressionSyntax conditionalExpr = SyntaxFactory.ConditionalExpression(
                         SyntaxFactory.BinaryExpression(
                             SyntaxKind.EqualsExpression,
                             SyntaxFactory.ElementAccessExpression(
@@ -102,6 +102,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
                 if (param.Type != null && param.Type.IsStableType())
                 {
+                    // Caller flags select execution, but must not change the group's slot layout.
+                    prologueStmts.Add(SyntaxFactory.ParseStatement(
+                        $"if ({stateVar} != {Consts.ComposableArgumentsState.FullName}.{Consts.ComposableArgumentsState.UncertainField}) {ctxVar}.Changed({param.Name});"));
                     prologueStmts.Add(SyntaxFactory.IfStatement(
                         SyntaxFactory.BinaryExpression(
                             SyntaxKind.EqualsExpression,
@@ -175,7 +178,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     SyntaxFactory.IdentifierName(ctxVar),
                     SyntaxFactory.IdentifierName(Consts.ComposeContext.SkippingProperty)));
 
-            var skipStatement = SyntaxFactory.IfStatement(
+            IfStatementSyntax skipStatement = SyntaxFactory.IfStatement(
                 condition,
                 SyntaxFactory.Block(
                     SyntaxFactory.SingletonList<StatementSyntax>(

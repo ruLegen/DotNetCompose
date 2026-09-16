@@ -11,6 +11,8 @@ namespace DotNetCompose.Runtime.Snapshots
         internal override HashSet<IStateObject>? Modified { get; set; }
 
         private int _snapshots = 1;
+        private readonly long _initialId;
+        private readonly SnapshotIdSet _initialInvalid;
         public bool Applied { get; internal set; }
 
         public override Snapshot Root => this;
@@ -22,6 +24,8 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             ReadObserver = readObserver;
             WriteObserver = writeObserver;
+            _initialId = id;
+            _initialInvalid = invalid;
         }
 
         public override bool HasPendingChanges() => Modified?.Count > 0;
@@ -35,9 +39,9 @@ namespace DotNetCompose.Runtime.Snapshots
             {
                 using (Snapshot.Lock())
                 {
-                    var newId = NextSnapshotId++;
+                    long newId = NextSnapshotId++;
                     OpenSnapshots = OpenSnapshots.Set(newId);
-                    var currentInvalid = Invalid;
+                    SnapshotIdSet currentInvalid = Invalid;
                     Invalid = currentInvalid.Set(newId);
                     return new NestedMutableSnapshot(
                         newId,
@@ -57,21 +61,21 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public virtual SnapshotApplyResult Apply()
         {
-            var modified = Modified;
+            HashSet<IStateObject>? modified = Modified;
 
-            var observers = new List<Action<HashSet<IStateObject>, Snapshot>>();
+            List<Action<HashSet<IStateObject>, Snapshot>> observers = new List<Action<HashSet<IStateObject>, Snapshot>>();
             HashSet<IStateObject>? globalModified = null;
             SnapshotApplyResult? failureResult = null;
 
             using (Snapshot.Lock())
             {
                 ValidateOpen(this);
-                var previousGlobal = GlobalSnapshot;
+                MutableSnapshot previousGlobal = GlobalSnapshot;
 
                 if (modified == null || modified.Count == 0)
                 {
                     CloseLocked();
-                    var prevMod = previousGlobal.Modified;
+                    HashSet<IStateObject>? prevMod = previousGlobal.Modified;
                     AdvanceGlobalSnapshot();
                     if (prevMod != null && prevMod.Count > 0)
                     {
@@ -81,8 +85,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 }
                 else
                 {
-                    var result = InnerApplyLocked(this, modified,
-                        OpenSnapshots.Clear(GlobalSnapshot.Id));
+                    SnapshotApplyResult result = InnerApplyLocked(this, modified, GlobalSnapshot);
                     if (!result.Succeeded)
                     {
                         failureResult = result;
@@ -90,7 +93,7 @@ namespace DotNetCompose.Runtime.Snapshots
                     else
                     {
                         CloseLocked();
-                        var prevMod = previousGlobal.Modified;
+                        HashSet<IStateObject>? prevMod = previousGlobal.Modified;
                         AdvanceGlobalSnapshot();
                         Modified = null;
                         previousGlobal.Modified = null;
@@ -110,7 +113,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 PendingApplyObserverCount++;
                 try
                 {
-                    foreach (var obs in observers)
+                    foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
                     {
                         try { obs(globalModified, this); }
                         catch { }
@@ -124,7 +127,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 PendingApplyObserverCount++;
                 try
                 {
-                    foreach (var obs in observers)
+                    foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
                     {
                         try { obs(modified, this); }
                         catch { }
@@ -137,10 +140,10 @@ namespace DotNetCompose.Runtime.Snapshots
             {
                 ReleasePinnedSnapshotLocked();
                 if (globalModified != null)
-                    foreach (var s in globalModified)
+                    foreach (IStateObject s in globalModified)
                         ProcessForUnusedRecordsLocked(s);
                 if (modified != null)
-                    foreach (var s in modified)
+                    foreach (IStateObject s in modified)
                         ProcessForUnusedRecordsLocked(s);
             }
 
@@ -160,7 +163,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal override void CloseLocked()
         {
-            OpenSnapshots = OpenSnapshots.Clear(Id);
+            OpenSnapshots = OpenSnapshots.Clear(Id).AndNot(PreviousIds);
         }
 
         private void ValidateNotDisposed()
@@ -188,10 +191,10 @@ namespace DotNetCompose.Runtime.Snapshots
         private T Advance<T>(Func<T> value)
         {
             RecordPrevious(Id);
-            var result = value();
+            T result = value();
             if (!Applied && !Disposed)
             {
-                var previousId = Id;
+                long previousId = Id;
                 using (Snapshot.Lock())
                 {
                     Id = NextSnapshotId++;
@@ -211,6 +214,14 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             if (--_snapshots == 0 && !Applied)
             {
+                using (Lock())
+                {
+                    if (Modified != null)
+                        foreach (IStateObject state in Modified)
+                            for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next)
+                                if (record.SnapshotId == Id || PreviousIds.Get(record.SnapshotId)) record.SnapshotId = SnapshotId.Invalid;
+                    CloseLocked();
+                }
             }
         }
 
@@ -232,62 +243,36 @@ namespace DotNetCompose.Runtime.Snapshots
         internal static SnapshotApplyResult InnerApplyLocked(
             MutableSnapshot snapshot,
             HashSet<IStateObject> modified,
-            SnapshotIdSet invalid)
+            MutableSnapshot target)
         {
-            foreach (var state in modified)
+            ValidateOpen(snapshot);
+            if (target.Disposed || target.Applied) return SnapshotApplyResult.Failure("The parent snapshot is closed.");
+            List<(IStateObject State, StateRecord Record)> writes = new List<(IStateObject, StateRecord)>();
+            foreach (IStateObject state in modified)
             {
-                var record = state.FirstStateRecord;
-                StateRecord? appliedRecord = null;
-
-                while (record != null)
-                {
-                    if (record.SnapshotId == snapshot.Id)
-                    {
-                        appliedRecord = record;
-                        break;
-                    }
-                    record = record.Next;
-                }
-
+                StateRecord? appliedRecord = ReadableSilent(state.FirstStateRecord, snapshot.Id, snapshot.Invalid);
                 if (appliedRecord == null) continue;
-
-                var globalRecord = ReadableSilent(
-                    state.FirstStateRecord, GlobalSnapshot.Id, invalid);
-
-                if (globalRecord != null &&
-                    globalRecord.SnapshotId < appliedRecord.SnapshotId)
+                StateRecord? current = ReadableSilent(state.FirstStateRecord, target.Id, target.Invalid.Set(snapshot.Id).Or(snapshot.PreviousIds));
+                StateRecord? previous = ReadableSilent(state.FirstStateRecord, snapshot._initialId - 1, snapshot._initialInvalid);
+                StateRecord selected = appliedRecord;
+                if (current != null && previous != null && current.SnapshotId != previous.SnapshotId)
                 {
-                    var previous = ReadableSilent(
-                        state.FirstStateRecord,
-                        snapshot.Id - 1,
-                        invalid);
-
-                    if (previous != null &&
-                        previous.SnapshotId == globalRecord.SnapshotId)
-                    {
-                        appliedRecord.SnapshotId = GlobalSnapshot.Id;
-                        continue;
-                    }
-
-                    var merged = state.MergeRecords(
-                        previous ?? globalRecord,
-                        globalRecord,
-                        appliedRecord);
-
+                    StateRecord? merged = state.MergeRecords(previous, current, appliedRecord);
                     if (merged == null)
-                        return SnapshotApplyResult.Failure(
-                            "Conflicting writes to " + state.GetType().Name);
-
-                    merged.SnapshotId = GlobalSnapshot.Id;
-                    merged.Next = state.FirstStateRecord;
-                    state.PrependStateRecord(merged);
+                        return SnapshotApplyResult.Failure("Conflicting writes to " + state.GetType().Name);
+                    selected = merged;
                 }
-                else
-                {
-                    appliedRecord.SnapshotId = GlobalSnapshot.Id;
-                }
+                StateRecord copy = selected.Create();
+                copy.Assign(selected);
+                copy.SnapshotId = target.Id;
+                writes.Add((state, copy));
             }
-
+            // Validate every merge before publishing any of the writes.
+            foreach ((IStateObject state, StateRecord record) in writes)
+            {
+                record.Next = state.FirstStateRecord;
+                state.PrependStateRecord(record);
+            }
             return SnapshotApplyResult.Success;
         }
 

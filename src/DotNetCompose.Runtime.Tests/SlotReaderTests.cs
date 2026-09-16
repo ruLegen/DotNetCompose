@@ -305,7 +305,7 @@ public class SlotReaderTests
         Assert.Throws<ObjectDisposedException>(() => first.Next());
         Assert.Throws<ObjectDisposedException>(() => first.Get(0));
         Assert.Throws<ObjectDisposedException>(() => first.Size);
-        Assert.Throws<ObjectDisposedException>(() => first.GetGroupKey(GapBufferItemAnchor.Empty));
+        Assert.Throws<ObjectDisposedException>(() => first.GetGroupKey(GroupAnchor.Empty));
         Assert.Throws<ObjectDisposedException>(first.BeginEmpty);
         Assert.Throws<ObjectDisposedException>(() => first.Reposition(0));
         second.StartGroup();
@@ -324,12 +324,12 @@ public class SlotReaderTests
             for (int i = 0; i < 40; i++) { w.StartGroup(i + 10); w.EndGroup(); }
         });
         var groups = Buffer<GroupRecord>(table, "_groups");
-        var originalAnchors = Enumerable.Range(0, groups.Count).Select(groups.GetAnchorAtIndex).ToArray();
-        groups.GetRef(originalAnchors[0]).Flags |= GroupFlags.Mark | GroupFlags.ContainsMark;
+        var originalAnchors = Enumerable.Range(0, groups.Count).Select(i => table.Wrap(groups.AnchorAt(i))).ToArray();
+        groups.GetRef(originalAnchors[0].Item).Flags |= GroupFlags.Mark | GroupFlags.ContainsMark;
         // Simulate the gap position that later editing operations will leave, preserving the tree.
-        int temporaryAddress = groups.Insert(1, default);
-        groups.Remove(temporaryAddress);
-        var before = Enumerable.Range(0, groups.Count).Select(i => groups.Get(groups.GetAddressOfIndex(i))).ToArray();
+        groups.InsertAt(1, default);
+        groups.RemoveAt(1);
+        var before = Enumerable.Range(0, groups.Count).Select(groups.GetAt).ToArray();
         using (var r = table.OpenReader())
         {
             Assert.True(r.HasMark(0));
@@ -344,11 +344,11 @@ public class SlotReaderTests
                 Assert.Equal(i + 10, r.GroupKey);
                 r.SkipGroup();
             }
-            Assert.Equal(0, r.GetGroupKey(GapBufferItemAnchor.Empty));
+            Assert.Equal(0, r.GetGroupKey(GroupAnchor.Empty));
             var anchor = originalAnchors[0];
-            Assert.Equal(0, r.GetGroupKey(new GapBufferItemAnchor(anchor.Id, anchor.Generation + 1)));
+            Assert.Equal(0, r.GetGroupKey(new GroupAnchor(table, new GapBufferItemAnchor(anchor.Item.Id, anchor.Item.Generation + 1))));
         }
-        Assert.Equal(before, Enumerable.Range(0, groups.Count).Select(i => groups.Get(groups.GetAddressOfIndex(i))));
+        Assert.Equal(before, Enumerable.Range(0, groups.Count).Select(groups.GetAt));
         using (var w = table.OpenWriter())
         {
             for (int i = 0; i < 80; i++) { w.StartGroup(100 + i); w.EndGroup(); }

@@ -23,7 +23,9 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public override SnapshotApplyResult Apply()
         {
-            var modified = Modified;
+            ValidateOpen(this);
+            if (_parent.Disposed || _parent.Applied) return SnapshotApplyResult.Failure("The parent snapshot is closed.");
+            HashSet<IStateObject>? modified = Modified;
             if (modified == null || modified.Count == 0)
             {
                 using (Snapshot.Lock()) CloseLocked();
@@ -34,13 +36,15 @@ namespace DotNetCompose.Runtime.Snapshots
             SnapshotApplyResult mergeResult;
             using (Snapshot.Lock())
             {
-                mergeResult = InnerApplyLocked(this, modified, _parent.Invalid);
+                mergeResult = InnerApplyLocked(this, modified, _parent);
                 if (mergeResult.Succeeded)
                 {
                     CloseLocked();
                     _parent.Invalid = _parent.Invalid.Clear(Id).AndNot(PreviousIds);
+                    // The parent owns the private versions until it publishes or discards them.
                     _parent.RecordPrevious(Id);
-                    foreach (var state in modified)
+                    _parent.RecordPreviousList(PreviousIds);
+                    foreach (IStateObject state in modified)
                         _parent.RecordModified(state);
                 }
             }
@@ -49,6 +53,8 @@ namespace DotNetCompose.Runtime.Snapshots
             {
                 Applied = true;
                 Modified = null;
+                if (ReferenceEquals(_parent, GlobalSnapshot))
+                    foreach (IStateObject state in modified) NotifyGlobalWrite(state);
             }
 
             return mergeResult;
@@ -56,7 +62,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
         private void RecordModified(HashSet<IStateObject> states)
         {
-            foreach (var state in states)
+            foreach (IStateObject state in states)
                 _parent.RecordModified(state);
         }
 

@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 {
-    public class GapBufferSlotMap<T>
+    internal class GapBufferSlotMap<T>
     {
         private const int DefaultCapacity = 16;
         public GapBufferSlotMap(int initialCapacity = DefaultCapacity) 
@@ -112,6 +112,40 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
                 return -1;
             EnsureValid(handle);
             return _source.AddressToIndex(_handleToAddress[handle.Id]);
+        }
+
+        // 'to' is a boundary in the original sequence, as in IApplier.Move.
+        internal void MoveRange(int from, int to, int count)
+        {
+            if (from < 0 || count < 0 || from > _source.Count - count)
+                throw new ArgumentOutOfRangeException(nameof(from));
+            if (to < 0 || to > _source.Count)
+                throw new ArgumentOutOfRangeException(nameof(to));
+            if (count == 0 || to == from || to == from + count) return;
+            if (to > from && to < from + count)
+                throw new ArgumentException("The destination is inside the moved range.", nameof(to));
+
+            int start = Math.Min(from, to);
+            int end = Math.Max(from + count, to);
+            int length = end - start;
+            T[] values = new T[length];
+            int[] handles = new int[length];
+            int shift = to < from ? from - start : count;
+            for (int i = 0; i < length; i++)
+            {
+                int source = start + (i + shift) % length;
+                int address = _source.AddressOf(source);
+                values[i] = _source.GetAtAddress(address);
+                handles[i] = address < _addressToHandle.Length ? _addressToHandle[address] : -1;
+            }
+            for (int i = 0; i < length; i++)
+            {
+                int address = _source.AddressOf(start + i);
+                EnsurePhysicalCapacity(address);
+                _source.SetAtAddress(address, values[i]);
+                _addressToHandle[address] = handles[i];
+                if (handles[i] >= 0) _handleToAddress[handles[i]] = address;
+            }
         }
 
         public void Remove(GapBufferItemAnchor handle)

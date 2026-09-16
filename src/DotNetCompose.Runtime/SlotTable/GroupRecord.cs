@@ -23,6 +23,8 @@ namespace DotNetCompose.Runtime
         public int Key;
         public GroupFlags Flags;
         public int NodeCount;
+        // Internal buffer handles: ParentAnchor belongs to the group buffer,
+        // DataAnchor belongs to the slot buffer. Neither is a public GroupAnchor.
         public GapBufferItemAnchor ParentAnchor;
         public int Size;
         public GapBufferItemAnchor DataAnchor;

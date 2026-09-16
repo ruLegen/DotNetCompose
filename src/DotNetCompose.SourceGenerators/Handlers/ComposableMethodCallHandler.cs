@@ -40,10 +40,10 @@ namespace DotNetCompose.SourceGenerators.Handlers
             IMethodSymbol methodSymbol,
             MethodCallHandlerContext context)
         {
-            var options = context.Options;
-            var methodCtx = context.MethodCtx;
-            var session = context.Session;
-            var semanticModel = context.SemanticModel;
+            RewriterOptions options = context.Options;
+            MethodGenerationContext methodCtx = context.MethodCtx;
+            RewriterSession session = context.Session;
+            SemanticModel semanticModel = context.SemanticModel;
 
             ImmutableArray<MethodParameterInfo> parameterInfos = methodSymbol.GetParametersInfos(semanticModel);
 
@@ -120,7 +120,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     (Consts.ComposableArgumentsDefaultState.FullName, Consts.Rewriter.DefaultParamName),
                 });
 
-                var newParamList = SyntaxFactory.ParameterList(
+                ParameterListSyntax newParamList = SyntaxFactory.ParameterList(
                     SyntaxFactory.SeparatedList(newArgs.Select(item =>
                         SyntaxFactory.Parameter(
                             default,
@@ -146,7 +146,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     }
                     variableType = variableType.WithTrailingSpace();
 
-                    var wrappedLambdaExpression = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs("ComposeHelpers", "GetLambda",
+                    InvocationExpressionSyntax wrappedLambdaExpression = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs("ComposeHelpers", "GetLambda",
                         SyntaxFactory.IdentifierName(options.ContextVarName),
                         SyntaxFactoryHelpers.CreateIntLiteral(session.NextLambdaKey()),
                         SyntaxFactory.ParenthesizedLambdaExpression(
@@ -192,11 +192,12 @@ namespace DotNetCompose.SourceGenerators.Handlers
                         SyntaxFactory.Token(SyntaxKind.PublicKeyword),
                         SyntaxFactory.Token(SyntaxKind.StaticKeyword),
                     });
-                    bool bodyConversionFailed = newBody is not BlockSyntax and not ArrowExpressionClauseSyntax;
+                    bool bodyConversionFailed = newBody is not BlockSyntax and not ArrowExpressionClauseSyntax and not ExpressionSyntax;
                     BlockSyntax newBodyBlockSyntax = newBody switch
                     {
                         BlockSyntax block => block,
                         ArrowExpressionClauseSyntax arrowExpression => SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(arrowExpression.Expression)),
+                        ExpressionSyntax expressionBody => SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(expressionBody)),
                         _ => SyntaxFactory.Block(),
                     };
                     if (bodyConversionFailed)
@@ -231,14 +232,14 @@ namespace DotNetCompose.SourceGenerators.Handlers
             byte[] defaultStateBytes = new byte[defaultCount];
             for (int i = 0; i < methodSymbol.Parameters.Length; i++)
             {
-                var paramInfo = parameterInfos[i];
+                MethodParameterInfo paramInfo = parameterInfos[i];
                 if (paramInfo.DefaultProviderType == null) continue;
 
                 int argIdx = ArgumentResolver.FindArgumentIndex(invocationExpression.ArgumentList.Arguments, i, paramInfo.Name);
 
                 if (argIdx >= 0)
                 {
-                    var argExpr = invocationExpression.ArgumentList.Arguments[argIdx].Expression;
+                    ExpressionSyntax argExpr = invocationExpression.ArgumentList.Arguments[argIdx].Expression;
                     if (argExpr.IsKind(SyntaxKind.DefaultLiteralExpression))
                     {
                         defaultStateBytes[paramInfo.DefaultIndex] = 1;
@@ -263,16 +264,16 @@ namespace DotNetCompose.SourceGenerators.Handlers
             }
             else
             {
-                var byteExprs = defaultStateBytes.Select(b => (ExpressionSyntax)
+                IEnumerable<ExpressionSyntax> byteExprs = defaultStateBytes.Select(b => (ExpressionSyntax)
                     SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(b)));
-                var arrayExpr = SyntaxFactory.StackAllocArrayCreationExpression(
+                StackAllocArrayCreationExpressionSyntax arrayExpr = SyntaxFactory.StackAllocArrayCreationExpression(
                     SyntaxFactory.ArrayType(
                         SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
                         SyntaxFactory.SingletonList(SyntaxFactory.ArrayRankSpecifier())),
                     SyntaxFactory.InitializerExpression(
                         SyntaxKind.ArrayInitializerExpression,
                         SyntaxFactory.SeparatedList(byteExprs)));
-                var stateCreation = SyntaxFactory.ObjectCreationExpression(
+                ObjectCreationExpressionSyntax stateCreation = SyntaxFactory.ObjectCreationExpression(
                     SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName))
                     .WithArgumentList(SyntaxFactory.ArgumentList(
                         SyntaxFactory.SingletonSeparatedList(
@@ -280,9 +281,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 defaultStateArg = SyntaxFactory.Argument(stateCreation);
             }
 
-            var processedArgsArray = processedArgs.ToArray();
+            ArgumentSyntax[] processedArgsArray = processedArgs.ToArray();
 
-            var allArgs = new List<ArgumentSyntax>();
+            List<ArgumentSyntax> allArgs = new List<ArgumentSyntax>();
             for (int i = 0; i < parameterInfos.Length; i++)
             {
                 int argIdx = ArgumentResolver.FindArgumentIndex(invocationExpression.ArgumentList.Arguments, i, parameterInfos[i].Name);
@@ -293,7 +294,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 }
                 else
                 {
-                    var paramType = parameterInfos[i].Type;
+                    ITypeSymbol? paramType = parameterInfos[i].Type;
                     ExpressionSyntax defaultExpr = paramType != null
                         ? SyntaxFactory.DefaultExpression(
                             SyntaxFactory.ParseTypeName(paramType.ToDisplayString(
@@ -329,7 +330,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
         private static InvocationExpressionSyntax ReplaceWithFullQualifiedName(InvocationExpressionSyntax node, IMethodSymbol methodSymbol)
         {
-            var typeName = methodSymbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
+            string typeName = methodSymbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
 
             SimpleNameSyntax newIdentifierName = default;
             if (methodSymbol.TypeArguments.Any())
@@ -345,7 +346,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             {
                 newIdentifierName = SyntaxFactory.IdentifierName(methodSymbol.Name);
             }
-            var newQualifiedName = SyntaxFactory.ParseName(typeName);
+            NameSyntax newQualifiedName = SyntaxFactory.ParseName(typeName);
 
             ExpressionSyntax newExpression;
             if (newQualifiedName is QualifiedNameSyntax qns)
@@ -370,22 +371,22 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
         private static SyntaxNode ReplaceLastMemberAccess(SyntaxNode root, string oldMemberName, string newMemberPath)
         {
-            var memberAccesses = root.DescendantNodes()
+            List<MemberAccessExpressionSyntax> memberAccesses = root.DescendantNodes()
                 .OfType<MemberAccessExpressionSyntax>()
                 .Where(m => m.Name.ToString() == oldMemberName)
                 .ToList();
 
-            var lastMemberAccesses = memberAccesses
+            List<MemberAccessExpressionSyntax> lastMemberAccesses = memberAccesses
                 .Where(m => !(m.Parent is MemberAccessExpressionSyntax))
                 .ToList();
 
             if (!lastMemberAccesses.Any())
                 return root;
 
-            var newRoot = root;
-            foreach (var memberAccess in lastMemberAccesses)
+            SyntaxNode newRoot = root;
+            foreach (MemberAccessExpressionSyntax memberAccess in lastMemberAccesses)
             {
-                var newExpression = BuildNewMemberAccess(memberAccess.Expression, newMemberPath)
+                ExpressionSyntax newExpression = BuildNewMemberAccess(memberAccess.Expression, newMemberPath)
                     .WithTriviaFrom(memberAccess);
 
                 newRoot = newRoot.ReplaceNode(memberAccess, newExpression);
@@ -396,10 +397,10 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
         private static ExpressionSyntax BuildNewMemberAccess(ExpressionSyntax leftmost, string newPath)
         {
-            var parts = newPath.Split('.');
+            string[] parts = newPath.Split('.');
             ExpressionSyntax current = leftmost;
 
-            foreach (var part in parts)
+            foreach (string part in parts)
             {
                 current = SyntaxFactory.MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,

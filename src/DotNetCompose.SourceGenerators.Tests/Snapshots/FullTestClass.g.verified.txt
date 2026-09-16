@@ -67,30 +67,40 @@ namespace DotNetCompose.Playground
                 {
                     __ctx?.StartRestartableGroup(63517754);
                     byte __i_state = __changed[0];
+                    if (__i_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(i);
                     if (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __i_state = __ctx.Changed(i) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
                     byte __stable_state = __changed[1];
+                    if (__stable_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(stable);
                     if (__stable_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __stable_state = __ctx.Changed(stable) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
                     byte __g_state = __changed[2];
+                    if (__g_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(g);
                     if (__g_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __g_state = __ctx.Changed(g) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
                     byte __kkk_state = __changed[3];
+                    if (__kkk_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(kkk);
                     if (__kkk_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __kkk_state = __ctx.Changed(kkk) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
                     byte __sdf_state = __changed[4];
+                    if (__sdf_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(sdf);
                     if (__sdf_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __sdf_state = __ctx.Changed(sdf) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
@@ -144,6 +154,8 @@ namespace DotNetCompose.Playground
                 {
                     __ctx?.StartRestartableGroup(-447876319);
                     byte __argInt_state = __changed[0];
+                    if (__argInt_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(argInt);
                     if (__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __argInt_state = __ctx.Changed(argInt) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
@@ -204,6 +216,8 @@ namespace DotNetCompose.Playground
                 {
                     __ctx?.StartRestartableGroup(1918245812);
                     byte __i_state = __changed[0];
+                    if (__i_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(i);
                     if (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __i_state = __ctx.Changed(i) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;

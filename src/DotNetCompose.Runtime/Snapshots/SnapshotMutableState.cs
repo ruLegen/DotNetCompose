@@ -12,8 +12,8 @@ namespace DotNetCompose.Runtime.Snapshots
             get => Readable().Value;
             set
             {
-                var snapshot = Snapshot.Current;
-                var record = Snapshot.ReadCurrent(_next, snapshot);
+                Snapshot snapshot = Snapshot.Current;
+                StateStateRecord record = Snapshot.ReadCurrent(_next, snapshot);
                 if (!Policy.Equivalent(record.Value, value))
                 {
                     using (Snapshot.Lock())
@@ -37,6 +37,7 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             Policy = policy;
             _next = new StateStateRecord(Snapshot.Current.Id, value);
+            if (!ReferenceEquals(Snapshot.Current.Root, Snapshot.GlobalSnapshot)) Snapshot.Current.RecordModified(this);
         }
         public void PrependStateRecord(StateRecord value)
         {
@@ -45,17 +46,16 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public StateRecord? MergeRecords(StateRecord previous, StateRecord current, StateRecord applied)
         {
-            var prevR = (StateStateRecord)previous;
-            var curR = (StateStateRecord)current;
-            var appR = (StateStateRecord)applied;
+            StateStateRecord prevR = (StateStateRecord)previous;
+            StateStateRecord curR = (StateStateRecord)current;
+            StateStateRecord appR = (StateStateRecord)applied;
 
             if (Policy.Equivalent(curR.Value, appR.Value))
                 return current;
 
-            var merged = Policy.Merge(prevR.Value, curR.Value, appR.Value);
-            if (merged != null)
+            if (Policy.TryMerge(prevR.Value, curR.Value, appR.Value, out T merged))
             {
-                var result = (StateStateRecord)appR.Create();
+                StateStateRecord result = (StateStateRecord)appR.Create();
                 result.Value = merged;
                 return result;
             }
@@ -64,23 +64,23 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public override string ToString()
         {
-            var snapshot = Snapshot.Current;
-            var record = Snapshot.ReadCurrent(_next, snapshot);
+            Snapshot snapshot = Snapshot.Current;
+            StateStateRecord record = Snapshot.ReadCurrent(_next, snapshot);
             return $"MutableState(value={record.Value})#{GetHashCode()}";
         }
 
         private StateStateRecord Readable()
         {
-            var snapshot = Snapshot.Current;
+            Snapshot snapshot = Snapshot.Current;
             snapshot.ReadObserver?.Invoke(this);
-            var result = Snapshot.ReadableSilent(_next, snapshot.Id, snapshot.Invalid);
+            StateStateRecord? result = Snapshot.ReadableSilent(_next, snapshot.Id, snapshot.Invalid);
             if (result != null)
                 return result;
 
             using (Snapshot.Lock())
             {
-                var syncSnapshot = Snapshot.Current;
-                var lockedResult = Snapshot.ReadableSilent<StateStateRecord>(
+                Snapshot syncSnapshot = Snapshot.Current;
+                StateStateRecord? lockedResult = Snapshot.ReadableSilent<StateStateRecord>(
                     _next, syncSnapshot.Id, syncSnapshot.Invalid);
                 if (lockedResult != null) return lockedResult;
                 throw new InvalidOperationException("Readable snapshot record not found");
@@ -89,30 +89,28 @@ namespace DotNetCompose.Runtime.Snapshots
 
         private StateStateRecord OverwritableRecord(Snapshot snapshot, StateStateRecord candidate)
         {
-            if (snapshot.ReadOnly)
-                snapshot.RecordModified(this);
+            snapshot.RecordModified(this);
 
-            var id = snapshot.Id;
+            long id = snapshot.Id;
             if (candidate.SnapshotId == id)
                 return candidate;
 
             StateStateRecord newData;
             using (Snapshot.Lock()) newData = NewOverwritableRecordLocked();
             newData.SnapshotId = id;
-            snapshot.RecordModified(this);
             return newData;
         }
 
         private StateStateRecord NewOverwritableRecordLocked()
         {
-            var used = Snapshot.TryFindReusableRecord(this);
+            StateRecord? used = Snapshot.TryFindReusableRecord(this);
             if (used != null)
             {
-                _next.SnapshotId = long.MaxValue;
+                used.SnapshotId = long.MaxValue;
                 return (StateStateRecord)used;
             }
 
-            var rec = new StateStateRecord(long.MaxValue, default!)
+            StateStateRecord rec = new StateStateRecord(long.MaxValue, default!)
             {
                 Next = _next
             };

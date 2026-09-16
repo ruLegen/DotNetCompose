@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 {
-    public sealed class SlotMapGapBuffer<T> : IAddressableGapBuffer<T>, IStableGapBuffer<T>
+    internal sealed class SlotMapGapBuffer<T>
     {
         public SlotMapGapBuffer(int initialCapacity = 16)
         {
@@ -16,26 +16,45 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public int Count => _buffer.Count;
         public int Capacity => _buffer.Capacity;
- 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Insert(int position, T item) =>
-            _buffer.Insert(position, item);
+
+        /// <summary>Moves elements to a boundary in the original logical sequence, preserving their anchors.</summary>
+        public void MoveRange(int sourceIndex, int destinationBoundary, int count) =>
+            _handles.MoveRange(sourceIndex, destinationBoundary, count);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Remove(int physicalIndex) =>
-            _handles.RemoveAtAddress(physicalIndex);
+        public void InsertAt(int index, T item)
+        {
+            ValidateInsertionIndex(index);
+            _buffer.Insert(index, item);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T Get(int physicalIndex) =>
-            _buffer.GetAtAddress(physicalIndex);
+        public void RemoveAt(int index)
+        {
+            ValidateExistingIndex(index);
+            _handles.RemoveAtAddress(_buffer.AddressOf(index));
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set(int physicalIndex, T item) =>
-            _buffer.SetAtAddress(physicalIndex, item);
+        public T GetAt(int index)
+        {
+            ValidateExistingIndex(index);
+            return _buffer[index];
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public GapBufferItemAnchor InsertStable(int position, T item) =>
-            _handles.Insert(position, item);
+        public void SetAt(int index, T item)
+        {
+            ValidateExistingIndex(index);
+            _buffer[index] = item;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public GapBufferItemAnchor InsertTrackedAt(int index, T item)
+        {
+            ValidateInsertionIndex(index);
+            return _handles.Insert(index, item);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Remove(GapBufferItemAnchor handle) =>
@@ -45,7 +64,6 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         public T Get(GapBufferItemAnchor handle) =>
             _handles.Get(handle);
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetRef(GapBufferItemAnchor handle) =>
             ref _handles.GetRef(handle);
@@ -53,23 +71,33 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Set(GapBufferItemAnchor handle, T item) =>
             _handles.Set(handle, item);
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public int GetIndexOfAnchor(GapBufferItemAnchor anchor) => 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int IndexOf(GapBufferItemAnchor anchor) =>
             _handles.IndexOf(anchor);
 
-        internal GapBufferItemAnchor Track(int slotStart) =>
-            _handles.Track(slotStart);
+        internal GapBufferItemAnchor TrackAt(int index)
+        {
+            ValidateExistingIndex(index);
+            return _handles.Track(_buffer.AddressOf(index));
+        }
 
-        internal GapBufferItemAnchor GetAnchorAtIndex(int index) =>
-            _handles.AnchorAtAddress(_buffer.AddressOf(index));
+        internal GapBufferItemAnchor AnchorAt(int index)
+        {
+            ValidateExistingIndex(index);
+            return _handles.AnchorAtAddress(_buffer.AddressOf(index));
+        }
 
         public bool IsValidAnchor(GapBufferItemAnchor anchor) => _handles.IsValidAnchor(anchor);
 
-        internal int GetAddressOfIndex(int index) =>
-            _buffer.AddressOf(index);   
+        private void ValidateExistingIndex(int index)
+        {
+            if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException(nameof(index));
+        }
 
-
-        internal void Reserve(int index, int count) =>
-            _buffer.Reserve(index,count);   
+        private void ValidateInsertionIndex(int index)
+        {
+            if (index < 0 || index > Count) throw new ArgumentOutOfRangeException(nameof(index));
+        }
     }
 }

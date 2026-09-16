@@ -5,6 +5,28 @@ namespace DotNetCompose.Runtime.Tests;
 public class SlotMapAnchorTests
 {
     [Fact]
+    public void IndexedAccessUsesLogicalPositionsAndRejectsMissingElements()
+    {
+        SlotMapGapBuffer<int> buffer = new SlotMapGapBuffer<int>(2);
+        GapBufferItemAnchor tracked = buffer.InsertTrackedAt(0, 10);
+        buffer.InsertAt(0, 20);
+        buffer.InsertAt(1, 30);
+        Assert.Equal(new[] { 20, 30, 10 }, Enumerable.Range(0, buffer.Count).Select(buffer.GetAt));
+        Assert.Equal(2, buffer.IndexOf(tracked));
+
+        buffer.SetAt(1, 31);
+        buffer.RemoveAt(0);
+        Assert.Equal(new[] { 31, 10 }, Enumerable.Range(0, buffer.Count).Select(buffer.GetAt));
+        Assert.Equal(1, buffer.IndexOf(tracked));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => buffer.GetAt(buffer.Count));
+        Assert.Throws<ArgumentOutOfRangeException>(() => buffer.SetAt(-1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => buffer.RemoveAt(buffer.Count));
+        Assert.Throws<ArgumentOutOfRangeException>(() => buffer.InsertAt(buffer.Count + 1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => buffer.InsertTrackedAt(-1, 0));
+    }
+
+    [Fact]
     public void RepeatedTracking_ReusesTheHandle_AndRejectsNonElementAddresses()
     {
         var gap = new GapBuffer<int>(4);
@@ -25,17 +47,17 @@ public class SlotMapAnchorTests
     public void RemovedAnchor_IsInvalidBeforeAndAfterReuse(bool removeByAddress)
     {
         var buffer = new SlotMapGapBuffer<int>(2);
-        var first = buffer.InsertStable(0, 10);
-        var removed = buffer.InsertStable(1, 20);
-        var last = buffer.InsertStable(2, 30);
+        var first = buffer.InsertTrackedAt(0, 10);
+        var removed = buffer.InsertTrackedAt(1, 20);
+        var last = buffer.InsertTrackedAt(2, 30);
         if (removeByAddress)
-            buffer.Remove(buffer.GetAddressOfIndex(1));
+            buffer.RemoveAt(1);
         else
             buffer.Remove(removed);
         Assert.False(buffer.IsValidAnchor(removed));
-        Assert.Throws<InvalidOperationException>(() => buffer.GetIndexOfAnchor(removed));
+        Assert.Throws<InvalidOperationException>(() => buffer.IndexOf(removed));
         Assert.Throws<InvalidOperationException>(() => buffer.Get(removed));
-        var replacement = buffer.InsertStable(0, 40);
+        var replacement = buffer.InsertTrackedAt(0, 40);
         Assert.Equal(removed.Id, replacement.Id);
         Assert.NotEqual(removed.Generation, replacement.Generation);
         Assert.False(buffer.IsValidAnchor(removed));
@@ -45,9 +67,9 @@ public class SlotMapAnchorTests
         Assert.Equal(10, buffer.Get(first));
         Assert.Equal(30, buffer.Get(last));
         Assert.Equal(40, buffer.Get(replacement));
-        Assert.Equal(1, buffer.GetIndexOfAnchor(first));
-        Assert.Equal(2, buffer.GetIndexOfAnchor(last));
-        Assert.Equal(-1, buffer.GetIndexOfAnchor(GapBufferItemAnchor.Empty));
+        Assert.Equal(1, buffer.IndexOf(first));
+        Assert.Equal(2, buffer.IndexOf(last));
+        Assert.Equal(-1, buffer.IndexOf(GapBufferItemAnchor.Empty));
         Assert.False(buffer.IsValidAnchor(new GapBufferItemAnchor(-1, 1)));
         Assert.False(buffer.IsValidAnchor(new GapBufferItemAnchor(int.MaxValue, 1)));
     }
@@ -63,26 +85,26 @@ public class SlotMapAnchorTests
         {
             int index = random.Next(expected.Count + 1);
             if (value % 3 == 0)
-                anchors[value] = buffer.InsertStable(index, value);
+                anchors[value] = buffer.InsertTrackedAt(index, value);
             else
-                buffer.Insert(index, value);
+                buffer.InsertAt(index, value);
             expected.Insert(index, value);
         }
         for (int i = 0; i < 150; i++)
         {
             int index = random.Next(expected.Count);
             int value = expected[index];
-            buffer.Remove(buffer.GetAddressOfIndex(index));
+            buffer.RemoveAt(index);
             if (anchors.Remove(value, out var anchor)) Assert.False(buffer.IsValidAnchor(anchor));
             expected.RemoveAt(index);
         }
         for (int i = 0; i < expected.Count; i++)
-            Assert.Equal(expected[i], buffer.Get(buffer.GetAddressOfIndex(i)));
+            Assert.Equal(expected[i], buffer.GetAt(i));
         foreach (var (value, anchor) in anchors)
         {
             Assert.Equal(value, buffer.Get(anchor));
-            Assert.Equal(expected.IndexOf(value), buffer.GetIndexOfAnchor(anchor));
-            Assert.Equal(anchor, buffer.Track(buffer.GetAddressOfIndex(expected.IndexOf(value))));
+            Assert.Equal(expected.IndexOf(value), buffer.IndexOf(anchor));
+            Assert.Equal(anchor, buffer.TrackAt(expected.IndexOf(value)));
         }
     }
 }

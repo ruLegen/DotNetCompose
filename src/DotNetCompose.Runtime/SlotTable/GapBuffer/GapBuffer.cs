@@ -37,7 +37,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             }
         }
 
-        public Action<int, int, int>? OnElementsMoved { get; set; }
+        internal Action<int, int, int>? OnElementsMoved { get; set; }
 
         public int Capacity => _buffer.Length;
 
@@ -87,7 +87,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             else
             {
                 int i = index;
-                foreach (var item in collection)
+                foreach (T item in collection)
                     _buffer[i++] = item;
             }
 
@@ -118,14 +118,14 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T GetAtAddress(int address) => _buffer[address];
+        internal T GetAtAddress(int address) => _buffer[address];
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetAtAddressRef(int address) => ref _buffer[address];
+        internal ref T GetAtAddressRef(int address) => ref _buffer[address];
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetAtAddress(int address, T item) => _buffer[address] = item;
-        public void RemoveAtAddress(int address)
+        internal void SetAtAddress(int address, T item) => _buffer[address] = item;
+        internal void RemoveAtAddress(int address)
         {
             if (address < 0 || address >= _buffer.Length) return;
 
@@ -139,7 +139,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             _buffer[_gapEndPos] = default;
             _gapEndPos++;
         }
-        public int AddressToIndex(int address)
+        internal int AddressToIndex(int address)
         {
             int logicalIndex = address < _gapStartPos
               ? address
@@ -160,7 +160,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             if (requestedCapacity < Count) throw new BufferCapacityException(requestedCapacity, Count);
             if (requestedCapacity > 0)
             {
-                var newBuffer = new T[requestedCapacity];
+                T[] newBuffer = new T[requestedCapacity];
                 int newGapEnd = newBuffer.Length - (_buffer.Length - _gapEndPos);
 
                 Array.Copy(_buffer, 0, newBuffer, 0, _gapStartPos);
@@ -193,7 +193,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]  
-        public int AddressOf(int index)
+        internal int AddressOf(int index)
         {
             return index >= _gapStartPos 
                 ? index + GapSize 

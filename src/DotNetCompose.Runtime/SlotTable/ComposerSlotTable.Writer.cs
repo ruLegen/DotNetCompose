@@ -7,7 +7,7 @@ namespace DotNetCompose.Runtime.SlotTable
     public partial class ComposerSlotTable
     {
         /// <summary>Appends groups and writes the slots of the currently open group.</summary>
-        public sealed class Writer : IDisposable
+        public sealed partial class Writer : IDisposable
         {
             internal Writer(ComposerSlotTable table)
             {
@@ -21,6 +21,7 @@ namespace DotNetCompose.Runtime.SlotTable
             private readonly SlotMapGapBuffer<object?> _slots;
             private readonly Stack<GapBufferItemAnchor> _groupStack = new();
             public bool Closed { get; private set; }
+            internal GroupAnchor CurrentAnchor => Table.Wrap(_groupStack.Peek());
 
             public void StartGroup() => StartGroup(0);
             public void StartGroup(int key) => StartGroupCore(key, Empty, Empty, Empty, false);
@@ -31,6 +32,8 @@ namespace DotNetCompose.Runtime.SlotTable
             private void StartGroupCore(int key, object? objectKey, object? aux, object? node, bool isNode)
             {
                 EnsureOpen();
+                if (_existingGroups.Count > 0)
+                    throw new InvalidOperationException("Use ImportGroup to insert children into an existing group.");
                 GroupRecord group = new GroupRecord
                 {
                     Key = key,
@@ -46,21 +49,27 @@ namespace DotNetCompose.Runtime.SlotTable
                 if (group.IsNode) AppendMetadata(ref group, node);
                 if (group.HasObjectKey) AppendMetadata(ref group, objectKey);
                 if (group.HasAux) AppendMetadata(ref group, aux);
-                _groupStack.Push(_groups.InsertStable(_groups.Count, group));
+                _groupStack.Push(_groups.InsertTrackedAt(_groups.Count, group));
             }
 
             private void AppendMetadata(ref GroupRecord group, object? value)
             {
                 if (group.DataAnchor == GapBufferItemAnchor.Empty)
-                    group.DataAnchor = _slots.InsertStable(_slots.Count, value);
+                    group.DataAnchor = _slots.InsertTrackedAt(_slots.Count, value);
                 else
-                    _slots.Insert(_slots.Count, value);
+                    _slots.InsertAt(_slots.Count, value);
             }
 
             public void EndGroup()
             {
                 EnsureGroup();
-                GroupRecord group = _groups.Get(_groupStack.Pop());
+                GapBufferItemAnchor anchor = _groupStack.Pop();
+                GroupRecord group = _groups.Get(anchor);
+                if (_existingGroups.Remove(anchor))
+                {
+                    CurrentGroup = _groups.IndexOf(anchor) + group.Size;
+                    return;
+                }
                 if (group.ParentAnchor != GapBufferItemAnchor.Empty)
                 {
                     ref GroupRecord parent = ref _groups.GetRef(group.ParentAnchor);
@@ -72,13 +81,15 @@ namespace DotNetCompose.Runtime.SlotTable
             public void SkipGroup()
             {
                 EnsureOpen();
-                throw new NotSupportedException("Editing existing groups is not implemented.");
+                if (CurrentGroup >= _groups.Count) throw new InvalidOperationException("No group to skip.");
+                CurrentGroup += RecordAt(CurrentGroup).Size;
             }
 
             public void RemoveGroup()
             {
                 EnsureOpen();
-                throw new NotSupportedException("Editing existing groups is not implemented.");
+                if (CurrentGroup >= _groups.Count) throw new InvalidOperationException("No group to remove.");
+                RemoveGroup(Table.Wrap(_groups.AnchorAt(CurrentGroup)));
             }
 
             public void AppendSlot(object? value)
@@ -91,21 +102,21 @@ namespace DotNetCompose.Runtime.SlotTable
                     // Empty parents can acquire their first slot after their children were written.
                     // Locate the boundary without anchoring a gap or a non-existent item.
                     int insertIndex = _slots.Count;
-                    for (int i = _groups.GetIndexOfAnchor(anchor) + 1; i < _groups.Count; i++)
+                    for (int i = _groups.IndexOf(anchor) + 1; i < _groups.Count; i++)
                     {
-                        GroupRecord next = _groups.Get(_groups.GetAddressOfIndex(i));
+                        GroupRecord next = _groups.GetAt(i);
                         if (next.DataAnchor != GapBufferItemAnchor.Empty)
                         {
-                            insertIndex = _slots.GetIndexOfAnchor(next.DataAnchor);
+                            insertIndex = _slots.IndexOf(next.DataAnchor);
                             break;
                         }
                     }
-                    group.DataAnchor = _slots.InsertStable(insertIndex, value);
+                    group.DataAnchor = _slots.InsertTrackedAt(insertIndex, value);
                 }
                 else
                 {
-                    int index = _slots.GetIndexOfAnchor(group.DataAnchor) + group.MetadataSlotCount + group.SlotCount;
-                    _slots.Insert(index, value);
+                    int index = _slots.IndexOf(group.DataAnchor) + group.MetadataSlotCount + group.SlotCount;
+                    _slots.InsertAt(index, value);
                 }
                 group.SlotCount++;
             }
@@ -117,8 +128,8 @@ namespace DotNetCompose.Runtime.SlotTable
                 GroupRecord group = _groups.Get(_groupStack.Peek());
                 if (group.SlotCount == 0)
                     throw new InvalidOperationException("The current group has no user slot to update.");
-                int index = _slots.GetIndexOfAnchor(group.DataAnchor) + group.MetadataSlotCount + group.SlotCount - 1;
-                _slots.Set(_slots.GetAddressOfIndex(index), value);
+                int index = _slots.IndexOf(group.DataAnchor) + group.MetadataSlotCount + group.SlotCount - 1;
+                _slots.SetAt(index, value);
             }
 
             public void Close()

@@ -23,6 +23,8 @@ namespace DotNetCompose.Playground
                 {
                     __ctx?.StartRestartableGroup(180292881);
                     byte __i_state = __changed[0];
+                    if (__i_state != DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                        __ctx.Changed(i);
                     if (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
                         __i_state = __ctx.Changed(i) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;

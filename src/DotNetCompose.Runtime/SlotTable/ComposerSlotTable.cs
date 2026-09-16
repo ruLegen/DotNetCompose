@@ -18,6 +18,27 @@ namespace DotNetCompose.Runtime.SlotTable
         private bool _writing = false;
         private int _version = 0;
 
+        public int Size => _groups.Count;
+        internal int Version => _version;
+        internal GroupAnchor Wrap(GapBufferItemAnchor anchor) => anchor == GapBufferItemAnchor.Empty
+            ? GroupAnchor.Empty : new GroupAnchor(this, anchor);
+
+        internal GapBufferItemAnchor Resolve(GroupAnchor anchor, bool allowEmpty = false)
+        {
+            if (anchor.IsEmpty)
+            {
+                if (allowEmpty) return GapBufferItemAnchor.Empty;
+                throw new InvalidOperationException("A group anchor is required.");
+            }
+            if (!ReferenceEquals(anchor.Owner, this))
+                throw new ArgumentException("The group anchor belongs to another slot table.", nameof(anchor));
+            if (!_groups.IsValidAnchor(anchor.Item))
+                throw new InvalidOperationException("The group anchor is no longer valid.");
+            return anchor.Item;
+        }
+
+        internal int IndexOf(GroupAnchor anchor) => _groups.IndexOf(Resolve(anchor));
+
         public Reader OpenReader()
         {
             if (_writing)
@@ -28,13 +49,18 @@ namespace DotNetCompose.Runtime.SlotTable
 
         public Writer OpenWriter()
         {
+            EnsureCanWrite();
+            _writing=true;
+            _version++;
+            return new Writer(this);
+        }
+
+        internal void EnsureCanWrite()
+        {
             if (_writing)
                 throw new InvalidOperationException("Cannot start a writer when another writer is active");
             if (_readers > 0)
                 throw new InvalidOperationException("Cannot start a writer when a reader is active");
-            _writing=true;
-            _version++;
-            return new Writer(this);
         }
 
 

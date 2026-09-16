@@ -309,7 +309,7 @@ namespace DotNetCompose.Runtime.Tests
         public void SlotMapGapBuffer_InsertAndGet()
         {
             var smb = new SlotMapGapBuffer<int>();
-            var r = smb.InsertStable(0, 42);
+            var r = smb.InsertTrackedAt(0, 42);
             Assert.Equal(42, smb.Get(r));
             Assert.Equal(1, smb.Count);
         }
@@ -318,11 +318,11 @@ namespace DotNetCompose.Runtime.Tests
         public void SlotMapGapBuffer_StableRefs()
         {
             var smb = new SlotMapGapBuffer<string>();
-            var r0 = smb.InsertStable(0, "a");
-            var r1 = smb.InsertStable(1, "b");
-            var r2 = smb.InsertStable(2, "c");
+            var r0 = smb.InsertTrackedAt(0, "a");
+            var r1 = smb.InsertTrackedAt(1, "b");
+            var r2 = smb.InsertTrackedAt(2, "c");
 
-            var rNew = smb.InsertStable(0, "Z");
+            var rNew = smb.InsertTrackedAt(0, "Z");
 
             Assert.Equal("a", smb.Get(r0));
             Assert.Equal("b", smb.Get(r1));
@@ -335,12 +335,12 @@ namespace DotNetCompose.Runtime.Tests
         {
             var smb = new SlotMapGapBuffer<int>();
 
-            smb.Insert(0, 10);
-            smb.Insert(1, 20);
-            var r = smb.InsertStable(2, 30);
+            smb.InsertAt(0, 10);
+            smb.InsertAt(1, 20);
+            var r = smb.InsertTrackedAt(2, 30);
 
-            Assert.Equal(10, smb.Get(0));
-            Assert.Equal(20, smb.Get(1));
+            Assert.Equal(10, smb.GetAt(0));
+            Assert.Equal(20, smb.GetAt(1));
             Assert.Equal(30, smb.Get(r));
 
             smb.Set(r, 99);

@@ -74,70 +74,73 @@ namespace DotNetCompose.Runtime.SlotTable
                 }
             }
 
-            public int GetParent(int index)
+            public int GetParent(int groupIndex)
             {
-                GroupRecord group = ReadGroup(index);
-                return _groups.GetIndexOfAnchor(group.ParentAnchor);
+                GroupRecord group = ReadGroup(groupIndex);
+                return _groups.IndexOf(group.ParentAnchor);
             }
-            public int ParentOf(int index) => GetParent(index);
-            public bool GetIsNode(int index) => ReadGroup(index).IsNode;
-            public int GetNodeCount(int index) => ReadGroup(index).NodeCount;
-            public int GetGroupSize(int index) => ReadGroup(index).Size;
-            public int GetGroupEnd(int index) => index + ReadGroup(index).Size;
-            public int GetSlotSize(int index) => ReadGroup(index).SlotCount;
-            public int GetGroupKey(int index) => ReadGroup(index).Key;
-            public bool GetHasObjectKey(int index) => ReadGroup(index).HasObjectKey;
-            public bool HasMark(int index) => ReadGroup(index).IsMarked;
-            public bool ContainsMark(int index) => ReadGroup(index).ContainsMarked;
+            public int ParentOf(int groupIndex) => GetParent(groupIndex);
+            public bool GetIsNode(int groupIndex) => ReadGroup(groupIndex).IsNode;
+            public int GetNodeCount(int groupIndex) => ReadGroup(groupIndex).NodeCount;
+            public int GetGroupSize(int groupIndex) => ReadGroup(groupIndex).Size;
+            public int GetGroupEnd(int groupIndex) => groupIndex + ReadGroup(groupIndex).Size;
+            public int GetSlotSize(int groupIndex) => ReadGroup(groupIndex).SlotCount;
+            public int GetGroupKey(int groupIndex) => ReadGroup(groupIndex).Key;
+            public bool GetHasObjectKey(int groupIndex) => ReadGroup(groupIndex).HasObjectKey;
+            public bool HasMark(int groupIndex) => ReadGroup(groupIndex).IsMarked;
+            public bool ContainsMark(int groupIndex) => ReadGroup(groupIndex).ContainsMarked;
 
-            public object? GetNode(int index)
+            public object? GetNode(int groupIndex)
             {
-                GroupRecord group = ReadGroup(index);
+                GroupRecord group = ReadGroup(groupIndex);
                 return group.IsNode ? DataAt(group, 0) : null;
             }
 
-            public object? GetGroupObjectKey(int index)
+            public object? GetGroupObjectKey(int groupIndex)
             {
-                GroupRecord group = ReadGroup(index);
+                GroupRecord group = ReadGroup(groupIndex);
                 return group.HasObjectKey ? DataAt(group, group.IsNode ? 1 : 0) : null;
             }
 
-            public object? GetGroupAux(int index)
+            public object? GetGroupAux(int groupIndex)
             {
-                GroupRecord group = ReadGroup(index);
+                GroupRecord group = ReadGroup(groupIndex);
                 return group.HasAux ? DataAt(group, (group.IsNode ? 1 : 0) + (group.HasObjectKey ? 1 : 0)) : Empty;
             }
 
             /// <summary>Returns an existing group anchor belonging to this table.</summary>
-            public GapBufferItemAnchor Anchor() => Anchor(CurrentGroup);
-            public GapBufferItemAnchor Anchor(int index)
+            public GroupAnchor Anchor() => Anchor(CurrentGroup);
+            public GroupAnchor Anchor(int groupIndex)
             {
-                ReadGroup(index);
-                return _groups.GetAnchorAtIndex(index);
+                ReadGroup(groupIndex);
+                return Table.Wrap(_groups.AnchorAt(groupIndex));
             }
 
-            /// <summary>Returns zero for an empty or stale anchor. Anchors must belong to this table.</summary>
-            public int GetGroupKey(GapBufferItemAnchor anchor)
+            /// <summary>Returns zero for an empty or stale anchor; rejects an anchor from another table.</summary>
+            public int GetGroupKey(GroupAnchor anchor)
             {
                 EnsureOpen();
-                return _groups.IsValidAnchor(anchor) ? _groups.Get(anchor).Key : 0;
+                if (anchor.IsEmpty) return 0;
+                if (!ReferenceEquals(anchor.Owner, Table))
+                    throw new ArgumentException("The group anchor belongs to another slot table.", nameof(anchor));
+                return _groups.IsValidAnchor(anchor.Item) ? _groups.Get(anchor.Item).Key : 0;
             }
 
             /// <summary>Peeks relative to the next slot, without advancing; like Kotlin get, ignores empty mode.</summary>
-            public object? Get(int offset)
+            public object? Get(int slotOffset)
             {
                 EnsureOpen();
-                if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
-                return offset < _currentSlotEnd - _currentSlot ? SlotAt(_currentSlot + offset) : Empty;
+                if (slotOffset < 0) throw new ArgumentOutOfRangeException(nameof(slotOffset));
+                return slotOffset < _currentSlotEnd - _currentSlot ? SlotAt(_currentSlot + slotOffset) : Empty;
             }
 
-            public object? GroupGet(int index) => GroupGet(CurrentGroup, index);
+            public object? GroupGet(int slotOffset) => GroupGet(CurrentGroup, slotOffset);
             /// <summary>Reads a user slot relative to the start of a group's user slots.</summary>
-            public object? GroupGet(int group, int index)
+            public object? GroupGet(int groupIndex, int slotOffset)
             {
-                GroupRecord record = ReadGroup(group);
-                if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
-                return index < record.SlotCount ? SlotAt(SlotStart(record) + index) : Empty;
+                GroupRecord record = ReadGroup(groupIndex);
+                if (slotOffset < 0) throw new ArgumentOutOfRangeException(nameof(slotOffset));
+                return slotOffset < record.SlotCount ? SlotAt(SlotStart(record) + slotOffset) : Empty;
             }
 
             public object? Next()
@@ -165,7 +168,7 @@ namespace DotNetCompose.Runtime.SlotTable
                 EnsureOpen();
                 if (_emptyCount > 0) return;
                 GroupRecord group = ReadCurrentGroup();
-                if (_groups.GetIndexOfAnchor(group.ParentAnchor) != _parent)
+                if (_groups.IndexOf(group.ParentAnchor) != _parent)
                     throw new InvalidOperationException("The current group does not belong to the reader's parent.");
                 _slotStack.Push((_currentSlot, _currentSlotEnd));
                 _parent = _currentGroup;
@@ -210,12 +213,12 @@ namespace DotNetCompose.Runtime.SlotTable
             }
 
             /// <summary>Moves to a group (or Size). Does not discard the stack of explicitly started groups.</summary>
-            public void Reposition(int index)
+            public void Reposition(int groupIndex)
             {
                 EnsureNotEmpty();
-                if (index < 0 || index > _size) throw new ArgumentOutOfRangeException(nameof(index));
-                int parent = index < _size ? GetParent(index) : -1;
-                _currentGroup = index;
+                if (groupIndex < 0 || groupIndex > _size) throw new ArgumentOutOfRangeException(nameof(groupIndex));
+                int parent = groupIndex < _size ? GetParent(groupIndex) : -1;
+                _currentGroup = groupIndex;
                 if (parent != _parent)
                 {
                     _parent = parent;
@@ -225,12 +228,12 @@ namespace DotNetCompose.Runtime.SlotTable
             }
 
             /// <summary>Restores an enclosing group after repositioning, without restoring its slot cursor.</summary>
-            public void RestoreParent(int index)
+            public void RestoreParent(int groupIndex)
             {
-                int end = GetGroupEnd(index);
-                if (_currentGroup < index || _currentGroup > end)
+                int end = GetGroupEnd(groupIndex);
+                if (_currentGroup < groupIndex || _currentGroup > end)
                     throw new InvalidOperationException("The group does not enclose the current position.");
-                _parent = index;
+                _parent = groupIndex;
                 _currentEnd = end;
                 _currentSlot = _currentSlotEnd = 0;
             }
@@ -260,11 +263,11 @@ namespace DotNetCompose.Runtime.SlotTable
             public void Dispose() => Close();
             public override string ToString() => $"SlotReader(current={CurrentGroup}, key={GroupKey}, parent={Parent}, end={CurrentEnd})";
 
-            private GroupRecord ReadGroup(int index)
+            private GroupRecord ReadGroup(int groupIndex)
             {
                 EnsureOpen();
-                if (index < 0 || index >= _size) throw new ArgumentOutOfRangeException(nameof(index));
-                return _groups.Get(_groups.GetAddressOfIndex(index));
+                if (groupIndex < 0 || groupIndex >= _size) throw new ArgumentOutOfRangeException(nameof(groupIndex));
+                return _groups.GetAt(groupIndex);
             }
 
             private GroupRecord ReadCurrentGroup()
@@ -274,9 +277,9 @@ namespace DotNetCompose.Runtime.SlotTable
             }
 
             private int SlotStart(GroupRecord group) => group.DataAnchor == GapBufferItemAnchor.Empty
-                ? 0 : _slots.GetIndexOfAnchor(group.DataAnchor) + group.MetadataSlotCount;
-            private object? DataAt(GroupRecord group, int offset) => SlotAt(_slots.GetIndexOfAnchor(group.DataAnchor) + offset);
-            private object? SlotAt(int index) => _slots.Get(_slots.GetAddressOfIndex(index));
+                ? 0 : _slots.IndexOf(group.DataAnchor) + group.MetadataSlotCount;
+            private object? DataAt(GroupRecord group, int slotOffset) => SlotAt(_slots.IndexOf(group.DataAnchor) + slotOffset);
+            private object? SlotAt(int slotIndex) => _slots.GetAt(slotIndex);
 
             private void EnsureOpen()
             {

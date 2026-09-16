@@ -3,6 +3,7 @@ using DotNetCompose.Runtime.Snapshots;
 
 namespace DotNetCompose.Runtime.Tests
 {
+    [Collection("Snapshots")]
     public class SnapshotMutableStateTests
     {
         [Fact]

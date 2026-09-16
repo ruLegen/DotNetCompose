@@ -1,250 +1,95 @@
-﻿using DotNetCompose.Runtime;
+using DotNetCompose.Runtime;
 using DotNetCompose.Runtime.Composer;
-using DotNetCompose.Runtime.SlotTable;
-using DotNetCompose.Runtime.SlotTable.GapBuffer;
 using DotNetCompose.Runtime.Snapshots;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-namespace DotNetCompose.Playground
+
+namespace DotNetCompose.Playground;
+
+internal static class Program
 {
-    internal class Program
+    private static void Main()
     {
-        static void Main(string[] args)
+        // A UI application supplies its own SynchronizationContext.
+        DemoContext context = new DemoContext();
+        using Recomposer recomposer = new Recomposer(context);
+        TreeApplier applier = new TreeApplier();
+        using Composition<TextNode> composition = new Composition<TextNode>(applier, recomposer);
+        SnapshotMutableState<int> count = Composables.CreateMutableState(0);
+        composition.ComposeContent((composer, changed, defaults) =>
         {
-            TestGap();
-            Console.WriteLine("Hello, World!");
-            var state = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
-            var state2 = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
-            var s = Snapshot.TakeMutableSnapshot();
+            composer.StartNode(10);
+            if (composer.Inserting) composer.CreateNode(() => new TextNode());
+            else composer.UseNode();
+            composer.ApplyNode<TextNode, string>($"Count: {count.Value}", (node, text) => node.Text = text);
+            composer.EndNode();
+        });
+        PrintChanges(composition);
+        Console.WriteLine($"Nodes before ApplyChanges: {applier.Root.Children.Count}");
+        composition.ApplyChanges();
+        TextNode originalNode = applier.Root.Children[0];
+        Console.WriteLine(originalNode.Text);
 
-            state.Value = 1;
-            PrintState("Befor snap", state);
-            PrintState("Befor snap", state2);
-            s.Enter(() =>
-            {
-                state2.Value = 333;
-                state.Value = 2;
-                PrintState("In snap 1", state);
-                PrintState("In snap 1_2", state2);
-                var rr = Snapshot.TakeMutableSnapshot();
-                rr.Enter(() =>
-                {
-                    state.Value++;
-                    PrintState("In snap 2", state);
-                });
-            });
-            PrintState("after snap", state);
-            Console.ReadLine();
-        }
-
-        private static void TestGap()
+        count.Value = 1;
+        if (composition.Recompose())
         {
-            GapBuffer<int> b = new();
-            GapBufferSlotMap<int> i = new(b);
-            List<GapBufferItemAnchor> anchors = new();
-            foreach (int x in Enumerable.Range(0, 10))
-            {
-                anchors.Add(i.Insert(0, x));
-            }
-
-            string d = string.Join(" | ", Enumerable.Range(0, b.Count).Select(f => b[f]));
-            string r = string.Join(" | ", anchors.Select(a=> i.Get(a)));
-
-            ComposerSlotTable composerSlotTable = new ComposerSlotTable();
-            ComposerSlotTable.Writer writer = composerSlotTable.OpenWriter();
-            writer.StartGroup(0, "Root1");
-                writer.StartGroup(1, "key1");
-                writer.EndGroup();
-
-                writer.StartGroup(2, "G2");
-                    writer.StartNode(3, "Node3");
-                    writer.EndGroup();
-                    writer.StartNode(4, "Node4");
-                        writer.AppendSlot("Node4NewSlot");
-                        writer.UpdateSlot("Node4Updated");
-                    writer.EndGroup();
-
-                    writer.StartGroup(44);
-                        writer.StartGroup(45);
-                        writer.EndGroup();
-                    writer.AppendSlot("44_slot");
-                    writer.EndGroup();
-
-                    writer.StartNode(5, "Node5");
-                    writer.EndGroup();
-                writer.EndGroup();
-                writer.AppendSlot("RootNewSlot");
-                writer.UpdateSlot("RootUpdated");
-            writer.EndGroup();
-            writer.Close();
-
+            PrintChanges(composition);
+            Console.WriteLine($"Before ApplyChanges: {originalNode.Text}");
+            composition.ApplyChanges();
         }
-
-        private static void Print<T>(List<T> str)
-        {
-            foreach (var item in str)
-            {
-                Console.WriteLine(item.ToString());
-            }
-        }
-
-        static void PrintState<T>(string msg, SnapshotMutableState<T> state) => Console.WriteLine(msg + " " + state.ToString());
-
-        int t()
-        {
-            IDisposable f = null;
-            using (f)
-            {
-                return 9;
-            }
-        }
-        public static void Test(Span<int> changed)
-        {
-            Span<int> parameters = stackalloc int[4];
-            R<int>(parameters, () =>
-            {
-                Span<int> localParams = stackalloc int[2];
-                R<long>(localParams, null);
-            });
-        }
-
-        public static void R<T>(Span<int> ints, Action action) { }
+        count.Value = 2;
+        count.Value = 3;
+        context.Drain();
+        Console.WriteLine($"After automatic recomposition: {originalNode.Text}");
+        Console.WriteLine($"Same node: {ReferenceEquals(originalNode, applier.Root.Children[0])}");
     }
 
-
-    class ComposeContext : IComposerContext
+    private static void PrintChanges(IControlledComposition composition)
     {
-        private const int ROOT_KEY = -1000;
+        Console.WriteLine("Pending operations:");
+        foreach (CompositionOperation operation in composition.PendingChanges!) Console.WriteLine($"  {operation}");
+    }
 
-        record Group(int ID, Group? Parent, bool Restartable, Dictionary<object, object?> LastValues);
-        private List<Group> Groups { get; } = new List<Group>();
-        private Stack<int> GroupStackIndecies { get; } = new Stack<int>();
-        private bool _skipped;
+    private sealed class TextNode
+    {
+        public string Text { get; set; } = string.Empty;
+        public List<TextNode> Children { get; } = new List<TextNode>();
+    }
 
-        public void StartRoot()
+    private sealed class TreeApplier : IApplier<TextNode>
+    {
+        private readonly Stack<TextNode> _path = new Stack<TextNode>();
+        public TextNode Root { get; } = new TextNode();
+        public TextNode Current => _path.Count == 0 ? Root : _path.Peek();
+        public void OnBeginChanges() { }
+        public void OnEndChanges() { }
+        public void Down(TextNode node) => _path.Push(node);
+        public void Up() => _path.Pop();
+        public void InsertTopDown(int index, TextNode instance) => Current.Children.Insert(index, instance);
+        // This backend inserts top-down. A bottom-up backend would insert here instead.
+        public void InsertBottomUp(int index, TextNode instance) { }
+        public void Remove(int index, int count) => Current.Children.RemoveRange(index, count);
+        public void Move(int from, int to, int count)
         {
-            Groups.Clear();
-            Start(ROOT_KEY);
-            _skipped = false;
+            List<TextNode> moved = Current.Children.GetRange(from, count);
+            Current.Children.RemoveRange(from, count);
+            Current.Children.InsertRange(to > from ? to - count : to, moved);
         }
-        public void EndRoot()
-        {
-            EndGroup(ROOT_KEY);
-        }
-        public void StartReplaceableGroup(int groupId)
-        {
-            Start(groupId, false);
-        }
+        public void Apply(Action<TextNode, object?> block, object? value) => block(Current, value);
+        public void Clear() { _path.Clear(); Root.Children.Clear(); }
+    }
 
-        public void EndReplaceableGroup(int groupId)
+    private sealed class DemoContext : SynchronizationContext
+    {
+        private readonly Queue<Action> _queue = new Queue<Action>();
+        public override void Post(SendOrPostCallback callback, object? state)
+        { lock (_queue) _queue.Enqueue(() => callback(state)); }
+        public void Drain()
         {
-            EndGroup(groupId);
-        }
-
-        public void StartMovableGroup(int groupId)
-        {
-            Start(groupId, false);
-        }
-
-        public void EndMovableGroup(int groupId)
-        {
-            EndGroup(groupId);
-        }
-        public void StartRestartableGroup(int groupId)
-        {
-            Start(groupId, true);
-            _skipped = false;
-        }
-
-        public void EndGroup(int v)
-        {
-            GroupStackIndecies.Pop();
-        }
-
-        public IComposeUpdateScope? EndRestartableGroup(int groupId)
-        {
-            EndGroup(groupId);
-            return null;
-        }
-
-        private void Start(int id, bool restartable = false)
-        {
-            Group parent = null;
-            if (GroupStackIndecies.TryPeek(out int index))
+            while (true)
             {
-                parent = Groups[index];
-            }
-            Groups.Add(new Group(id, parent, restartable, new Dictionary<object, object?>()));
-            GroupStackIndecies.Push(Groups.Count - 1);
-        }
-
-        public bool Changed<T>(T value)
-        {
-            if (!GroupStackIndecies.TryPeek(out int index))
-                return true;
-            var group = Groups[index];
-            var key = (typeof(T), value);
-            if (group.LastValues.TryGetValue(key, out var lastValue))
-            {
-                return !EqualityComparer<T>.Default.Equals(value, (T)lastValue);
-            }
-            group.LastValues[key] = value;
-            return true;
-        }
-
-        public bool Skipping
-        {
-            get
-            {
-                if (!GroupStackIndecies.TryPeek(out int index))
-                    return false;
-                var group = Groups[index];
-                return group.Restartable && !_skipped;
+                Action action;
+                lock (_queue) { if (_queue.Count == 0) return; action = _queue.Dequeue(); }
+                action();
             }
         }
-
-        public void SkipToGroupEnd()
-        {
-            _skipped = true;
-        }
-
-        public void StartGroup(int key) => Start(key);
-        public void EndGroup() => GroupStackIndecies.Pop();
-
-        public object? RememberedValue()
-        {
-            if (!GroupStackIndecies.TryPeek(out int index))
-                return null;
-            var group = Groups[index];
-            return group.LastValues.TryGetValue("__remembered", out var v) ? v : null;
-        }
-
-        public void UpdateRememberedValue(object? value)
-        {
-            if (GroupStackIndecies.TryPeek(out int index))
-                Groups[index].LastValues["__remembered"] = value;
-        }
-
-        public void CreateNode<T>(Func<T> factory) where T : class { }
-        public void ApplyNode<T>(Action<T> block, object? value) { }
-
-        public void ComposeContent(ComposableAction content)
-        {
-            StartRoot();
-            try { content(this, default, default); }
-            finally { EndRoot(); }
-        }
-
-        public bool Inserting => false;
-        public bool IsComposing { get; private set; }
-
-        public void Dispose() { }
-
-        public void Tree()
-        {
-            var g = Groups.GroupBy(g => g.Parent);
-        }
-
-
     }
 }

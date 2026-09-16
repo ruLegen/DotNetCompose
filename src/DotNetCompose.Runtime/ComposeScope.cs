@@ -13,6 +13,13 @@ namespace DotNetCompose.Runtime
 
         public static IComposerContext? GetCurrentContext() => _currentContext.Value;
 
+        internal static IDisposable EnterContext(IComposerContext context)
+        {
+            IComposerContext? previous = _currentContext.Value;
+            _currentContext.Value = context;
+            return new DisposableScope(() => _currentContext.Value = previous);
+        }
+
         //public static IComposerContext GetCurrentOrCreate()
         //{
         //    if (_currentContext.Value == null)
@@ -24,19 +31,21 @@ namespace DotNetCompose.Runtime
 
         public static IDisposable CreateScope(IComposerContext newContext)
         {
-            var previous = _currentContext.Value;
+            IComposerContext? previous = _currentContext.Value;
             _currentContext.Value = newContext;
-            newContext.StartRoot();
+            try { newContext.StartRoot(); }
+            catch { _currentContext.Value = previous; throw; }
             return new DisposableScope(() =>
             {
-                newContext.EndRoot();
-                _currentContext.Value = previous;
+                try { newContext.EndRoot(); }
+                finally { _currentContext.Value = previous; }
             });
         }
 
         private class DisposableScope : IDisposable
         {
             private readonly Action _onDispose;
+            private bool _disposed;
 
             public DisposableScope(Action onDispose)
             {
@@ -45,6 +54,8 @@ namespace DotNetCompose.Runtime
 
             public void Dispose()
             {
+                if (_disposed) return;
+                _disposed = true;
                 _onDispose();
             }
         }

@@ -16,6 +16,7 @@ namespace DotNetCompose.Runtime.Composer
         void StartReplaceableGroup(int key);
         void EndReplaceableGroup(int key);
         void StartMovableGroup(int key);
+        void StartMovableGroup(int key, object? dataKey) => StartMovableGroup(key);
         void EndMovableGroup(int key);
 
         bool Changed<T>(T value);
@@ -24,6 +25,10 @@ namespace DotNetCompose.Runtime.Composer
         void UpdateRememberedValue(object? value);
 
         void CreateNode<T>(System.Func<T> factory) where T : class;
+        void StartNode(int key = 0) => throw new NotSupportedException();
+        void UseNode() => throw new NotSupportedException();
+        void EndNode() => throw new NotSupportedException();
+        void ApplyNode<T, TValue>(TValue value, Action<T, TValue> block) => ApplyNode<T>(node => block(node, value), value);
         void ApplyNode<T>(System.Action<T> block, object? value);
 
         void ComposeContent(ComposableAction content);
