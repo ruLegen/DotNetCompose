@@ -29,13 +29,12 @@ namespace TestNs
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(36080424);
-                    if (scopeUpdater != null)
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(36080424);
+                    if (__dncScopeUpdater != null)
                     {
-                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
-                        scopeUpdater.UpdateScope(context =>
+                        __dncScopeUpdater.UpdateScope(__dncRestartContext =>
                         {
-                            MethodA(context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                            MethodA(__dncRestartContext, DotNetCompose.Runtime.ComposableArgumentsState.Force, default);
                         });
                     }
                 }
@@ -78,13 +77,12 @@ namespace TestNs
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(37340008);
-                    if (scopeUpdater != null)
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(37340008);
+                    if (__dncScopeUpdater != null)
                     {
-                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
-                        scopeUpdater.UpdateScope(context =>
+                        __dncScopeUpdater.UpdateScope(__dncRestartContext =>
                         {
-                            MethodB(context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                            MethodB(__dncRestartContext, DotNetCompose.Runtime.ComposableArgumentsState.Force, default);
                         });
                     }
                 }

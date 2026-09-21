@@ -25,13 +25,12 @@ namespace TestNs
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? scopeUpdater = __ctx?.EndRestartableGroup(-990364774);
-                    if (scopeUpdater != null)
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(-990364774);
+                    if (__dncScopeUpdater != null)
                     {
-                        byte[] __defaultStateValues = __defaultParamState.CloneValues();
-                        scopeUpdater.UpdateScope(context =>
+                        __dncScopeUpdater.UpdateScope(__dncRestartContext =>
                         {
-                            NotIgnored(context, DotNetCompose.Runtime.ComposableArgumentsState.Force, new DotNetCompose.Runtime.ComposableArgumentsDefaultState(__defaultStateValues));
+                            NotIgnored(__dncRestartContext, DotNetCompose.Runtime.ComposableArgumentsState.Force, default);
                         });
                     }
                 }

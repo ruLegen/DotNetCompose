@@ -1,4 +1,5 @@
 using DotNetCompose.Runtime.Composer;
+using Microsoft.CodeAnalysis.Emit;
 
 namespace DotNetCompose.SourceGenerators.Tests;
 
@@ -20,7 +21,7 @@ public class GeneratorRuntimeTests
     }
 
     [Fact]
-    public void GeneratedRestartAndCallerFlagsPreserveRememberSlots()
+    public void GeneratedRestartPreservesSlotsAndDoesNotDirtyChildren()
     {
         const string source = """
             using System;
@@ -31,64 +32,227 @@ public class GeneratorRuntimeTests
 
             namespace Integration;
 
+            public sealed class TestDefaultProvider : IDefaultValueProvider
+            {
+                public static int Value => Example.DefaultProvidedValue;
+            }
+
             public static partial class Example
             {
-                public static SnapshotMutableState<int> State = Composables.CreateMutableState(0);
+                public static SnapshotMutableState<int> ParentState = Composables.CreateMutableState(0);
+                public static SnapshotMutableState<int> ChildState = Composables.CreateMutableState(0);
+                public static SnapshotMutableState<int> DefaultState = Composables.CreateMutableState(0);
                 public static object Last;
-                public static int Executions;
-                public static int Value;
+                public static int ParentExecutions;
+                public static int ChildExecutions;
+                public static int StaticExecutions;
+                public static int DefaultExecutions;
+                public static int ParentValue;
                 public static int ChildValue;
+                public static int DefaultValue;
+                public static int DefaultProvidedValue = 41;
+                public static int Parameter = 7;
 
                 [Composable]
-                public static void Counter(int parameter)
+                public static void Parent(int parameter)
                 {
                     Last = Composables.Remember("stable", () => new object());
-                    Value = parameter + State.Value;
-                    Executions++;
-                    Composables.ComposeNode(() => new object(), node => { }, () => Child(parameter));
-                    Composables.Key("fixed", () => StaticChild());
+                    ParentValue = parameter + ParentState.Value;
+                    ParentExecutions++;
+                    Child(parameter);
+                    StaticChild(11);
+                    WithDefault();
                 }
 
                 [Composable]
-                public static void Child(int value) { ChildValue = value; }
+                public static void Child(int value)
+                {
+                    ChildValue = value + ChildState.Value;
+                    ChildExecutions++;
+                }
 
                 [Composable]
-                public static void StaticChild() { }
+                public static void StaticChild(int value) { StaticExecutions += value > 0 ? 1 : 0; }
 
-                public static bool Run()
+                [Composable]
+                public static void WithDefault([Default<TestDefaultProvider>] int value = default)
                 {
+                    DefaultValue = value + DefaultState.Value;
+                    DefaultExecutions++;
+                }
+
+                public static int Run()
+                {
+                    _ = ParentState.Value;
+                    _ = ChildState.Value;
+                    _ = DefaultState.Value;
                     using (Composition<object> composition = new Composition<object>(new GeneratorRuntimeTests.Applier()))
                     {
-                        composition.SetContent((c, changed, defaults) => Builders.Counter(7, c, changed, defaults));
+                        composition.SetContent((c, changed, defaults) => Builders.Parent(Parameter, c, changed, defaults));
                         object first = Last;
-                        State.Value = 2;
-                        if (!composition.Recompose()) return false;
+                        if (ParentExecutions != 1 || ChildExecutions != 1 || StaticExecutions != 1 ||
+                            DefaultExecutions != 1 || DefaultValue != 41) return 1;
+
+                        ParentState.Value = 2;
+                        if (!composition.Recompose()) return 2;
                         composition.ApplyChanges();
-                        if (!ReferenceEquals(first, Last) || Executions != 2 || Value != 9) return false;
-                        composition.SetContent((c, changed, defaults) => Builders.Counter(7, c,
-                            new ComposableArgumentsState(new byte[] { ComposableArgumentsState.Same }), defaults));
-                        if (!ReferenceEquals(first, Last) || Executions != 2) return false;
-                        composition.SetContent((c, changed, defaults) => Builders.Counter(8, c,
-                            new ComposableArgumentsState(new byte[] { ComposableArgumentsState.Different }), defaults));
-                        return ReferenceEquals(first, Last) && Executions == 3 && Value == 10 && ChildValue == 8;
+                        if (!ReferenceEquals(first, Last) || ParentExecutions != 2 || ChildExecutions != 1 ||
+                            StaticExecutions != 1 || DefaultExecutions != 1 || ParentValue != 9) return 3;
+
+                        ChildState.Value = 3;
+                        if (!composition.Recompose()) return 4;
+                        composition.ApplyChanges();
+                        if (ParentExecutions != 2 || ChildExecutions != 2 || StaticExecutions != 1 ||
+                            DefaultExecutions != 1 || ChildValue != 10) return 5;
+
+                        DefaultProvidedValue = 52;
+                        DefaultState.Value = 1;
+                        if (!composition.Recompose()) return 6;
+                        composition.ApplyChanges();
+                        if (ParentExecutions != 2 || ChildExecutions != 2 || StaticExecutions != 1 ||
+                            DefaultExecutions != 2 || DefaultValue != 53) return 7;
+
+                        Parameter = 8;
+                        composition.SetContent((c, changed, defaults) => Builders.Parent(Parameter, c, changed, defaults));
+                        return ReferenceEquals(first, Last) && ParentExecutions == 3 && ChildExecutions == 3 &&
+                            StaticExecutions == 1 && DefaultExecutions == 2 && ParentValue == 10 && ChildValue == 11 ? 0 : 8;
                     }
                 }
             }
             """;
-        var paths = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+        Type example = CompileExample(source);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+        string counters = string.Join(", ", new[] { "ParentExecutions", "ChildExecutions", "StaticExecutions", "DefaultExecutions", "ParentValue", "ChildValue", "DefaultValue" }
+            .Select(name => $"{name}={example.GetField(name)!.GetValue(null)}"));
+        Assert.True(Equals(0, result), $"Stage={result}; {counters}");
+    }
+
+    [Fact]
+    public void GeneratedCallersKeepComparisonSlotOwnershipStable()
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.SlotTable;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public static partial class Example
+            {
+                public static SnapshotMutableState<int> KnownState = Composables.CreateMutableState(0);
+                public static SnapshotMutableState<int> UnknownState = Composables.CreateMutableState(0);
+                public static object KnownRemembered;
+                public static object UnknownRemembered;
+                public static int KnownExecutions;
+                public static int UnknownExecutions;
+                public static int KnownValue;
+                public static int UnknownValue;
+                public static int Parameter = 7;
+
+                [Composable]
+                public static void Parent(int value)
+                {
+                    KnownChild(value);
+                    UnknownChild(GetValue(value));
+                }
+
+                [Composable]
+                public static void KnownChild(int value)
+                {
+                    KnownRemembered = Composables.Remember("known", () => new object());
+                    KnownValue = value + KnownState.Value;
+                    KnownExecutions++;
+                }
+
+                [Composable]
+                public static void UnknownChild(int value)
+                {
+                    UnknownRemembered = Composables.Remember("unknown", () => new object());
+                    UnknownValue = value + UnknownState.Value;
+                    UnknownExecutions++;
+                }
+
+                private static int GetValue(int value) => value;
+
+                private static bool HasExpectedSlotShape(Composition<object> composition)
+                {
+                    using ComposerSlotTable.Reader reader = composition.SlotTable.OpenReader();
+                    if (reader.Size != 4) return false;
+                    reader.StartGroup();
+                    reader.StartGroup();
+                    if (reader.GetSlotSize(reader.CurrentGroup) != 2) return false;
+                    reader.SkipGroup();
+                    if (reader.GetSlotSize(reader.CurrentGroup) != 3) return false;
+                    reader.SkipGroup();
+                    return reader.IsGroupEnd;
+                }
+
+                public static int Run()
+                {
+                    _ = KnownState.Value;
+                    _ = UnknownState.Value;
+                    using (Composition<object> composition = new Composition<object>(new GeneratorRuntimeTests.Applier()))
+                    {
+                        composition.SetContent((context, changed, defaults) => Builders.Parent(Parameter, context, changed, defaults));
+                        object firstKnown = KnownRemembered;
+                        object firstUnknown = UnknownRemembered;
+                        if (KnownExecutions != 1 || UnknownExecutions != 1 || !HasExpectedSlotShape(composition)) return 1;
+
+                        KnownState.Value = 1;
+                        if (!composition.Recompose()) return 2;
+                        composition.ApplyChanges();
+                        if (!ReferenceEquals(firstKnown, KnownRemembered) || !ReferenceEquals(firstUnknown, UnknownRemembered) ||
+                            KnownExecutions != 2 || UnknownExecutions != 1 || KnownValue != 8 ||
+                            !HasExpectedSlotShape(composition)) return 3;
+
+                        UnknownState.Value = 2;
+                        if (!composition.Recompose()) return 4;
+                        composition.ApplyChanges();
+                        if (!ReferenceEquals(firstKnown, KnownRemembered) || !ReferenceEquals(firstUnknown, UnknownRemembered) ||
+                            KnownExecutions != 2 || UnknownExecutions != 2 || UnknownValue != 9 ||
+                            !HasExpectedSlotShape(composition)) return 5;
+
+                        Parameter = 8;
+                        composition.SetContent((context, changed, defaults) => Builders.Parent(Parameter, context, changed, defaults));
+                        return ReferenceEquals(firstKnown, KnownRemembered) && ReferenceEquals(firstUnknown, UnknownRemembered) &&
+                            KnownExecutions == 3 && UnknownExecutions == 3 && KnownValue == 9 && UnknownValue == 10 &&
+                            HasExpectedSlotShape(composition) ? 0 : 6;
+                    }
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+        string counters = string.Join(", ", new[] { "KnownExecutions", "UnknownExecutions", "KnownValue", "UnknownValue" }
+            .Select(name => $"{name}={example.GetField(name)!.GetValue(null)}"));
+        Assert.True(Equals(0, result), $"Stage={result}; {counters}");
+    }
+
+    private static Type CompileExample(string source)
+    {
+        IEnumerable<string> paths = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
             .Append(typeof(ComposableAttribute).Assembly.Location)
-            .Append(typeof(GeneratorRuntimeTests).Assembly.Location).Distinct();
-        var compilation = CSharpCompilation.Create("RuntimeIntegration_" + Guid.NewGuid().ToString("N"),
+            .Append(typeof(GeneratorRuntimeTests).Assembly.Location)
+            .Distinct();
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            "RuntimeIntegration_" + Guid.NewGuid().ToString("N"),
             new[] { CSharpSyntaxTree.ParseText(source) },
             paths.Select(path => MetadataReference.CreateFromFile(path)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new ComposeSourceGenerator());
-        driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
-        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-        using var stream = new MemoryStream();
-        var emitted = output.Emit(stream);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out Compilation output,
+            out ImmutableArray<Diagnostic> diagnostics);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        using MemoryStream stream = new MemoryStream();
+        EmitResult emitted = output.Emit(stream);
         Assert.True(emitted.Success, string.Join(Environment.NewLine, emitted.Diagnostics));
-        var assembly = Assembly.Load(stream.ToArray());
-        Assert.Equal(true, assembly.GetType("Integration.Example")!.GetMethod("Run")!.Invoke(null, null));
+        Assembly assembly = Assembly.Load(stream.ToArray());
+        return assembly.GetType("Integration.Example")!;
     }
 }

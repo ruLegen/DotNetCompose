@@ -32,6 +32,36 @@ public class ComposeGeneratorCompilationTests
     }
 
     [Fact]
+    public void RestartCaptureUsesUniqueLocalsAndStackAllocatedStates()
+    {
+        string parameters = string.Join(", ", Enumerable.Range(0, 40).Select(index => $"int value{index}"));
+        string source = $$"""
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public static partial class ManyParameters
+            {
+                [Composable]
+                public static void Content({{parameters}})
+                {
+                    byte __dncRestartChanged0 = 0;
+                    int __dncScopeUpdater = __dncRestartChanged0;
+                }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("__dncRestartChanged0_1", generated);
+        Assert.Contains("ComposableArgumentsState.Forced(stackalloc byte[]", generated);
+        Assert.DoesNotContain("CloneValues()", generated);
+        Assert.DoesNotContain("new byte[]", generated);
+    }
+
+    [Fact]
     public void MultipleComposableMethodsInOneClass_SingleGeneratedFile()
     {
         var source = GeneratorTestHelper.LoadSource("MultipleComposableMethods.cs");
