@@ -60,6 +60,9 @@ namespace DotNetCompose.SourceGenerators
             public const string UncertainField = "Uncertain";
             public const string StaticField = "Static";
             public const string ForceField = "Force";
+            public const string IsForcedProperty = "IsForced";
+            public const string ForcedMethod = "Forced";
+            public const string NormalizeForRestartMethod = "NormalizeForRestart";
         }
         public static class ComposeUpdateScope
         {

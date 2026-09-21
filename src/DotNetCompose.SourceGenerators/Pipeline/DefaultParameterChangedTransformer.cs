@@ -102,9 +102,6 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
                 if (param.Type != null && param.Type.IsStableType())
                 {
-                    // Caller flags select execution, but must not change the group's slot layout.
-                    prologueStmts.Add(SyntaxFactory.ParseStatement(
-                        $"if ({stateVar} != {Consts.ComposableArgumentsState.FullName}.{Consts.ComposableArgumentsState.UncertainField}) {ctxVar}.Changed({param.Name});"));
                     prologueStmts.Add(SyntaxFactory.IfStatement(
                         SyntaxFactory.BinaryExpression(
                             SyntaxKind.EqualsExpression,
@@ -170,13 +167,23 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     : SyntaxFactory.BinaryExpression(SyntaxKind.LogicalAndExpression, condition, eq);
             }
 
-            condition = SyntaxFactory.BinaryExpression(
-                SyntaxKind.LogicalAndExpression,
-                condition,
+            ExpressionSyntax notForced = SyntaxFactory.PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
                 SyntaxFactory.MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    SyntaxFactory.IdentifierName(ctxVar),
-                    SyntaxFactory.IdentifierName(Consts.ComposeContext.SkippingProperty)));
+                    SyntaxFactory.IdentifierName(changedVar),
+                    SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.IsForcedProperty)));
+
+            condition = SyntaxFactory.BinaryExpression(
+                SyntaxKind.LogicalAndExpression,
+                notForced,
+                SyntaxFactory.BinaryExpression(
+                    SyntaxKind.LogicalAndExpression,
+                    condition,
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.IdentifierName(ctxVar),
+                        SyntaxFactory.IdentifierName(Consts.ComposeContext.SkippingProperty))));
 
             IfStatementSyntax skipStatement = SyntaxFactory.IfStatement(
                 condition,
