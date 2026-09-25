@@ -110,6 +110,46 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        public static readonly DiagnosticDescriptor DNC011_InstanceComposable = new DiagnosticDescriptor(
+            id: "DNC011",
+            title: "Instance composable method is unsupported",
+            messageFormat: "Composable method '{0}' must be static",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC012_AsyncComposable = new DiagnosticDescriptor(
+            id: "DNC012",
+            title: "Async composable method is unsupported",
+            messageFormat: "Composable method '{0}' cannot be async; launch asynchronous work with LaunchedEffect",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC013_IteratorComposable = new DiagnosticDescriptor(
+            id: "DNC013",
+            title: "Iterator composable method is unsupported",
+            messageFormat: "Composable method '{0}' cannot contain yield statements",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC014_ByRefComposableParameter = new DiagnosticDescriptor(
+            id: "DNC014",
+            title: "By-reference composable parameter is unsupported",
+            messageFormat: "Composable method '{0}' cannot declare ref, out, or in parameters",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC015_DirectComposableCall = new DiagnosticDescriptor(
+            id: "DNC015",
+            title: "Composable called outside composition",
+            messageFormat: "Composable method '{0}' cannot be called from non-composable code; use its generated Builders entry point as composition content",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public static readonly DiagnosticDescriptor DNC900_InternalError = new DiagnosticDescriptor(
             id: "DNC900",
             title: "Internal generator error",

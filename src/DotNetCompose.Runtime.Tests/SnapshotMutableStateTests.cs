@@ -7,6 +7,26 @@ namespace DotNetCompose.Runtime.Tests
     public class SnapshotMutableStateTests
     {
         [Fact]
+        public void RepeatedGlobalAdvancesReuseOldStateRecords()
+        {
+            var state = new SnapshotMutableState<int>(0, StructuralPolicy<int>.Default);
+
+            const int iterations = 10_000;
+            for (int value = 1; value <= iterations; value++)
+            {
+                state.Value = value;
+                Snapshot.SendApplyNotifications();
+            }
+
+            int records = 0;
+            for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next)
+                records++;
+
+            Assert.Equal(iterations, state.Value);
+            Assert.InRange(records, 1, 4);
+        }
+
+        [Fact]
         public void Constructor_SetsInitialValue()
         {
             var state = new SnapshotMutableState<int>(42, StructuralPolicy<int>.Default);
@@ -105,6 +125,30 @@ namespace DotNetCompose.Runtime.Tests
                 rec = rec.Next;
             }
             Assert.True(count >= 3);
+        }
+
+        [Fact]
+        public void ConcurrentWritesAndObserverDisposalAreSafe()
+        {
+            var state = new SnapshotMutableState<int>(0, NeverEqualPolicy<int>.Default);
+            int notifications = 0;
+            using ObserverHandle permanent = Snapshot.RegisterGlobalWriteObserver(_ => Interlocked.Increment(ref notifications));
+
+            Parallel.For(0, 8, worker =>
+            {
+                for (int index = 0; index < 1_000; index++)
+                {
+                    using ObserverHandle transient = Snapshot.RegisterGlobalWriteObserver(_ => { });
+                    state.Value = worker * 1_000 + index;
+                    if ((index & 15) == 0) transient.Dispose();
+                }
+            });
+
+            Snapshot.SendApplyNotifications();
+            Assert.True(notifications > 0);
+            int records = 0;
+            for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next) records++;
+            Assert.InRange(records, 1, 16);
         }
     }
 }

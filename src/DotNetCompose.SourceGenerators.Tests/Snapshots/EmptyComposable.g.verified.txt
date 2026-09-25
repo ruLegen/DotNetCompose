@@ -7,6 +7,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+#nullable enable
 
 using DotNetCompose.Runtime;
 
@@ -21,7 +22,7 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(1397818021);
+                    __ctx.StartRestartableGroup(1397818021);
                     byte __argInt_state = __changed[0];
                     if (__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
@@ -38,7 +39,7 @@ namespace TestNs
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(1397818021);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(1397818021);
                     if (__dncScopeUpdater != null)
                     {
                         byte __dncRestartChanged0 = DotNetCompose.Runtime.ComposableArgumentsState.NormalizeForRestart(__changed[0]);

@@ -11,6 +11,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+#nullable enable
 
 using DotNetCompose.Runtime;
 
@@ -25,11 +26,11 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(36080424);
+                    __ctx.StartRestartableGroup(36080424);
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(36080424);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(36080424);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>
@@ -59,6 +60,7 @@ namespace TestNs
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+#nullable enable
 
 using DotNetCompose.Runtime;
 
@@ -73,11 +75,11 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(37340008);
+                    __ctx.StartRestartableGroup(37340008);
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(37340008);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(37340008);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>

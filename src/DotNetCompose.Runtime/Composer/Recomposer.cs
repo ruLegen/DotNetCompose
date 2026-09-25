@@ -56,6 +56,21 @@ namespace DotNetCompose.Runtime.Composer
             _context.Post(ignored => Run(), null);
         }
 
+        internal void ReportEffectError(IControlledComposition composition, Exception exception)
+        {
+            if (exception is AggregateException aggregate)
+                exception = aggregate.Flatten().InnerExceptions.Count == 1
+                    ? aggregate.Flatten().InnerExceptions[0]
+                    : aggregate.Flatten();
+            Exception reported = exception;
+            _context.Post(_ =>
+            {
+                if (_disposed || composition.IsDisposed) return;
+                if (Error == null) throw reported;
+                Error(this, new RecompositionErrorEventArgs(composition, reported));
+            }, null);
+        }
+
         private void Run()
         {
             lock (_gate) { if (_disposed) return; _globalDirty = false; }

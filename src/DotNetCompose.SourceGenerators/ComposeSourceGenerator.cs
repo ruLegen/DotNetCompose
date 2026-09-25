@@ -98,14 +98,26 @@ namespace DotNetCompose.SourceGenerators
 
                     foreach (MethodFullNameAndDeclaration method in cls.Methods)
                     {
-                        if (method.Declaration?.ExpressionBody != null)
+                        MethodDeclarationSyntax? declaration = method.Declaration;
+                        if (declaration == null) continue;
+                        string methodName = declaration.Identifier.Text;
+                        if (declaration.ExpressionBody != null)
                         {
-                            string methodName = method.Declaration.Identifier.Text;
                             results.Add(new MethodResult(method, new DiagnosticInfo(
                                 DiagnosticDescriptors.DNC001_ExpressionBodiedNotSupported,
-                                LocationInfo.FromLocation(method.Declaration.ExpressionBody.GetLocation()),
+                                LocationInfo.FromLocation(declaration.ExpressionBody.GetLocation()),
                                 new object[] { methodName })));
                         }
+                        if (!declaration.Modifiers.Any(modifier => modifier.IsKind(SyntaxKind.StaticKeyword)))
+                            results.Add(MethodDiagnostic(method, DiagnosticDescriptors.DNC011_InstanceComposable, declaration.Identifier.GetLocation(), methodName));
+                        if (declaration.Modifiers.Any(modifier => modifier.IsKind(SyntaxKind.AsyncKeyword)))
+                            results.Add(MethodDiagnostic(method, DiagnosticDescriptors.DNC012_AsyncComposable, declaration.Identifier.GetLocation(), methodName));
+                        if (declaration.DescendantNodes().Any(node => node is YieldStatementSyntax))
+                            results.Add(MethodDiagnostic(method, DiagnosticDescriptors.DNC013_IteratorComposable, declaration.Identifier.GetLocation(), methodName));
+                        if (declaration.ParameterList.Parameters.Any(parameter =>
+                            parameter.Modifiers.Any(modifier => modifier.IsKind(SyntaxKind.RefKeyword) ||
+                                modifier.IsKind(SyntaxKind.OutKeyword) || modifier.IsKind(SyntaxKind.InKeyword))))
+                            results.Add(MethodDiagnostic(method, DiagnosticDescriptors.DNC014_ByRefComposableParameter, declaration.Identifier.GetLocation(), methodName));
                     }
 
                     if (results.Count == 0)
@@ -137,7 +149,38 @@ namespace DotNetCompose.SourceGenerators
                                  .Combine(context.CompilationProvider),
                 static (spc, source) => _pipeline.Execute(spc, source.Right, source.Left)
             );
+
+            IncrementalValuesProvider<Diagnostic> directCallDiagnostics = context.CompilationProvider
+                .Combine(composableMethodsDeclarations.Collect())
+                .SelectMany(static (source, token) =>
+                {
+                    (Compilation compilation, ImmutableArray<MethodFullNameAndDeclaration> methods) = source;
+                    if (methods.IsDefaultOrEmpty) return ImmutableArray<Diagnostic>.Empty;
+                    HashSet<string> composableNames = new HashSet<string>(methods.Select(method => method.FullName));
+                    ImmutableArray<Diagnostic>.Builder diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
+                    foreach (SyntaxTree tree in compilation.SyntaxTrees)
+                    {
+                        SemanticModel model = compilation.GetSemanticModel(tree);
+                        foreach (InvocationExpressionSyntax invocation in tree.GetRoot(token).DescendantNodes().OfType<InvocationExpressionSyntax>())
+                        {
+                            if (invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is not { } containing) continue;
+                            IMethodSymbol? containingSymbol = model.GetDeclaredSymbol(containing, token);
+                            if (containingSymbol?.GetAttributes().Any(attribute =>
+                                attribute.AttributeClass?.GetFullMetadataName() == Consts.ComposableAttributeFullName) == true) continue;
+                            if (model.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol target) continue;
+                            if (!composableNames.Contains(target.OriginalDefinition.GetFullMetadataName())) continue;
+                            diagnostics.Add(Diagnostic.Create(DiagnosticDescriptors.DNC015_DirectComposableCall,
+                                invocation.GetLocation(), target.Name));
+                        }
+                    }
+                    return diagnostics.ToImmutable();
+                });
+            context.RegisterSourceOutput(directCallDiagnostics, static (spc, diagnostic) => spc.ReportDiagnostic(diagnostic));
         }
+
+        private static MethodResult MethodDiagnostic(MethodFullNameAndDeclaration method,
+            DiagnosticDescriptor descriptor, Location location, string methodName)
+            => new MethodResult(method, new DiagnosticInfo(descriptor, LocationInfo.FromLocation(location), new object[] { methodName }));
 
         private static int ComputeContentHash(MethodDeclarationSyntax method)
         {

@@ -32,7 +32,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             string restartContextName = AllocateName(usedNames, "__dncRestartContext");
 
             List<StatementSyntax> tryStatements = new List<StatementSyntax>();
-            tryStatements.Add(SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+            tryStatements.Add(SyntaxFactoryHelpers.CreateMethodCallOnIdentifierWithArgs(
                 contextVariable,
                 Consts.ComposeContext.StartRestartableGroupMethod,
                 SyntaxFactoryHelpers.CreateIntLiteral(session.InitialGroupId)));
@@ -48,16 +48,10 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                             SyntaxFactory.Identifier(scopeUpdaterName))
                         .WithInitializer(
                             SyntaxFactory.EqualsValueClause(
-                                SyntaxFactory.ConditionalAccessExpression(
-                                    SyntaxFactory.IdentifierName(contextVariable),
-                                    SyntaxFactory.InvocationExpression(
-                                        SyntaxFactory.MemberBindingExpression(
-                                            SyntaxFactory.IdentifierName(Consts.ComposeContext.EndRestartableGroupMethod)))
-                                    .WithArgumentList(
-                                        SyntaxFactory.ArgumentList(
-                                            SyntaxFactory.SingletonSeparatedList(
-                                                SyntaxFactory.Argument(
-                                                    SyntaxFactoryHelpers.CreateIntLiteral(session.InitialGroupId)))))))))))
+                                SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
+                                    contextVariable,
+                                    Consts.ComposeContext.EndRestartableGroupMethod,
+                                    SyntaxFactoryHelpers.CreateIntLiteral(session.InitialGroupId)))))))
                 .WithTrailingNewLine();
 
             List<string> restartChangedNames = new List<string>(methodContext.Parameters.Length);

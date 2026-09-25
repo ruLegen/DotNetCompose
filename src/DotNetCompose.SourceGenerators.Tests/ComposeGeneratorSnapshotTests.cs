@@ -98,11 +98,11 @@ public class ComposeGeneratorSnapshotTests
     }
 
     [Fact]
-    public Task NonStaticClassComposableTransformation()
+    public void NonStaticClassComposableReportsDiagnostic()
     {
         var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
-        return Verifier.Verify(result).UseFileName("NotStaticClass.g");
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "DNC011");
     }
 
     [Fact]

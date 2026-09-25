@@ -24,15 +24,11 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             {
                 newParameterList = ReplaceAllComposableParameters(method, true, semanticModel, methodCtx);
             }
-            if (methodCtx.HasDefaultParams)
-            {
-                newParameterList = newParameterList.WithParameters(
-                    SyntaxFactory.SeparatedList(
-                        newParameterList.Parameters.Select((p, i) =>
-                            i < methodCtx.Parameters.Length && methodCtx.Parameters[i].DefaultProviderType != null
-                                ? p.WithDefault(null)
-                                : p)));
-            }
+            // Builder methods are always invoked with every source argument materialized by the
+            // call rewriter. Removing C# optional defaults keeps the injected composer parameters
+            // legal and prevents direct calls from silently substituting different values.
+            newParameterList = newParameterList.WithParameters(
+                SyntaxFactory.SeparatedList(newParameterList.Parameters.Select(p => p.WithDefault(null))));
             newParameterList = AppendComposableContextrelatedParameters(newParameterList, options.ContextVarName, options.ChangedVarName, options.DefaultParamName);
 
             MethodDeclarationSyntax newMethod = method

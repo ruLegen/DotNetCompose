@@ -133,18 +133,18 @@ public class CompositionTests
         composition.ComposeContent(content);
         CompositionChangeSet changes = composition.PendingChanges!;
 
-        CompositionOperation moveGroup = Assert.Single(changes.Where(operation => operation.Kind == CompositionOperationKind.MoveGroup));
+        CompositionOperation moveGroup = Assert.Single(changes, operation => operation.Kind == CompositionOperationKind.MoveGroup);
         Assert.Equal(1, moveGroup.GroupIndex);
         Assert.NotNull(moveGroup.SourceGroupIndex);
         Assert.Null(moveGroup.NodeIndex);
         Assert.Null(moveGroup.SlotOffset);
 
-        CompositionOperation moveNode = Assert.Single(changes.Where(operation => operation.Kind == CompositionOperationKind.MoveNode));
+        CompositionOperation moveNode = Assert.Single(changes, operation => operation.Kind == CompositionOperationKind.MoveNode);
         Assert.Equal(0, moveNode.NodeIndex);
         Assert.Equal(1, moveNode.SourceNodeIndex);
         Assert.Null(moveNode.GroupIndex);
 
-        CompositionOperation slot = Assert.Single(changes.Where(operation => operation.Kind == CompositionOperationKind.UpdateSlot && operation.GroupIndex == 1));
+        CompositionOperation slot = Assert.Single(changes, operation => operation.Kind == CompositionOperationKind.UpdateSlot && operation.GroupIndex == 1);
         Assert.Equal(0, slot.SlotOffset);
         Assert.NotNull(slot.GroupIndex);
         Assert.Null(slot.NodeIndex);
@@ -403,6 +403,74 @@ public class CompositionTests
         Assert.Equal(0, started);
         composition.ApplyChanges(); Assert.Equal(1, started);
         composition.SetContent((c, _, _) => { }); Assert.Equal(1, cancelled);
+    }
+
+    [Fact]
+    public void LaunchedEffectFailureIsReportedOnOwningContext()
+    {
+        var context = new Context();
+        using var recomposer = new Recomposer(context);
+        using var composition = new Composition<Node>(new Applier(), recomposer);
+        var expected = new InvalidOperationException("effect failed");
+        Exception? observed = null;
+        int ownerThread = Environment.CurrentManagedThreadId;
+        recomposer.Error += (_, args) =>
+        {
+            Assert.Equal(ownerThread, Environment.CurrentManagedThreadId);
+            observed = args.Exception;
+        };
+
+        composition.SetContent((c, _, _) => Composables.Builders.LaunchedEffect(1,
+            _ => ValueTask.FromException(expected), c));
+        context.Drain();
+
+        Assert.Same(expected, observed);
+    }
+
+    [Fact]
+    public void LaunchedEffectCancelsOnKeyChangeAndDispose()
+    {
+        var context = new Context();
+        using var recomposer = new Recomposer(context);
+        var composition = new Composition<Node>(new Applier(), recomposer);
+        var key = Composables.CreateMutableState(1);
+        int started = 0, cancelled = 0;
+        composition.SetContent((c, _, _) => Composables.Builders.LaunchedEffect(key.Value, token =>
+        {
+            started++;
+            token.Register(() => Interlocked.Increment(ref cancelled));
+            return default;
+        }, c));
+
+        key.Value = 2;
+        context.Drain();
+        Assert.Equal(2, started);
+        Assert.Equal(1, cancelled);
+
+        composition.Dispose();
+        Assert.Equal(2, cancelled);
+    }
+
+    [Fact]
+    public void OneHundredThousandRecompositionsKeepStateRecordChainBounded()
+    {
+        var state = Composables.CreateMutableState(0);
+        var applier = new Applier();
+        using var composition = new Composition<Node>(applier);
+        composition.SetContent((c, _, _) => Emit(c, state.Value));
+
+        const int iterations = 100_000;
+        for (int value = 1; value <= iterations; value++)
+        {
+            state.Value = value;
+            Assert.True(composition.Recompose());
+            composition.ApplyChanges();
+        }
+
+        int records = 0;
+        for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next) records++;
+        Assert.Equal(iterations, applier.Root.Children[0].Value);
+        Assert.InRange(records, 1, 4);
     }
 
     [Fact]

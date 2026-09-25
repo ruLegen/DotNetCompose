@@ -89,7 +89,8 @@ namespace DotNetCompose.Runtime.Composer
             _busy = true;
             try
             {
-                using Composer<TNode> composer = new Composer<TNode>(SlotTable, _computingInvalid);
+                using Composer<TNode> composer = new Composer<TNode>(SlotTable, _computingInvalid,
+                    error => _recomposer?.ReportEffectError(this, error));
                 _created = composer.CreatedValues;
                 _handledWrites = composer.HandledWrites;
                 _snapshot = Snapshot.TakeMutableSnapshot(composer.RecordRead, state => { });

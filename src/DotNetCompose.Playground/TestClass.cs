@@ -75,7 +75,7 @@ namespace DotNetCompose.Playground
 
             int rememberedInt = Composables.Remember(0, () => 3);
             string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
-            Unstable(argInt,null);
+            Unstable(argInt, new object());
             Stable(argInt,"", 3,"","");
             StableTestGeneric<int>(argInt,3);
             StableTestGeneric<object>(argInt,new object());

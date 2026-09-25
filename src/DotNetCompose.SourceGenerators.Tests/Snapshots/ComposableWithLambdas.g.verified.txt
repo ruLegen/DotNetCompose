@@ -7,6 +7,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+#nullable enable
 
 using DotNetCompose.Runtime;
 using System;
@@ -22,7 +23,7 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(-224109069);
+                    __ctx.StartRestartableGroup(-224109069);
                     byte __argInt_state = __changed[0];
                     if (__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
@@ -36,15 +37,19 @@ namespace TestNs
                     else
                     {
                         int local = argInt;
-                        ComposableTest(3, i =>
+                        global::TestNs.TestClass.Builders.ComposableTest(3, ComposeHelpers.GetLambda(__ctx, 0, () =>
                         {
-                            int x = i + local;
-                        });
+                            DotNetCompose.Runtime.ComposableAction<int> a = (int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState) =>
+                            {
+                                int x = i + local;
+                            };
+                            return a;
+                        }).Invoke<int>, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Different }), default);
                     }
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(-224109069);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(-224109069);
                     if (__dncScopeUpdater != null)
                     {
                         byte __dncRestartChanged0 = DotNetCompose.Runtime.ComposableArgumentsState.NormalizeForRestart(__changed[0]);
@@ -56,16 +61,29 @@ namespace TestNs
                 }
             }
             [DotNetCompose.Runtime.ComposeGeneratedAttribute]
-            private static void ComposableTest(int i, [Composable] Action<int> action, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
+            private static void ComposableTest(int i, [DotNetCompose.Runtime.ComposableActionParameterAttribute] DotNetCompose.Runtime.ComposableAction<int> action, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed = default, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(2024347930);
-                    action(i);
+                    __ctx.StartRestartableGroup(2024347930);
+                    byte __i_state = __changed[0];
+                    if (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                    {
+                        __i_state = __ctx.Changed(i) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
+                    {
+                        __ctx.SkipToGroupEnd();
+                    }
+                    else
+                    {
+                        action(i, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __i_state }), default);
+                    }
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(2024347930);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(2024347930);
                     if (__dncScopeUpdater != null)
                     {
                         byte __dncRestartChanged0 = DotNetCompose.Runtime.ComposableArgumentsState.NormalizeForRestart(__changed[0]);

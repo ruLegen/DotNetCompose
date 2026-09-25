@@ -110,7 +110,7 @@ namespace DotNetCompose.Runtime.Snapshots
 
             if (globalModified != null && globalModified.Count > 0)
             {
-                PendingApplyObserverCount++;
+                System.Threading.Interlocked.Increment(ref PendingApplyObserverCount);
                 try
                 {
                     foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
@@ -119,12 +119,12 @@ namespace DotNetCompose.Runtime.Snapshots
                         catch { }
                     }
                 }
-                finally { PendingApplyObserverCount--; }
+                finally { System.Threading.Interlocked.Decrement(ref PendingApplyObserverCount); }
             }
 
             if (modified != null && modified.Count > 0)
             {
-                PendingApplyObserverCount++;
+                System.Threading.Interlocked.Increment(ref PendingApplyObserverCount);
                 try
                 {
                     foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
@@ -133,7 +133,7 @@ namespace DotNetCompose.Runtime.Snapshots
                         catch { }
                     }
                 }
-                finally { PendingApplyObserverCount--; }
+                finally { System.Threading.Interlocked.Decrement(ref PendingApplyObserverCount); }
             }
 
             using (Snapshot.Lock())

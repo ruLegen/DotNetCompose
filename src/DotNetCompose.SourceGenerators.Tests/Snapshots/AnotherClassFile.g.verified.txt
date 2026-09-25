@@ -7,6 +7,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+#nullable enable
 
 using DotNetCompose.Runtime;
 
@@ -21,12 +22,12 @@ namespace DotNetCompose.Playground
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(-958684812);
+                    __ctx.StartRestartableGroup(-958684812);
                     int i = 3;
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(-958684812);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(-958684812);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>
@@ -41,12 +42,12 @@ namespace DotNetCompose.Playground
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(825147549);
+                    __ctx.StartRestartableGroup(825147549);
                     int i = 3;
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(825147549);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(825147549);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>
@@ -61,13 +62,13 @@ namespace DotNetCompose.Playground
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(825147556);
+                    __ctx.StartRestartableGroup(825147556);
                     int i = 3;
                     int b = 3;
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(825147556);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(825147556);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>
@@ -82,11 +83,11 @@ namespace DotNetCompose.Playground
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(-402270168);
+                    __ctx.StartRestartableGroup(-402270168);
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(-402270168);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(-402270168);
                     if (__dncScopeUpdater != null)
                     {
                         byte __dncRestartChanged0 = DotNetCompose.Runtime.ComposableArgumentsState.NormalizeForRestart(__changed[0]);

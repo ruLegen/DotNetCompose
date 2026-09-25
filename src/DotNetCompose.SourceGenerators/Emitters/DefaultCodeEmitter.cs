@@ -36,6 +36,7 @@ namespace DotNetCompose.SourceGenerators.Emitters
             IndentedTextWriter sourceBuilder = new IndentedTextWriter(writer);
 
             sourceBuilder.AppendLineRaw(ToolInfo.GeneratedFileHeader);
+            sourceBuilder.AppendLine("#nullable enable");
             sourceBuilder.AppendLine();
 
             foreach (UsingDirectiveSyntax usingDirective in input.Usings)

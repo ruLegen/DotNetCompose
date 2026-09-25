@@ -133,7 +133,6 @@ namespace DotNetCompose.Runtime.Snapshots
             public override void Assign(StateRecord value)
             {
                 Value = ((StateStateRecord)value).Value;
-                SnapshotId = value.SnapshotId;
             }
 
             public override StateRecord Create()

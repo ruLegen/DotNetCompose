@@ -7,6 +7,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+#nullable enable
 
 using DotNetCompose.Runtime;
 
@@ -21,11 +22,11 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(-1053874766);
+                    __ctx.StartRestartableGroup(-1053874766);
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(-1053874766);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(-1053874766);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>
@@ -40,11 +41,11 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(-650590239);
+                    __ctx.StartRestartableGroup(-650590239);
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(-650590239);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(-650590239);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>
@@ -59,11 +60,11 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(2078293116);
+                    __ctx.StartRestartableGroup(2078293116);
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(2078293116);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(2078293116);
                     if (__dncScopeUpdater != null)
                     {
                         __dncScopeUpdater.UpdateScope(__dncRestartContext =>

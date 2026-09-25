@@ -12,20 +12,20 @@ namespace DotNetCompose.Playground
         [Composable]
         public static void DD()
         {
-            int i = 3;
+            _ = 3;
         }
 
         [Composable]
         public static void vvvv3334()
         {
-            int i = 3;
+            _ = 3;
         }
 
         [Composable]
         public static void vvvv3333()
         {
-            int i = 3;
-            int b = 3;
+            _ = 3;
+            _ = 3;
         }
 
 

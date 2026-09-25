@@ -7,6 +7,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+#nullable enable
 
 using DotNetCompose.Runtime;
 using static DotNetCompose.Runtime.Composables;
@@ -22,7 +23,7 @@ namespace TestNs
             {
                 try
                 {
-                    __ctx?.StartRestartableGroup(-1783410025);
+                    __ctx.StartRestartableGroup(-1783410025);
                     byte __argInt_state = __changed[0];
                     if (__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
                     {
@@ -35,12 +36,12 @@ namespace TestNs
                     }
                     else
                     {
-                        int r = Remember<int>(0, () => 3);
+                        int r = global::DotNetCompose.Runtime.Composables.Builders.Remember<int>(0, () => 3, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
                     }
                 }
                 finally
                 {
-                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx?.EndRestartableGroup(-1783410025);
+                    DotNetCompose.Runtime.IComposeUpdateScope? __dncScopeUpdater = __ctx.EndRestartableGroup(-1783410025);
                     if (__dncScopeUpdater != null)
                     {
                         byte __dncRestartChanged0 = DotNetCompose.Runtime.ComposableArgumentsState.NormalizeForRestart(__changed[0]);

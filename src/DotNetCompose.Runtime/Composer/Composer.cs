@@ -32,12 +32,20 @@ namespace DotNetCompose.Runtime.Composer
         private readonly ComposerSlotTable _table;
         private readonly ComposerSlotTable.Reader _reader;
         private readonly HashSet<object> _invalid;
+        private readonly Action<Exception> _effectErrorSink;
         private readonly Stack<Frame> _stack = new Stack<Frame>();
         internal readonly List<object?> CreatedValues = new List<object?>();
         internal readonly HashSet<object> HandledWrites = new HashSet<object>(ReferenceComparer.Instance);
         private bool _closed;
-        internal Composer(ComposerSlotTable table, HashSet<object> invalid)
-        { _table = table; _reader = table.OpenReader(); _invalid = invalid; }
+        internal Composer(ComposerSlotTable table, HashSet<object> invalid, Action<Exception>? effectErrorSink = null)
+        {
+            _table = table;
+            _reader = table.OpenReader();
+            _invalid = invalid;
+            _effectErrorSink = effectErrorSink ?? (error => throw error);
+        }
+
+        public void ReportEffectError(Exception error) => _effectErrorSink(error);
 
         private Frame Current
         {

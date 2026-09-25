@@ -154,12 +154,36 @@ public class ComposeGeneratorCompilationTests
 
 
     [Fact]
-    public void NonStaticClass_IsTransformed()
+    public void InstanceComposable_ReportsDedicatedDiagnostic()
     {
         var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
-        Assert.Contains("__ctx", result);
-        Assert.Contains("IComposerContext", result);
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "DNC011");
+    }
+
+    [Theory]
+    [InlineData("async", "DNC012")]
+    [InlineData("iterator", "DNC013")]
+    [InlineData("byref", "DNC014")]
+    [InlineData("direct", "DNC015")]
+    public void UnsupportedSubset_ReportsDedicatedDiagnostic(string scenario, string expectedId)
+    {
+        string member = scenario switch
+        {
+            "async" => "[Composable] public static async System.Threading.Tasks.Task Content() { await System.Threading.Tasks.Task.Yield(); }",
+            "iterator" => "[Composable] public static System.Collections.Generic.IEnumerable<int> Content() { yield return 1; }",
+            "byref" => "[Composable] public static void Content(ref int value) { }",
+            _ => "[Composable] public static void Content() { } public static void Caller() { Content(); }"
+        };
+        string source = $$"""
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public static partial class Unsupported { {{member}} }
+            """;
+
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == expectedId);
     }
 
     [Fact]

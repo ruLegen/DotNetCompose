@@ -33,6 +33,7 @@ namespace DotNetCompose.Runtime.Snapshots
         internal static SnapshotDoubleIndexHeap PinningTable { get; } = new();
         internal static readonly List<Action<HashSet<IStateObject>, Snapshot>> ApplyObservers = new();
         internal static readonly List<Action<object>> GlobalWriteObservers = new();
+        private static readonly HashSet<IStateObject> ExtraStateObjects = new();
         internal static int PendingApplyObserverCount;
 
         static Snapshot()
@@ -182,10 +183,11 @@ namespace DotNetCompose.Runtime.Snapshots
 
             if (modified != null && modified.Count > 0)
             {
-                PendingApplyObserverCount++;
+                Interlocked.Increment(ref PendingApplyObserverCount);
                 try
                 {
-                    Action<HashSet<IStateObject>, Snapshot>[] observers = ApplyObservers.ToArray();
+                    Action<HashSet<IStateObject>, Snapshot>[] observers;
+                    lock (_lock) observers = ApplyObservers.ToArray();
                     foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
                     {
                         try { obs(modified, previousGlobal); }
@@ -194,7 +196,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 }
                 finally
                 {
-                    PendingApplyObserverCount--;
+                    Interlocked.Decrement(ref PendingApplyObserverCount);
                 }
             }
 
@@ -409,10 +411,81 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal static void CheckAndOverwriteUnusedRecordsLocked()
         {
+            ExtraStateObjects.RemoveWhere(state => !OverwriteUnusedRecordsLocked(state));
         }
 
         internal static void ProcessForUnusedRecordsLocked(IStateObject state)
         {
+            if (OverwriteUnusedRecordsLocked(state)) ExtraStateObjects.Add(state);
+            else ExtraStateObjects.Remove(state);
+        }
+
+        // A record below the lowest pinned snapshot can only be selected when it is the newest
+        // such record. Older records are obscured for every open snapshot and may be reused.
+        // Records at or above the reuse limit are retained because an open snapshot can still
+        // observe them through its invalid set.
+        private static bool OverwriteUnusedRecordsLocked(IStateObject state)
+        {
+            StateRecord? current = state.FirstStateRecord;
+            StateRecord? overwriteSource = null;
+            StateRecord? validRecord = null;
+            long reuseLimit = PinningTable.LowestOrDefault(NextSnapshotId);
+            int retainedRecords = 0;
+
+            while (current != null)
+            {
+                long currentId = current.SnapshotId;
+                if (currentId != SnapshotId.Invalid)
+                {
+                    if (currentId < reuseLimit)
+                    {
+                        if (validRecord == null)
+                        {
+                            validRecord = current;
+                            retainedRecords++;
+                        }
+                        else
+                        {
+                            StateRecord recordToOverwrite;
+                            if (current.SnapshotId < validRecord.SnapshotId)
+                            {
+                                recordToOverwrite = current;
+                            }
+                            else
+                            {
+                                recordToOverwrite = validRecord;
+                                validRecord = current;
+                            }
+
+                            overwriteSource ??= FindYoungestOr(
+                                state.FirstStateRecord,
+                                record => record.SnapshotId >= reuseLimit);
+                            recordToOverwrite.Assign(overwriteSource);
+                            recordToOverwrite.SnapshotId = SnapshotId.Invalid;
+                        }
+                    }
+                    else
+                    {
+                        retainedRecords++;
+                    }
+                }
+                current = current.Next;
+            }
+
+            return retainedRecords > 1;
+        }
+
+        private static StateRecord FindYoungestOr(StateRecord first, Func<StateRecord, bool> predicate)
+        {
+            StateRecord? current = first;
+            StateRecord youngest = first;
+            while (current != null)
+            {
+                if (predicate(current)) return current;
+                if (youngest.SnapshotId < current.SnapshotId) youngest = current;
+                current = current.Next;
+            }
+            return youngest;
         }
 
         internal static T? ReadableSilent<T>(T record, long snapshotId, SnapshotIdSet invalid)
@@ -458,10 +531,18 @@ namespace DotNetCompose.Runtime.Snapshots
         internal static StateRecord? TryFindReusableRecord(IStateObject state)
         {
             StateRecord? current = state.FirstStateRecord;
+            StateRecord? validRecord = null;
+            long reuseLimit = PinningTable.LowestOrDefault(NextSnapshotId) - 1;
             while (current != null)
             {
-                if (current.SnapshotId == long.MaxValue)
+                long currentId = current.SnapshotId;
+                if (currentId == SnapshotId.Invalid || currentId == long.MaxValue)
                     return current;
+                if (currentId <= reuseLimit)
+                {
+                    if (validRecord == null) validRecord = current;
+                    else return currentId < validRecord.SnapshotId ? current : validRecord;
+                }
                 current = current.Next;
             }
             return null;

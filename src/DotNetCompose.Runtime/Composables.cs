@@ -93,7 +93,7 @@ namespace DotNetCompose.Runtime
                 object? slot = context.RememberedValue();
                 if (ReferenceEquals(slot, Empty) || invalid)
                 {
-                    LaunchedEffectJob job = new LaunchedEffectJob(block);
+                    LaunchedEffectJob job = new LaunchedEffectJob(block, context.ReportEffectError);
                     context.UpdateRememberedValue(job);
                 }
             }

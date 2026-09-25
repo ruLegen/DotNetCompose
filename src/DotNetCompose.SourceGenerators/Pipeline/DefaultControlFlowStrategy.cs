@@ -50,12 +50,12 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             if (elseStatements != null && elseStatements.Any())
             {
                 int elseGroupId = session.NextGroupId();
-                ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+                ExpressionStatementSyntax elseGroupStartStatement = SyntaxFactoryHelpers.CreateMethodCallOnIdentifierWithArgs(
                     options.ContextVarName,
                     Consts.ComposeContext.StartReplaceableGroupMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId))
                     .WithTrailingNewLine();
-                ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+                ExpressionStatementSyntax elseGroupEndStatement = SyntaxFactoryHelpers.CreateMethodCallOnIdentifierWithArgs(
                     options.ContextVarName,
                     Consts.ComposeContext.EndReplaceableGroupMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(elseGroupId));
@@ -82,13 +82,13 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
             if (ifStatements.Any())
             {
-                ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+                ExpressionStatementSyntax ifGroupStartStatement = SyntaxFactoryHelpers.CreateMethodCallOnIdentifierWithArgs(
                     options.ContextVarName,
                     Consts.ComposeContext.StartReplaceableGroupMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId))
                     .WithTrailingNewLine();
 
-                ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateSafeMethodCallOnVariableWithArgs(
+                ExpressionStatementSyntax ifGroupEndStatement = SyntaxFactoryHelpers.CreateMethodCallOnIdentifierWithArgs(
                     options.ContextVarName,
                     Consts.ComposeContext.EndReplaceableGroupMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(ifGroupId));

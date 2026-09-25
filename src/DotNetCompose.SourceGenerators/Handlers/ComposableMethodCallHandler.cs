@@ -294,13 +294,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 }
                 else
                 {
-                    ITypeSymbol? paramType = parameterInfos[i].Type;
-                    ExpressionSyntax defaultExpr = paramType != null
-                        ? SyntaxFactory.DefaultExpression(
-                            SyntaxFactory.ParseTypeName(paramType.ToDisplayString(
-                                SymbolDisplayFormat.FullyQualifiedFormat
-                                    .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included))))
-                        : SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+                    ExpressionSyntax defaultExpr = BuildDefaultExpression(methodSymbol.Parameters[i], parameterInfos[i].Type);
                     allArgs.Add(SyntaxFactory.Argument(defaultExpr));
                 }
             }
@@ -326,6 +320,39 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 DiagnosticDescriptors.DNC008_MemberAccessNotFound,
                 invocationExpression.GetLocation()));
             return invocationExpression.WithArgumentList(newArgs);
+        }
+
+        private static ExpressionSyntax BuildDefaultExpression(IParameterSymbol parameter, ITypeSymbol? parameterType)
+        {
+            if (!parameter.HasExplicitDefaultValue || parameterType == null)
+            {
+                return parameterType == null
+                    ? SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)
+                    : SyntaxFactory.DefaultExpression(SyntaxFactory.ParseTypeName(parameterType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included))));
+            }
+
+            object? value = parameter.ExplicitDefaultValue;
+            if (value == null)
+            {
+                if (parameterType.IsValueType && parameter.NullableAnnotation != NullableAnnotation.Annotated)
+                    return SyntaxFactory.DefaultExpression(SyntaxFactory.ParseTypeName(parameterType.ToDisplayString(
+                        SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included))));
+                return SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression);
+            }
+            if (value is string text) return SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(text));
+            if (value is char character) return SyntaxFactory.LiteralExpression(SyntaxKind.CharacterLiteralExpression, SyntaxFactory.Literal(character));
+            if (value is bool boolean) return SyntaxFactory.LiteralExpression(boolean ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression);
+
+            string literal = SymbolDisplay.FormatPrimitive(value, quoteStrings: true, useHexadecimalNumbers: false);
+            ExpressionSyntax expression = SyntaxFactory.ParseExpression(literal);
+            if (parameterType.TypeKind == TypeKind.Enum)
+            {
+                TypeSyntax enumType = SyntaxFactory.ParseTypeName(parameterType.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included)));
+                expression = SyntaxFactory.CastExpression(enumType, expression);
+            }
+            return expression;
         }
 
         private static InvocationExpressionSyntax ReplaceWithFullQualifiedName(InvocationExpressionSyntax node, IMethodSymbol methodSymbol)

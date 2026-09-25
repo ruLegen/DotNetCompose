@@ -107,7 +107,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             if (index < 0 || index >= Count) return;
 
             MoveGap(index);
-            _buffer[_gapEndPos] = default;
+            _buffer[_gapEndPos] = default!;
             _gapEndPos++;
         }
         public void RemoveRange(int index, int length)
@@ -136,7 +136,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             if (logicalIndex < 0 || logicalIndex >= Count) return;
 
             MoveGap(logicalIndex);
-            _buffer[_gapEndPos] = default;
+            _buffer[_gapEndPos] = default!;
             _gapEndPos++;
         }
         internal int AddressToIndex(int address)

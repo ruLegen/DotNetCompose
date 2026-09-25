@@ -45,5 +45,6 @@ namespace DotNetCompose.Runtime.Composer
 
         bool Inserting { get; }
         bool IsComposing { get; }
+        void ReportEffectError(Exception error) => throw error;
     }
 }
