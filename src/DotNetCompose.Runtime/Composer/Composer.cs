@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DotNetCompose.Runtime.SlotTable;
+using DotNetCompose.Runtime.Snapshots;
 
 namespace DotNetCompose.Runtime.Composer
 {
@@ -8,7 +9,13 @@ namespace DotNetCompose.Runtime.Composer
     {
         private sealed class Frame
         {
-            internal Frame(CompositionGroup group) { Group = group; OldChildren = group.Previous?.Children ?? new List<CompositionGroup>(); }
+            internal Frame(CompositionGroup group, CompositionLocalScope locals, bool providersInvalid)
+            {
+                Group = group;
+                OldChildren = group.Previous?.Children ?? new List<CompositionGroup>();
+                Locals = locals;
+                ProvidersInvalid = providersInvalid;
+            }
             internal readonly CompositionGroup Group;
             internal readonly List<CompositionGroup> OldChildren;
             internal readonly HashSet<CompositionGroup> Used = new HashSet<CompositionGroup>();
@@ -18,6 +25,8 @@ namespace DotNetCompose.Runtime.Composer
             internal int LastSlot = -1;
             internal bool NodeChosen;
             internal bool Skipped;
+            internal CompositionLocalScope Locals;
+            internal bool ProvidersInvalid;
         }
 
         private readonly ComposerSlotTable _table;
@@ -25,6 +34,7 @@ namespace DotNetCompose.Runtime.Composer
         private readonly HashSet<object> _invalid;
         private readonly Stack<Frame> _stack = new Stack<Frame>();
         internal readonly List<object?> CreatedValues = new List<object?>();
+        internal readonly HashSet<object> HandledWrites = new HashSet<object>(ReferenceComparer.Instance);
         private bool _closed;
         internal Composer(ComposerSlotTable table, HashSet<object> invalid)
         { _table = table; _reader = table.OpenReader(); _invalid = invalid; }
@@ -44,7 +54,8 @@ namespace DotNetCompose.Runtime.Composer
             CompositionGroup root = previous == null
                 ? new CompositionGroup { Kind = CompositionGroupKind.Root }
                 : CompositionGroup.Draft(previous);
-            _stack.Push(new Frame(root));
+            root.Locals = CompositionLocalScope.Empty;
+            _stack.Push(new Frame(root, CompositionLocalScope.Empty, false));
             using (ComposeScope.EnterContext(this))
             {
                 if (recompose && previous != null && !previous.Reads.Overlaps(_invalid)) SkipToGroupEnd();
@@ -106,8 +117,9 @@ namespace DotNetCompose.Runtime.Composer
             CompositionGroup group = old == null
                 ? new CompositionGroup { Key = key, Kind = kind, ObjectKey = dataKey }
                 : CompositionGroup.Draft(old);
+            group.Locals = parent.Locals;
             parent.Group.Children.Add(group);
-            _stack.Push(new Frame(group));
+            _stack.Push(new Frame(group, parent.Locals, parent.ProvidersInvalid));
         }
 
         private CompositionGroup End(CompositionGroupKind kind, int? key = null)
@@ -140,7 +152,7 @@ namespace DotNetCompose.Runtime.Composer
         public void EndNode() => End(CompositionGroupKind.Node);
         public bool Inserting => Current.Group.Previous == null;
         public bool IsComposing => !_closed && _stack.Count > 0;
-        public bool Skipping => !Inserting && !Current.Group.Previous!.Reads.Overlaps(_invalid);
+        public bool Skipping => !Inserting && !Current.ProvidersInvalid && !Current.Group.Previous!.Reads.Overlaps(_invalid);
 
         public object? RememberedValue()
         {
@@ -208,6 +220,84 @@ namespace DotNetCompose.Runtime.Composer
 
         public void ComposeContent(ComposableAction content) => content(this, default, default);
 
+        public void StartProvider(ProvidedValue value)
+        {
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            StartProviderScope(new[] { value });
+        }
+
+        public void EndProvider() => End(CompositionGroupKind.Provider);
+
+        public void StartProviders(IReadOnlyList<ProvidedValue> values)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+            StartProviderScope(values);
+        }
+
+        public void EndProviders() => End(CompositionGroupKind.Provider);
+
+        public T Consume<T>(CompositionLocal<T> key)
+        {
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            return key.Read(Current.Locals);
+        }
+
+        private void StartProviderScope(IReadOnlyList<ProvidedValue> values)
+        {
+            const int providerKey = 0x4C6F636C;
+            Start(providerKey, CompositionGroupKind.Provider);
+            Frame frame = Current;
+            bool inserting = frame.Group.Previous == null;
+            CompositionLocalScope parentScope = frame.Locals;
+            object? remembered = RememberedValue();
+            CompositionLocalProviderState? previous = ReferenceEquals(remembered, ComposerSlotTable.Empty)
+                ? null
+                : remembered as CompositionLocalProviderState
+                    ?? throw new InvalidOperationException("Invalid CompositionLocal provider state.");
+
+            Dictionary<CompositionLocal, CompositionLocalValueHolder> ownValues = CompositionLocalScope.CreateValueMap();
+            for (int index = 0; index < values.Count; index++)
+            {
+                ProvidedValue provided = values[index]
+                    ?? throw new ArgumentException("A CompositionLocal provider value cannot be null.", nameof(values));
+                CompositionLocal local = provided.CompositionLocal;
+                if (!provided.CanOverride && parentScope.Contains(local)) continue;
+                CompositionLocalValueHolder? oldHolder = null;
+                previous?.Values.TryGetValue(local, out oldHolder);
+                CompositionLocalValueHolder holder = local.UpdatedValueHolder(provided, oldHolder, out IStateObject? changedState);
+                ownValues[local] = holder;
+                if (changedState != null)
+                {
+                    _invalid.Add(changedState);
+                    HandledWrites.Add(changedState);
+                }
+            }
+
+            CompositionLocalScope scope = CompositionLocalScope.Merge(parentScope, ownValues, previous?.Scope);
+            CompositionLocalProviderState state;
+            if (previous != null && ReferenceEquals(scope, previous.Scope) && HasSameValues(previous.Values, ownValues))
+                state = previous;
+            else
+                state = new CompositionLocalProviderState(ownValues, scope);
+
+            if (!ReferenceEquals(state, previous)) UpdateRememberedValue(state);
+            frame.Locals = scope;
+            frame.Group.Locals = scope;
+            frame.ProvidersInvalid = !inserting && previous != null && !ReferenceEquals(previous.Scope, scope);
+        }
+
+        private static bool HasSameValues(
+            Dictionary<CompositionLocal, CompositionLocalValueHolder> first,
+            Dictionary<CompositionLocal, CompositionLocalValueHolder> second)
+        {
+            if (first.Count != second.Count) return false;
+            foreach (KeyValuePair<CompositionLocal, CompositionLocalValueHolder> item in first)
+                if (!second.TryGetValue(item.Key, out CompositionLocalValueHolder? value) ||
+                    !item.Value.IsEquivalentTo(value))
+                    return false;
+            return true;
+        }
+
         public void SkipToGroupEnd()
         {
             Frame frame = Current;
@@ -226,7 +316,8 @@ namespace DotNetCompose.Runtime.Composer
                 CompositionGroup containerOld = new CompositionGroup();
                 containerOld.Children.Add(old);
                 CompositionGroup container = CompositionGroup.Draft(containerOld);
-                _stack.Push(new Frame(container));
+                container.Locals = old.Locals;
+                _stack.Push(new Frame(container, old.Locals, false));
                 int depth = _stack.Count;
                 old.Restart(this);
                 if (_stack.Count != depth || container.Children.Count != 1)

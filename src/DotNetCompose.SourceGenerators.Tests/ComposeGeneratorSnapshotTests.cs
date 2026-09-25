@@ -104,4 +104,12 @@ public class ComposeGeneratorSnapshotTests
         var result = GeneratorTestHelper.RunSingleGenerator(source);
         return Verifier.Verify(result).UseFileName("NotStaticClass.g");
     }
+
+    [Fact]
+    public Task CompositionLocalProvider()
+    {
+        var source = GeneratorTestHelper.LoadSource("CompositionLocalProvider.cs");
+        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        return Verifier.Verify(result).UseFileName("CompositionLocalProvider.g");
+    }
 }

@@ -17,6 +17,8 @@ namespace DotNetCompose.Runtime.Composer
         private readonly HashSet<object> _changed = new HashSet<object>(ReferenceComparer.Instance);
         private HashSet<object> _observed = new HashSet<object>(ReferenceComparer.Instance);
         private HashSet<object> _computingInvalid = new HashSet<object>(ReferenceComparer.Instance);
+        private HashSet<object> _initialComputingInvalid = new HashSet<object>(ReferenceComparer.Instance);
+        private HashSet<object> _handledWrites = new HashSet<object>(ReferenceComparer.Instance);
         private CompositionGroup? _root;
         private CompositionGroup? _pendingRoot;
         private MutableSnapshot? _snapshot;
@@ -51,7 +53,9 @@ namespace DotNetCompose.Runtime.Composer
             {
                 if (_disposed) return;
                 foreach (IStateObject state in states)
-                    if (_busy || HasPendingChanges || _observed.Contains(state)) _changed.Add(state);
+                    if (!(ReferenceEquals(snapshot, _snapshot) && _handledWrites.Contains(state)) &&
+                        (_busy || HasPendingChanges || _observed.Contains(state)))
+                        _changed.Add(state);
             }
             _recomposer?.RequestWork();
         }
@@ -78,7 +82,8 @@ namespace DotNetCompose.Runtime.Composer
             Snapshot.SendApplyNotifications();
             lock (_gate)
             {
-                _computingInvalid = new HashSet<object>(_changed, ReferenceComparer.Instance);
+                _initialComputingInvalid = new HashSet<object>(_changed, ReferenceComparer.Instance);
+                _computingInvalid = new HashSet<object>(_initialComputingInvalid, ReferenceComparer.Instance);
                 _changed.Clear();
             }
             _busy = true;
@@ -86,6 +91,7 @@ namespace DotNetCompose.Runtime.Composer
             {
                 using Composer<TNode> composer = new Composer<TNode>(SlotTable, _computingInvalid);
                 _created = composer.CreatedValues;
+                _handledWrites = composer.HandledWrites;
                 _snapshot = Snapshot.TakeMutableSnapshot(composer.RecordRead, state => { });
                 _pendingRoot = _snapshot.Enter(() => composer.Compute(_root, content, recompose));
                 CompositionChangeBuilder builder = new CompositionChangeBuilder(_root, _pendingRoot);
@@ -171,7 +177,7 @@ namespace DotNetCompose.Runtime.Composer
             _snapshot?.Dispose();
             _snapshot = null;
             PendingChanges?.Consume();
-            lock (_gate) _changed.UnionWith(_computingInvalid);
+            lock (_gate) _changed.UnionWith(_initialComputingInvalid);
             ClearPending();
             try { AbandonCreated(Observers(_root)); }
             finally { _created.Clear(); }
@@ -183,6 +189,8 @@ namespace DotNetCompose.Runtime.Composer
             _pendingRoot = null;
             _pendingContent = null;
             _computingInvalid.Clear();
+            _initialComputingInvalid.Clear();
+            _handledWrites.Clear();
         }
 
         private static void CommitGroups(CompositionGroup group)

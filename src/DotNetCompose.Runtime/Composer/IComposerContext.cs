@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 
 namespace DotNetCompose.Runtime.Composer
 {
@@ -32,6 +33,12 @@ namespace DotNetCompose.Runtime.Composer
         void ApplyNode<T>(System.Action<T> block, object? value);
 
         void ComposeContent(ComposableAction content);
+
+        void StartProvider(ProvidedValue value) => throw new NotSupportedException();
+        void EndProvider() => throw new NotSupportedException();
+        void StartProviders(IReadOnlyList<ProvidedValue> values) => throw new NotSupportedException();
+        void EndProviders() => throw new NotSupportedException();
+        T Consume<T>(CompositionLocal<T> key) => throw new NotSupportedException();
 
         bool Skipping { get; }
         void SkipToGroupEnd();

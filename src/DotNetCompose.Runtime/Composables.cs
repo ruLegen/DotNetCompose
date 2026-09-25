@@ -64,6 +64,26 @@ namespace DotNetCompose.Runtime
                 finally { context.EndMovableGroup(0); }
             }
 
+            public static void CompositionLocalProvider(ProvidedValue value, ComposableAction content,
+                IComposerContext context, ComposableArgumentsState changed = default,
+                ComposableArgumentsDefaultState defaultState = default)
+            {
+                if (content == null) throw new ArgumentNullException(nameof(content));
+                context.StartProvider(value);
+                try { content(context, default, default); }
+                finally { context.EndProvider(); }
+            }
+
+            public static void CompositionLocalProvider(IReadOnlyList<ProvidedValue> values, ComposableAction content,
+                IComposerContext context, ComposableArgumentsState changed = default,
+                ComposableArgumentsDefaultState defaultState = default)
+            {
+                if (content == null) throw new ArgumentNullException(nameof(content));
+                context.StartProviders(values);
+                try { content(context, default, default); }
+                finally { context.EndProviders(); }
+            }
+
            
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void LaunchedEffect(object? key1, Func<CancellationToken, ValueTask> block,
@@ -95,6 +115,22 @@ namespace DotNetCompose.Runtime
         public static void Key(object? key, [Composable] Action content) => throw new NotImplementedException("Use composable version");
 
         [Composable, ComposableIgnore]
+        public static void CompositionLocalProvider(ProvidedValue value, [Composable] Action content)
+        {
+            IComposerContext context = ComposeScope.GetCurrentContext()
+                ?? throw new InvalidOperationException("CompositionLocalProvider can only be used during composition.");
+            Builders.CompositionLocalProvider(value, (current, _, _) => content(), context);
+        }
+
+        [Composable, ComposableIgnore]
+        public static void CompositionLocalProvider(IReadOnlyList<ProvidedValue> values, [Composable] Action content)
+        {
+            IComposerContext context = ComposeScope.GetCurrentContext()
+                ?? throw new InvalidOperationException("CompositionLocalProvider can only be used during composition.");
+            Builders.CompositionLocalProvider(values, (current, _, _) => content(), context);
+        }
+
+        [Composable, ComposableIgnore]
         public static T Remember<T>(object key, Func<T> creator) => throw new NotImplementedException("Use composable version");
 
         [Composable, ComposableIgnore]
@@ -104,6 +140,20 @@ namespace DotNetCompose.Runtime
         public static SnapshotMutableState<T> CreateMutableState<T>(T value, ISnapshotMutationPolicy<T>? policy = null)
         {
             return Snapshots.SnapshotMutableStateFactory.Create(value, policy);
+        }
+
+        public static ProvidableCompositionLocal<T> CompositionLocalOf<T>(
+            Func<T> defaultFactory,
+            ISnapshotMutationPolicy<T>? policy = null)
+        {
+            if (defaultFactory == null) throw new ArgumentNullException(nameof(defaultFactory));
+            return new DynamicProvidableCompositionLocal<T>(defaultFactory, policy ?? StructuralPolicy<T>.Default);
+        }
+
+        public static ProvidableCompositionLocal<T> StaticCompositionLocalOf<T>(Func<T> defaultFactory)
+        {
+            if (defaultFactory == null) throw new ArgumentNullException(nameof(defaultFactory));
+            return new StaticProvidableCompositionLocal<T>(defaultFactory);
         }
     }
 }

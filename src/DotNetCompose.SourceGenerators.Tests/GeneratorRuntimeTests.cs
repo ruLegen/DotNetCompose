@@ -232,6 +232,69 @@ public class GeneratorRuntimeTests
         Assert.True(Equals(0, result), $"Stage={result}; {counters}");
     }
 
+    [Fact]
+    public void GeneratedCompositionLocalProviderUsesTheActiveComposer()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public static partial class Example
+            {
+                public static readonly ProvidableCompositionLocal<int> LocalValue =
+                    Composables.CompositionLocalOf(() => -1);
+                public static readonly ProvidableCompositionLocal<string> LocalText =
+                    Composables.StaticCompositionLocalOf(() => "default");
+                public static readonly SnapshotMutableState<int> Source = Composables.CreateMutableState(1);
+                public static int ReaderExecutions;
+                public static int Seen;
+                public static string SeenText;
+
+                [Composable]
+                public static void Parent()
+                {
+                    int value = Source.Value;
+                    Composables.CompositionLocalProvider(
+                        new ProvidedValue[] { LocalValue.Provides(value), LocalText.Provides("outer") },
+                        () => Composables.CompositionLocalProvider(LocalText.Provides("inner"), () => Reader()));
+                }
+
+                [Composable]
+                public static void Reader()
+                {
+                    ReaderExecutions++;
+                    Seen = LocalValue.Current;
+                    SeenText = LocalText.Current;
+                }
+
+                public static int Run()
+                {
+                    _ = Source.Value;
+                    using (Composition<object> composition = new Composition<object>(new GeneratorRuntimeTests.Applier()))
+                    {
+                        composition.SetContent((context, changed, defaults) => Builders.Parent(context, changed, defaults));
+                        if (ReaderExecutions != 1 || Seen != 1 || SeenText != "inner" || composition.HasInvalidations) return 1;
+                        Source.Value = 2;
+                        if (!composition.Recompose()) return 2;
+                        if (Seen != 2) return 3;
+                        composition.ApplyChanges();
+                        if (ReaderExecutions != 2 || Seen != 2 || SeenText != "inner" || composition.HasInvalidations) return 4;
+                        return composition.Recompose() ? 5 : 0;
+                    }
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+        Assert.True(Equals(0, result),
+            $"Stage={result}; ReaderExecutions={example.GetField("ReaderExecutions")!.GetValue(null)}; Seen={example.GetField("Seen")!.GetValue(null)}");
+    }
+
     private static Type CompileExample(string source)
     {
         IEnumerable<string> paths = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)

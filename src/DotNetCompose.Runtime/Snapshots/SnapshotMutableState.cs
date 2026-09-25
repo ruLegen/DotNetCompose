@@ -10,21 +10,7 @@ namespace DotNetCompose.Runtime.Snapshots
         public T Value
         {
             get => Readable().Value;
-            set
-            {
-                Snapshot snapshot = Snapshot.Current;
-                StateStateRecord record = Snapshot.ReadCurrent(_next, snapshot);
-                if (!Policy.Equivalent(record.Value, value))
-                {
-                    using (Snapshot.Lock())
-                    {
-                        snapshot = Snapshot.Current;
-                        record = OverwritableRecord(snapshot, record);
-                        record.Value = value;
-                    }
-                    Snapshot.NotifyWrite(snapshot, this);
-                }
-            }
+            set => SetValueAndReportChange(value);
         }
 
         public ISnapshotMutationPolicy<T> Policy { get; }
@@ -38,6 +24,21 @@ namespace DotNetCompose.Runtime.Snapshots
             Policy = policy;
             _next = new StateStateRecord(Snapshot.Current.Id, value);
             if (!ReferenceEquals(Snapshot.Current.Root, Snapshot.GlobalSnapshot)) Snapshot.Current.RecordModified(this);
+        }
+
+        internal bool SetValueAndReportChange(T value)
+        {
+            Snapshot snapshot = Snapshot.Current;
+            StateStateRecord record = Snapshot.ReadCurrent(_next, snapshot);
+            if (Policy.Equivalent(record.Value, value)) return false;
+            using (Snapshot.Lock())
+            {
+                snapshot = Snapshot.Current;
+                record = OverwritableRecord(snapshot, record);
+                record.Value = value;
+            }
+            Snapshot.NotifyWrite(snapshot, this);
+            return true;
         }
         public void PrependStateRecord(StateRecord value)
         {

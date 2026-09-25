@@ -5,7 +5,7 @@ using DotNetCompose.Runtime.SlotTable;
 
 namespace DotNetCompose.Runtime.Composer
 {
-    internal enum CompositionGroupKind { Root, Group, Replaceable, Movable, Restart, Node }
+    internal enum CompositionGroupKind { Root, Group, Replaceable, Movable, Restart, Node, Provider }
 
     internal sealed class ReferenceComparer : IEqualityComparer<object>
     {
@@ -30,6 +30,7 @@ namespace DotNetCompose.Runtime.Composer
         internal Action<IComposerContext>? Restart;
         internal NodeReference Node = new NodeReference();
         internal List<NodeUpdate> Updates = new List<NodeUpdate>();
+        internal CompositionLocalScope Locals = CompositionLocalScope.Empty;
         internal bool IsNode => Kind == CompositionGroupKind.Node;
         internal int Size
         {
@@ -37,7 +38,7 @@ namespace DotNetCompose.Runtime.Composer
         }
         public void UpdateScope(Action<IComposerContext> scopeUpdater) => Restart = scopeUpdater ?? throw new ArgumentNullException(nameof(scopeUpdater));
         internal static CompositionGroup Draft(CompositionGroup old) => new CompositionGroup
-        { Key = old.Key, Kind = old.Kind, ObjectKey = old.ObjectKey, Previous = old, Anchor = old.Anchor, Node = old.Node, Restart = old.Restart };
+        { Key = old.Key, Kind = old.Kind, ObjectKey = old.ObjectKey, Previous = old, Anchor = old.Anchor, Node = old.Node, Restart = old.Restart, Locals = old.Locals };
     }
 
     internal sealed class NodeReference

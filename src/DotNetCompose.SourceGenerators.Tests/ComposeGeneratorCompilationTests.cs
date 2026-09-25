@@ -161,4 +161,19 @@ public class ComposeGeneratorCompilationTests
         Assert.Contains("__ctx", result);
         Assert.Contains("IComposerContext", result);
     }
+
+    [Fact]
+    public void CompositionLocalProvider_IsTransformedAndCompiles()
+    {
+        string source = GeneratorTestHelper.LoadSource("CompositionLocalProvider.cs");
+        var (compilation, _) = GeneratorTestHelper.CreateDriver(source);
+        string result = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(compilation.GetDiagnostics(), diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        int redirectedCalls = result.Split("Composables.Builders.CompositionLocalProvider").Length - 1;
+        Assert.True(redirectedCalls == 2, result);
+    }
+
 }

@@ -31,7 +31,7 @@ public static class GeneratorTestHelper
         try { refPaths.Add(typeof(System.Linq.Enumerable).Assembly.Location); } catch { }
 
         References = refPaths
-            .Where(p => !string.IsNullOrEmpty(p) && !p.Contains("System.Private.CoreLib"))
+            .Where(p => !string.IsNullOrEmpty(p))
             .Select(p => MetadataReference.CreateFromFile(p))
             .ToArray();
     }
