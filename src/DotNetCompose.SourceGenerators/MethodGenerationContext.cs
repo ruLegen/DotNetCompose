@@ -10,7 +10,11 @@ namespace DotNetCompose.SourceGenerators
         ImmutableArray<string> TypeParameterNames,
         ImmutableArray<MethodParameterInfo> Parameters,
         bool HasDefaultParams,
-        ComposableModeKind Mode)
+        ComposableModeKind Mode,
+        bool GenerateDiagnostics,
+        long DiagnosticsMethodId,
+        string SourcePath,
+        int SourceLine)
     {
         public bool IsReadOnly => Mode == ComposableModeKind.ReadOnly;
         public bool GeneratesParameterChanges => Mode == ComposableModeKind.Restartable;

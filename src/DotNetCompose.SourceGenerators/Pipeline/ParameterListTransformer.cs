@@ -19,7 +19,11 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     ImmutableArray<string>.Empty,
                     methodParams,
                     false,
-                    ComposableModeKind.Restartable));
+                    ComposableModeKind.Restartable,
+                    false,
+                    0,
+                    string.Empty,
+                    0));
         }
 
         internal static ParameterListSyntax AppendComposableContextrelatedParameters(

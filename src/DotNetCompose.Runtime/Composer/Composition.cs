@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using DotNetCompose.Runtime.Diagnostics;
 using DotNetCompose.Runtime.Effects;
 using DotNetCompose.Runtime.SlotTable;
 using DotNetCompose.Runtime.Snapshots;
@@ -32,6 +33,8 @@ namespace DotNetCompose.Runtime.Composer
 
         public Composition(IApplier<TNode> applier, Recomposer? recomposer = null)
         {
+            if (CompositionDiagnosticsRuntime.IsSupported)
+                CompositionDiagnosticsRuntime.EnsureEventSource();
             _applier = applier ?? throw new ArgumentNullException(nameof(applier));
             _recomposer = recomposer;
             recomposer?.VerifyAccess();
@@ -87,6 +90,8 @@ namespace DotNetCompose.Runtime.Composer
                 _changed.Clear();
             }
             _busy = true;
+            if (CompositionDiagnosticsRuntime.IsSupported)
+                CompositionDiagnosticsRuntime.BeginCompositionPass(this, recompose);
             try
             {
                 using Composer<TNode> composer = new Composer<TNode>(SlotTable, _computingInvalid,
@@ -99,9 +104,13 @@ namespace DotNetCompose.Runtime.Composer
                 _pendingContent = content;
                 PendingChanges = new CompositionChangeSet(this, SlotTable.Version,
                     builder.Operations, builder.InsertTable);
+                if (CompositionDiagnosticsRuntime.IsSupported)
+                    CompositionDiagnosticsRuntime.CompleteCompositionPass(this);
             }
-            catch
+            catch (Exception error)
             {
+                if (CompositionDiagnosticsRuntime.IsSupported)
+                    CompositionDiagnosticsRuntime.ReportCompositionPassException(this, error);
                 CancelPending();
                 throw;
             }
@@ -124,6 +133,8 @@ namespace DotNetCompose.Runtime.Composer
             if (changes.Count > 0) SlotTable.EnsureCanWrite();
             _busy = true;
             bool applying = false;
+            if (CompositionDiagnosticsRuntime.IsSupported)
+                CompositionDiagnosticsRuntime.BeginApplyChanges(this, changes.Count);
             try
             {
                 SnapshotApplyResult result = _snapshot!.Apply();
@@ -153,9 +164,13 @@ namespace DotNetCompose.Runtime.Composer
                 DispatchRemember(before, after);
                 AbandonCreated(after);
                 _created.Clear();
+                if (CompositionDiagnosticsRuntime.IsSupported)
+                    CompositionDiagnosticsRuntime.CompleteApplyChanges(this, changes.Count);
             }
-            catch
+            catch (Exception error)
             {
+                if (CompositionDiagnosticsRuntime.IsSupported)
+                    CompositionDiagnosticsRuntime.ReportApplyChangesException(this, error);
                 if (applying) _faulted = true;
                 CancelPending();
                 throw;
@@ -168,7 +183,13 @@ namespace DotNetCompose.Runtime.Composer
         {
             VerifyAccess();
             _busy = true;
-            try { CancelPending(); }
+            int operationCount = PendingChanges?.Count ?? 0;
+            try
+            {
+                CancelPending();
+                if (CompositionDiagnosticsRuntime.IsSupported)
+                    CompositionDiagnosticsRuntime.ReportChangesDiscarded(this, operationCount);
+            }
             finally { _busy = false; }
             if (HasInvalidations) _recomposer?.RequestWork();
         }
@@ -268,6 +289,8 @@ namespace DotNetCompose.Runtime.Composer
                 {
                     _root = null;
                     _content = null;
+                    if (CompositionDiagnosticsRuntime.IsSupported)
+                        CompositionDiagnosticsRuntime.ReportCompositionDisposed(this);
                     lock (_gate) { _changed.Clear(); _observed.Clear(); }
                     try { _applier.Clear(); }
                     finally

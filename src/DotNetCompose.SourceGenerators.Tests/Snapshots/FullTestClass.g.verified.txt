@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 #nullable enable
+#line hidden
 
 using DotNetCompose.Runtime;
 using System;
@@ -25,8 +26,24 @@ namespace DotNetCompose.Playground
                 try
                 {
                     __ctx.StartRestartableGroup(-2111629801);
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(14420595849051704L, -2111629801, "dd", "", 10, "");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (12, 9) - (12, 29) 20 ""
                     global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable(__ctx, default, default);
+            #line hidden
+            #line (13, 9) - (13, 30) 20 ""
                     global::DotNetCompose.Playground.TestClass.Builders.IgnoredComposable2(__ctx, default, default);
+            #line hidden
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[0]);
+                    }
                 }
                 finally
                 {
@@ -48,6 +65,18 @@ namespace DotNetCompose.Playground
                     __ctx.StartRestartableGroup(-453779699);
                     byte __i_state = __changed[0];
                     byte __obj_state = __changed[1];
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(9157249289213227300L, -453779699, "Unstable", "", 28, "i\u001fobj");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __obj_state });
+                    }
                 }
                 finally
                 {
@@ -99,12 +128,26 @@ namespace DotNetCompose.Playground
                         __sdf_state = __ctx.Changed(sdf) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(-8761361614223610896L, 63517754, "Stable", "", 33, "i\u001fstable\u001fg\u001fkkk\u001fsdf");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__stable_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __stable_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__g_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __g_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__kkk_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __kkk_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__sdf_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __sdf_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __stable_state, __g_state, __kkk_state, __sdf_state });
                     }
                 }
                 finally
@@ -132,6 +175,18 @@ namespace DotNetCompose.Playground
                     __ctx.StartRestartableGroup(1321479685);
                     byte __i_state = __changed[0];
                     byte __param2_state = __changed[1];
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(-2758167807034165183L, 1321479685, "StableTestGeneric", "", 38, "i\u001fparam2");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __param2_state });
+                    }
                 }
                 finally
                 {
@@ -159,32 +214,95 @@ namespace DotNetCompose.Playground
                         __argInt_state = __ctx.Changed(argInt) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(-2582991425035263679L, -447876319, "EmptyComposable", "", 43, "argInt");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (45, 9) - (45, 25) 24 ""
                         int localInt = 3;
+            #line hidden
+            #line (47, 9) - (47, 67) 24 ""
                         int rememberedFromStaticUsings = global::DotNetCompose.Runtime.Composables.Builders.Remember<int>(0, () => 3, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+            #line hidden
+            #line (49, 9) - (49, 61) 24 ""
                         int rememberedInt = global::DotNetCompose.Runtime.Composables.Builders.Remember<int>(0, () => 3, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+            #line hidden
+            #line (50, 9) - (50, 86) 24 ""
                         string rememberedstring = global::DotNetCompose.Runtime.Composables.Builders.Remember<string>(0, () => string.Empty, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+            #line hidden
+            #line (51, 9) - (51, 32) 24 ""
                         global::DotNetCompose.Playground.TestClass.Builders.Unstable(argInt, null, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __argInt_state, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+            #line hidden
+            #line (52, 9) - (52, 39) 24 ""
                         global::DotNetCompose.Playground.TestClass.Builders.Stable(argInt, "", 3, "", "", __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __argInt_state, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+            #line hidden
+            #line (53, 9) - (53, 43) 24 ""
                         global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<int>(argInt, 3, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __argInt_state, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+            #line hidden
+            #line (54, 9) - (54, 57) 24 ""
                         global::DotNetCompose.Playground.TestClass.Builders.StableTestGeneric<object>(argInt, new object (), __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __argInt_state, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+            #line hidden
+                        #line hidden
+                        {
+            #line (56, 9) - (60, 12) 24 ""
+                        {
+            #line hidden
+                        }
+#line hidden
                         global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __StoredLambda.__Lambda_0, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+
+                        }
+                        #line hidden
+                        {
+            #line (61, 9) - (69, 12) 24 ""
+                        {
+            #line hidden
+                        }
+#line hidden
                         global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __StoredLambda.__Lambda_2, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+
+                        }
+                        #line hidden
+                        {
+            #line (70, 9) - (74, 12) 24 ""
+                        {
+            #line hidden
+                        }
+#line hidden
                         global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, ComposeHelpers.GetLambda(__ctx, 3, () =>
                         {
                             DotNetCompose.Runtime.ComposableAction<int> a = (int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState) =>
                             {
+            #line (72, 13) - (72, 40) 32 ""
                                 int innerInt = localInt * i;
+            #line hidden
+            #line (73, 13) - (73, 36) 32 ""
                                 global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123123, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+            #line hidden
                             };
                             return a;
                         }).Invoke<int>, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+
+                        }
+            #line (76, 9) - (76, 27) 24 ""
                         global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+            #line hidden
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __argInt_state });
                     }
                 }
                 finally
@@ -212,12 +330,26 @@ namespace DotNetCompose.Playground
                         __i_state = __ctx.Changed(i) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(1866587635755641658L, 1918245812, "ComposableTest", "", 80, "i");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state });
                     }
                 }
                 finally
@@ -251,15 +383,35 @@ namespace DotNetCompose.Playground
                         __action_state = __ctx.Changed(action) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(541947107894615755L, -1169319122, "ComposableTest2", "", 85, "i\u001faction");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__action_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __action_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (87, 9) - (87, 26) 24 ""
                         action.Invoke(i, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __i_state }), default);
+            #line hidden
+            #line (88, 9) - (88, 19) 24 ""
                         action(i, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __i_state }), default);
+            #line hidden
+            #line (89, 9) - (89, 27) 24 ""
                         action?.Invoke(i, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __i_state }), default);
+            #line hidden
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __action_state });
                     }
                 }
                 finally
@@ -294,25 +446,47 @@ namespace DotNetCompose.Playground
                         __action_state = __ctx.Changed(action) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(5227955517191003241L, 1918245812, "ComposableTest", "", 93, "i\u001faction");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__action_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __action_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (95, 9) - (95, 26) 24 ""
                         action.Invoke(i, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __i_state }), default);
+            #line hidden
+            #line (96, 9) - (103, 10) 24 ""
                         if (i == 0)
                         {
                             __ctx.StartReplaceableGroup(1918245813);
+            #line (98, 13) - (98, 23) 28 ""
                             action(i, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __i_state }), default);
+            #line hidden
                             __ctx.EndReplaceableGroup(1918245813);
                         }
                         else
                         {
                             __ctx.StartReplaceableGroup(1918245814);
+            #line (102, 13) - (102, 31) 28 ""
                             action?.Invoke(i, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { __i_state }), default);
+            #line hidden
                             __ctx.EndReplaceableGroup(1918245814);
                         }
+            #line hidden
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __action_state });
                     }
                 }
                 finally
@@ -333,17 +507,34 @@ namespace DotNetCompose.Playground
             {
                 public static void __Lambda_0(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
+                #line (58, 13) - (58, 32) 20 ""
                     int nonCaptured = i;
+                #line hidden
+                #line (59, 13) - (59, 33) 20 ""
                     global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+                #line hidden
                 }
                 public static void __Lambda_1(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
+                #line (67, 17) - (67, 34) 20 ""
                     int someLocal = i;
+                #line hidden
                 }
                 public static void __Lambda_2(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
+                #line (63, 13) - (63, 32) 20 ""
                     int nonCaptured = i;
+                #line hidden
+                    #line hidden
+                    {
+                #line (65, 13) - (68, 16) 20 ""
+                    {
+                #line hidden
+                    }
+#line hidden
                     global::DotNetCompose.Playground.TestClass.Builders.ComposableTest2(123, __StoredLambda.__Lambda_1, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+
+                    }
                 }
             }
         }

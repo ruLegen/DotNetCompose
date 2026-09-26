@@ -100,21 +100,48 @@ namespace DotNetCompose.SourceGenerators.Rewriters
 
         public override SyntaxNode VisitIfStatement(IfStatementSyntax node)
         {
+            SyntaxAnnotation? locationAnnotation = node.CreateLocationSyntaxAnnotation();
             using var _ = Ctx.Session.EnterConditional();
             var visited = (IfStatementSyntax)base.VisitIfStatement(node);
-            return _controlFlow.RewriteIf(visited, Ctx);
+            var rewritten = _controlFlow.RewriteIf(visited, Ctx);
+            return AddLocationAnnotation(rewritten, locationAnnotation);
         }
 
         public override SyntaxNode VisitForStatement(ForStatementSyntax node)
         {
+            SyntaxAnnotation? locationAnnotation = node.CreateLocationSyntaxAnnotation();
             var visited = (ForStatementSyntax)base.VisitForStatement(node);
-            return _controlFlow.RewriteFor(visited, Ctx);
+            var rewritten = _controlFlow.RewriteFor(visited, Ctx);
+            return AddLocationAnnotation(rewritten, locationAnnotation);
         }
 
         public override SyntaxNode VisitForEachStatement(ForEachStatementSyntax node)
         {
+            SyntaxAnnotation? locationAnnotation = node.CreateLocationSyntaxAnnotation();
             var visited = (ForEachStatementSyntax)base.VisitForEachStatement(node);
-            return _controlFlow.RewriteForEach(visited, Ctx);
+            var rewritten = _controlFlow.RewriteForEach(visited, Ctx);
+            return AddLocationAnnotation(rewritten, locationAnnotation);
+        }
+
+        public override SyntaxNode VisitWhileStatement(WhileStatementSyntax node)
+        {
+            SyntaxAnnotation? locationAnnotation = node.CreateLocationSyntaxAnnotation();
+            var visited = (WhileStatementSyntax)base.VisitWhileStatement(node)!;
+            return AddLocationAnnotation(visited, locationAnnotation);
+        }
+
+        public override SyntaxNode VisitDoStatement(DoStatementSyntax node)
+        {
+            SyntaxAnnotation? locationAnnotation = node.CreateLocationSyntaxAnnotation();
+            var visited = (DoStatementSyntax)base.VisitDoStatement(node)!;
+            return AddLocationAnnotation(visited, locationAnnotation);
+        }
+
+        public override SyntaxNode VisitSwitchStatement(SwitchStatementSyntax node)
+        {
+            SyntaxAnnotation? locationAnnotation = node.CreateLocationSyntaxAnnotation();
+            var visited = (SwitchStatementSyntax)base.VisitSwitchStatement(node)!;
+            return AddLocationAnnotation(visited, locationAnnotation);
         }
 
         public override SyntaxNode? VisitExpressionStatement(ExpressionStatementSyntax node)
@@ -133,6 +160,32 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             if (locationAnnotation != null && processed != null)
                 processed = processed.WithAdditionalAnnotations(locationAnnotation);
             return processed;
+        }
+
+        public override SyntaxNode? VisitReturnStatement(ReturnStatementSyntax node)
+        {
+            var locationAnnotation = node.CreateLocationSyntaxAnnotation();
+            var processed = base.VisitReturnStatement(node);
+            if (locationAnnotation != null && processed != null)
+                processed = processed.WithAdditionalAnnotations(locationAnnotation);
+            return processed;
+        }
+
+        public override SyntaxNode? VisitThrowStatement(ThrowStatementSyntax node)
+        {
+            var locationAnnotation = node.CreateLocationSyntaxAnnotation();
+            var processed = base.VisitThrowStatement(node);
+            if (locationAnnotation != null && processed != null)
+                processed = processed.WithAdditionalAnnotations(locationAnnotation);
+            return processed;
+        }
+
+        private static T AddLocationAnnotation<T>(T node, SyntaxAnnotation? locationAnnotation)
+            where T : SyntaxNode
+        {
+            return locationAnnotation == null
+                ? node
+                : (T)node.WithAdditionalAnnotations(locationAnnotation);
         }
 
         internal static SyntaxNode? Rewrite(

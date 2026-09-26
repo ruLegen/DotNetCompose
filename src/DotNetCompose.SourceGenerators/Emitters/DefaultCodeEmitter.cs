@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using static DotNetCompose.SourceGenerators.Consts;
 using static DotNetCompose.SourceGenerators.Extensions.SyntaxNodeExtensions;
 
@@ -37,6 +38,7 @@ namespace DotNetCompose.SourceGenerators.Emitters
 
             sourceBuilder.AppendLineRaw(ToolInfo.GeneratedFileHeader);
             sourceBuilder.AppendLine("#nullable enable");
+            sourceBuilder.AppendLine("#line hidden");
             sourceBuilder.AppendLine();
 
             foreach (UsingDirectiveSyntax usingDirective in input.Usings)
@@ -59,8 +61,11 @@ namespace DotNetCompose.SourceGenerators.Emitters
                     int instanceIndent = sourceBuilder.Indent;
                     foreach (SyntaxNode method in input.InstanceMethods)
                     {
-                        SyntaxNode normalizedMethod = SyntaxNormalizer.Normalize(method, false, instanceIndent, _indentWhitespace, _eolWhitespace);
-                        sourceBuilder.AppendLineRaw(normalizedMethod.ToFullString());
+                        SyntaxNode mappedMethod = NormalizeAndMap(
+                            method,
+                            instanceIndent,
+                            input.SupportsEnhancedLineDirectives);
+                        sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
                     }
 
                     sourceBuilder.AppendLine($"public partial class {Rewriter.BuildersClassName}");
@@ -70,8 +75,11 @@ namespace DotNetCompose.SourceGenerators.Emitters
                         int currentIndent = sourceBuilder.Indent;
                         foreach (SyntaxNode method in input.BuilderMethods)
                         {
-                            SyntaxNode normalizedMethod = SyntaxNormalizer.Normalize(method, false, currentIndent, _indentWhitespace, _eolWhitespace);
-                            sourceBuilder.AppendLineRaw(normalizedMethod.ToFullString());
+                            SyntaxNode mappedMethod = NormalizeAndMap(
+                                method,
+                                currentIndent,
+                                input.SupportsEnhancedLineDirectives);
+                            sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
                         }
 
                         sourceBuilder.AppendLine($"static class {Rewriter.StoredLambdaClassName}");
@@ -83,8 +91,11 @@ namespace DotNetCompose.SourceGenerators.Emitters
                             {
                                 foreach (var storedLambda in session.StoredLambdas)
                                 {
-                                    var normalizedMethod = SyntaxNormalizer.Normalize(storedLambda.MethodDeclaration, false, currentIndent, _indentWhitespace, _eolWhitespace);
-                                    sourceBuilder.AppendLineRaw(normalizedMethod.ToFullString());
+                                    SyntaxNode mappedMethod = NormalizeAndMap(
+                                        storedLambda.MethodDeclaration,
+                                        currentIndent,
+                                        input.SupportsEnhancedLineDirectives);
+                                    sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
                                 }
                             }
                         });
@@ -96,7 +107,27 @@ namespace DotNetCompose.SourceGenerators.Emitters
             });
             sourceBuilder.AppendLine("}");
 
-            return sourceBuilder.InnerWriter.ToString();
+            return Regex.Replace(
+                sourceBuilder.InnerWriter.ToString(),
+                @"[ \t]+(?=\r?$)",
+                string.Empty,
+                RegexOptions.Multiline);
+        }
+
+        private SyntaxNode NormalizeAndMap(
+            SyntaxNode method,
+            int indentation,
+            bool supportsEnhancedLineDirectives)
+        {
+            SyntaxNode normalizedMethod = SyntaxNormalizer.Normalize(
+                method,
+                false,
+                indentation,
+                _indentWhitespace,
+                _eolWhitespace);
+            return new DebugLineNumberSyntaxTreeWriter(
+                supportsEnhancedLineDirectives,
+                normalizedMethod).Visit(normalizedMethod)!;
         }
     }
 }

@@ -7,7 +7,10 @@ namespace DotNetCompose.SourceGenerators.Pipeline
     internal sealed record PipelineContext(
         StrategyContainer Strategies,
         IReadOnlyList<IMethodCallHandler> MethodCallHandlers,
-        WellKnownFunctionRegistry WellKnownRegistry
+        WellKnownFunctionRegistry WellKnownRegistry,
+        bool GenerateDiagnostics,
+        string ProjectDirectory,
+        bool SupportsEnhancedLineDirectives
     );
 
     internal interface IOutputHandler

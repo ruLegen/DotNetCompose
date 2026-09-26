@@ -24,6 +24,9 @@
   <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="$(PkgMicrosoft_Extensions_ObjectPool)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="buildTransitive\DotNetCompose.SourceGenerators.props"
+          Pack="true"
+          PackagePath="buildTransitive\DotNetCompose.SourceGenerators.props" />
   </ItemGroup>
 
 

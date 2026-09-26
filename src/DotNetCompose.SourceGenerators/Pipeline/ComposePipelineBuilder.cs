@@ -41,7 +41,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         {
             var handlers = _handlerFactories.ConvertAll(f => f()).AsReadOnly();
             var wellKnownRegistry = BuildWellKnownRegistry();
-            var context = new PipelineContext(_strategies, handlers, wellKnownRegistry);
+            var context = new PipelineContext(_strategies, handlers, wellKnownRegistry, true, string.Empty, true);
             var outputHandlers = _outputHandlers.ToImmutableArray();
             return new PipelineInstance(context, outputHandlers);
         }
@@ -72,10 +72,17 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
             public PipelineContext Context { get; }
 
-            public void Execute(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input)
+            public void Execute(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input,
+                bool generateDiagnostics, string projectDirectory, bool supportsEnhancedLineDirectives)
             {
+                PipelineContext invocationContext = Context with
+                {
+                    GenerateDiagnostics = generateDiagnostics,
+                    ProjectDirectory = projectDirectory,
+                    SupportsEnhancedLineDirectives = supportsEnhancedLineDirectives
+                };
                 foreach (IOutputHandler handler in _outputHandlers)
-                    handler.Handle(spc, compilation, input, Context);
+                    handler.Handle(spc, compilation, input, invocationContext);
             }
         }
     }
@@ -83,6 +90,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
     internal interface IComposePipeline
     {
         PipelineContext Context { get; }
-        void Execute(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input);
+        void Execute(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input,
+            bool generateDiagnostics, string projectDirectory, bool supportsEnhancedLineDirectives);
     }
 }

@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 #nullable enable
+#line hidden
 
 using DotNetCompose.Runtime;
 
@@ -25,6 +26,18 @@ namespace TestNs
                     __ctx.StartRestartableGroup(5675965);
                     byte __i_state = __changed[0];
                     byte __param_state = __changed[1];
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(3929974303711290337L, 5675965, "GenericMethod", "", 8, "i\u001fparam");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __param_state });
+                    }
                 }
                 finally
                 {

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System;
 
 namespace DotNetCompose.SourceGenerators
 {
@@ -33,6 +34,24 @@ namespace DotNetCompose.SourceGenerators
                 // Debugger.Launch();
             }
 #endif
+            IncrementalValueProvider<GeneratorBuildOptions> buildOptions = context.AnalyzerConfigOptionsProvider
+                .Combine(context.ParseOptionsProvider)
+                .Select(static (source, _) =>
+                {
+                    bool generateDiagnostics = true;
+                    if (source.Left.GlobalOptions.TryGetValue(
+                            "build_property.DotNetComposeGenerateDiagnostics", out string? configured) &&
+                        bool.TryParse(configured, out bool parsed))
+                        generateDiagnostics = parsed;
+                    source.Left.GlobalOptions.TryGetValue("build_property.ProjectDir", out string? projectDirectory);
+                    bool supportsEnhancedLineDirectives = source.Right is CSharpParseOptions csharp &&
+                        csharp.LanguageVersion >= LanguageVersion.CSharp10;
+                    return new GeneratorBuildOptions(
+                        generateDiagnostics,
+                        projectDirectory ?? string.Empty,
+                        supportsEnhancedLineDirectives);
+                });
+
             IncrementalValuesProvider<MethodFullNameAndDeclaration> composableMethodsDeclarations = context
                 .SyntaxProvider
                 .ForAttributeWithMetadataName<MethodFullNameAndDeclaration>(Consts.ComposableAttributeFullName,
@@ -253,8 +272,15 @@ namespace DotNetCompose.SourceGenerators
             context.RegisterImplementationSourceOutput(
                 validationResults.Where(static r => r is ClassResult { IsValid: true })
                                  .Select(static (r, _) => ((ClassResult)r).Class)
-                                 .Combine(context.CompilationProvider),
-                static (spc, source) => _pipeline.Execute(spc, source.Right, source.Left)
+                                 .Combine(context.CompilationProvider)
+                                 .Combine(buildOptions),
+                static (spc, source) => _pipeline.Execute(
+                    spc,
+                    source.Left.Right,
+                    source.Left.Left,
+                    source.Right.GenerateDiagnostics,
+                    source.Right.ProjectDirectory,
+                    source.Right.SupportsEnhancedLineDirectives)
             );
 
             IncrementalValuesProvider<Diagnostic> compilationDiagnostics = context.CompilationProvider
@@ -300,6 +326,11 @@ namespace DotNetCompose.SourceGenerators
                 compilationDiagnostics,
                 static (spc, diagnostic) => spc.ReportDiagnostic(diagnostic));
         }
+
+        private sealed record GeneratorBuildOptions(
+            bool GenerateDiagnostics,
+            string ProjectDirectory,
+            bool SupportsEnhancedLineDirectives);
 
         private static MethodResult MethodDiagnostic(
             MethodFullNameAndDeclaration method,

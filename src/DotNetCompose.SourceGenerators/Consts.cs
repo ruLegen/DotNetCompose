@@ -46,6 +46,14 @@ namespace DotNetCompose.SourceGenerators
             public const string SkippingProperty = "Skipping";
             public const string SkipToGroupEndMethod = "SkipToGroupEnd";
         }
+        public static class CompositionDiagnostics
+        {
+            public const string RuntimeFullName = "global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime";
+            public const string TokenFullName = "global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken";
+            public const string OutcomeFullName = "global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome";
+            public const string BeginMethod = "Begin";
+            public const string EndMethod = "End";
+        }
         public static class ComposableArgumentsState
         {
             public const string FullName = "DotNetCompose.Runtime.ComposableArgumentsState";

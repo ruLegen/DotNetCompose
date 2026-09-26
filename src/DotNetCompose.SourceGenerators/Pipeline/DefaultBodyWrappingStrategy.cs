@@ -40,6 +40,11 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxFactoryHelpers.CreateIntLiteral(session.InitialGroupId)));
             tryStatements.AddRange(body.Statements);
 
+            ExpressionSyntax endCall = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
+                contextVariable,
+                Consts.ComposeContext.EndRestartableGroupMethod,
+                SyntaxFactoryHelpers.CreateIntLiteral(session.InitialGroupId));
+
             LocalDeclarationStatementSyntax scopeUpdaterDeclaration = SyntaxFactory.LocalDeclarationStatement(
                 SyntaxFactory.VariableDeclaration(
                     SyntaxFactory.NullableType(
@@ -49,11 +54,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         SyntaxFactory.VariableDeclarator(
                             SyntaxFactory.Identifier(scopeUpdaterName))
                         .WithInitializer(
-                            SyntaxFactory.EqualsValueClause(
-                                SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
-                                    contextVariable,
-                                    Consts.ComposeContext.EndRestartableGroupMethod,
-                                    SyntaxFactoryHelpers.CreateIntLiteral(session.InitialGroupId)))))))
+                            SyntaxFactory.EqualsValueClause(endCall)))))
                 .WithTrailingNewLine();
 
             List<string> restartChangedNames = new List<string>(methodContext.Parameters.Length);

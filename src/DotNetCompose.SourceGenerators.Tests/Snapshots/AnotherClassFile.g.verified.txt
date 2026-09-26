@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 #nullable enable
+#line hidden
 
 using DotNetCompose.Runtime;
 
@@ -23,7 +24,21 @@ namespace DotNetCompose.Playground
                 try
                 {
                     __ctx.StartRestartableGroup(-958684812);
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(5790047189487259225L, -958684812, "DD", "", 8, "");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (10, 9) - (10, 18) 20 ""
                     int i = 3;
+            #line hidden
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[0]);
+                    }
                 }
                 finally
                 {
@@ -43,7 +58,21 @@ namespace DotNetCompose.Playground
                 try
                 {
                     __ctx.StartRestartableGroup(825147549);
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(1655067625774432726L, 825147549, "vvvv3334", "", 14, "");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (16, 9) - (16, 18) 20 ""
                     int i = 3;
+            #line hidden
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[0]);
+                    }
                 }
                 finally
                 {
@@ -63,8 +92,24 @@ namespace DotNetCompose.Playground
                 try
                 {
                     __ctx.StartRestartableGroup(825147556);
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(987214508673276777L, 825147556, "vvvv3333", "", 20, "");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (22, 9) - (22, 18) 20 ""
                     int i = 3;
+            #line hidden
+            #line (23, 9) - (23, 18) 20 ""
                     int b = 3;
+            #line hidden
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[0]);
+                    }
                 }
                 finally
                 {
@@ -86,6 +131,18 @@ namespace DotNetCompose.Playground
                     __ctx.StartRestartableGroup(-402270168);
                     byte __i_state = __changed[0];
                     byte __testClass_state = __changed[1];
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(5244411071838002239L, -402270168, "T", "", 27, "i\u001ftestClass");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __testClass_state });
+                    }
                 }
                 finally
                 {

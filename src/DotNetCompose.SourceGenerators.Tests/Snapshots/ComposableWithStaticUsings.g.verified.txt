@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 #nullable enable
+#line hidden
 
 using DotNetCompose.Runtime;
 using static DotNetCompose.Runtime.Composables;
@@ -30,13 +31,29 @@ namespace TestNs
                         __argInt_state = __ctx.Changed(argInt) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(-2242457187643342885L, -1783410025, "WithStaticUsing", "", 9, "argInt");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __argInt_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (11, 9) - (11, 42) 24 ""
                         int r = global::DotNetCompose.Runtime.Composables.Builders.Remember<int>(0, () => 3, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+            #line hidden
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __argInt_state });
                     }
                 }
                 finally

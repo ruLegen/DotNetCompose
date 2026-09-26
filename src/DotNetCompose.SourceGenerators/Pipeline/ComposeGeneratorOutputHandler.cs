@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.IO;
 using System.Text;
 using static DotNetCompose.SourceGenerators.ComposeSourceGenerator;
 
@@ -77,6 +78,13 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         Consts.Rewriter.BuildersClassName);
 
                     string methodName = m.Identifier.ValueText;
+                    string methodIdentity = m.GetMethodID(semanticModel);
+                    string diagnosticsIdentity = symbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) +
+                        "." + symbol.MetadataName + "(" +
+                        string.Join(",", symbol.Parameters.Select(parameter =>
+                            parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))) + ")";
+                    FileLinePositionSpan sourceSpan = m.Identifier.GetLocation().GetMappedLineSpan();
+                    string sourcePath = MakeProjectRelativePath(sourceSpan.Path, pipelineContext.ProjectDirectory);
                     var typeParamNames = m.TypeParameterList?.Parameters
                         .Select(tp => tp.Identifier.ValueText)
                         .ToImmutableArray() ?? ImmutableArray<string>.Empty;
@@ -86,9 +94,13 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         typeParamNames,
                         methodParams,
                         methodParams.Any(p => p.DefaultProviderType != null),
-                        symbol.GetComposableMode());
+                        symbol.GetComposableMode(),
+                        pipelineContext.GenerateDiagnostics,
+                        RewriterSession.DeterministicHash64(diagnosticsIdentity),
+                        sourcePath,
+                        sourceSpan.StartLinePosition.Line + 1);
 
-                    int initialGroupId = RewriterSession.DeterministicHash(m.GetMethodID(semanticModel));
+                    int initialGroupId = RewriterSession.DeterministicHash(methodIdentity);
                     RewriterSession session = new RewriterSession(initialGroupId, diagnostics, methodCtx.IsReadOnly);
 
                     return (
@@ -134,10 +146,30 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 Usings: usings,
                 InstanceMethods: instanceMethods,
                 BuilderMethods: builderMethods,
-                Sessions: rewrittenMethods.Select(p => p.Session).ToImmutableArray());
+                Sessions: rewrittenMethods.Select(p => p.Session).ToImmutableArray(),
+                SupportsEnhancedLineDirectives: pipelineContext.SupportsEnhancedLineDirectives);
 
             var emitter = new DefaultCodeEmitter();
             return emitter.Emit(input);
+        }
+
+        private static string MakeProjectRelativePath(string path, string projectDirectory)
+        {
+            if (string.IsNullOrEmpty(path)) return string.Empty;
+            if (string.IsNullOrEmpty(projectDirectory)) return path;
+            try
+            {
+                string fullPath = Path.GetFullPath(path);
+                string fullProjectDirectory = Path.GetFullPath(projectDirectory)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                if (fullPath.StartsWith(fullProjectDirectory, StringComparison.OrdinalIgnoreCase))
+                    return fullPath.Substring(fullProjectDirectory.Length).Replace(Path.DirectorySeparatorChar, '/');
+            }
+            catch
+            {
+                // Preserve the compiler-provided path when normalization is not possible.
+            }
+            return path;
         }
 
         private static MethodDeclarationSyntax AddEditorBrowsable(MethodDeclarationSyntax method)

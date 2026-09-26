@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 #nullable enable
+#line hidden
 
 using DotNetCompose.Runtime;
 using System;
@@ -36,12 +37,26 @@ namespace TestNs
                         __action_state = __ctx.Changed(action) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(925181157351973633L, 2093042836, "WithLambda", "", 9, "i\u001faction");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__action_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __action_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __i_state, __action_state });
                     }
                 }
                 finally

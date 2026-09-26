@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DotNetCompose.Runtime.Diagnostics;
 using DotNetCompose.Runtime.SlotTable;
 using DotNetCompose.Runtime.Snapshots;
 
@@ -76,7 +77,12 @@ namespace DotNetCompose.Runtime.Composer
             foreach (Frame frame in _stack)
             {
                 if (frame.Group.Kind == CompositionGroupKind.Restart || frame.Group.Kind == CompositionGroupKind.Root)
-                { frame.Group.Reads.Add(state); return; }
+                {
+                    frame.Group.Reads.Add(state);
+                    if (CompositionDiagnosticsRuntime.IsSupported)
+                        CompositionDiagnosticsRuntime.RecordStateRead(state);
+                    return;
+                }
             }
         }
 

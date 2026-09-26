@@ -1,3 +1,7 @@
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
+using System.Text;
+
 namespace DotNetCompose.SourceGenerators.Tests;
 
 public static class GeneratorTestHelper
@@ -40,26 +44,49 @@ public static class GeneratorTestHelper
         => File.ReadAllText(Path.Combine(TestSourcesDir, fileName));
 
     public static (Compilation Compilation, GeneratorDriver Driver) CreateDriver(
-        string source, LanguageVersion langVersion = LanguageVersion.Latest)
+        string source,
+        LanguageVersion langVersion = LanguageVersion.Latest,
+        bool? generateDiagnostics = null,
+        string path = "")
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(source,
-            CSharpParseOptions.Default.WithLanguageVersion(langVersion));
+        var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source, Encoding.UTF8),
+            CSharpParseOptions.Default.WithLanguageVersion(langVersion),
+            path: path);
 
         var compilation = CSharpCompilation.Create("TestAssembly",
             new[] { syntaxTree },
             References,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var generator = new ComposeSourceGenerator();
-        var driver = CSharpGeneratorDriver.Create(generator);
+        var driver = CreateGeneratorDriver(langVersion, generateDiagnostics);
 
         return (compilation, driver);
     }
 
-    public static IReadOnlyList<(string HintName, string Source)> RunGenerator(
-        string source, LanguageVersion langVersion = LanguageVersion.Latest)
+    public static GeneratorDriver CreateGeneratorDriver(
+        LanguageVersion langVersion = LanguageVersion.Latest,
+        bool? generateDiagnostics = null)
     {
-        var (compilation, driver) = CreateDriver(source, langVersion);
+        var generator = new ComposeSourceGenerator();
+        AnalyzerConfigOptionsProvider? optionsProvider = generateDiagnostics.HasValue
+            ? new TestAnalyzerConfigOptionsProvider(new Dictionary<string, string>
+            {
+                ["build_property.DotNetComposeGenerateDiagnostics"] = generateDiagnostics.Value ? "true" : "false"
+            })
+            : null;
+        return CSharpGeneratorDriver.Create(
+            new[] { generator.AsSourceGenerator() },
+            parseOptions: CSharpParseOptions.Default.WithLanguageVersion(langVersion),
+            optionsProvider: optionsProvider);
+    }
+
+    public static IReadOnlyList<(string HintName, string Source)> RunGenerator(
+        string source,
+        LanguageVersion langVersion = LanguageVersion.Latest,
+        bool? generateDiagnostics = null,
+        string path = "")
+    {
+        var (compilation, driver) = CreateDriver(source, langVersion, generateDiagnostics, path);
         driver = driver.RunGenerators(compilation);
         var runResult = driver.GetRunResult();
         return runResult.Results
@@ -69,17 +96,22 @@ public static class GeneratorTestHelper
     }
 
     public static string RunSingleGenerator(
-        string source, LanguageVersion langVersion = LanguageVersion.Latest)
+        string source,
+        LanguageVersion langVersion = LanguageVersion.Latest,
+        bool? generateDiagnostics = null,
+        string path = "")
     {
-        var results = RunGenerator(source, langVersion);
+        var results = RunGenerator(source, langVersion, generateDiagnostics, path);
         Assert.Single(results);
         return results[0].Source;
     }
 
     public static ImmutableArray<Diagnostic> GetDiagnostics(
-        string source, LanguageVersion langVersion = LanguageVersion.Latest)
+        string source,
+        LanguageVersion langVersion = LanguageVersion.Latest,
+        bool? generateDiagnostics = null)
     {
-        var (compilation, driver) = CreateDriver(source, langVersion);
+        var (compilation, driver) = CreateDriver(source, langVersion, generateDiagnostics);
         driver = driver.RunGenerators(compilation);
         var runResult = driver.GetRunResult();
         var builder = ImmutableArray.CreateBuilder<Diagnostic>();
@@ -91,9 +123,11 @@ public static class GeneratorTestHelper
     }
 
     public static ImmutableArray<Diagnostic> GetOutputCompilationDiagnostics(
-        string source, LanguageVersion langVersion = LanguageVersion.Latest)
+        string source,
+        LanguageVersion langVersion = LanguageVersion.Latest,
+        bool? generateDiagnostics = null)
     {
-        var (compilation, driver) = CreateDriver(source, langVersion);
+        var (compilation, driver) = CreateDriver(source, langVersion, generateDiagnostics);
         driver.RunGeneratorsAndUpdateCompilation(compilation, out Compilation output, out _);
         return output.GetDiagnostics();
     }
@@ -108,5 +142,29 @@ public static class GeneratorTestHelper
         string source = LoadSource(inputFileName);
         string result = RunSingleGenerator(source);
         return Verifier.Verify(result).UseFileName(outputFileName);
+    }
+
+    private sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+    {
+        private static readonly AnalyzerConfigOptions Empty =
+            new DictionaryAnalyzerConfigOptions(new Dictionary<string, string>());
+
+        public TestAnalyzerConfigOptionsProvider(IReadOnlyDictionary<string, string> values) =>
+            GlobalOptions = new DictionaryAnalyzerConfigOptions(values);
+
+        public override AnalyzerConfigOptions GlobalOptions { get; }
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => Empty;
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => Empty;
+    }
+
+    private sealed class DictionaryAnalyzerConfigOptions : AnalyzerConfigOptions
+    {
+        private readonly IReadOnlyDictionary<string, string> _values;
+
+        public DictionaryAnalyzerConfigOptions(IReadOnlyDictionary<string, string> values) =>
+            _values = values;
+
+        public override bool TryGetValue(string key, out string value) =>
+            _values.TryGetValue(key, out value!);
     }
 }

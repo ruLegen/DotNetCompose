@@ -225,11 +225,15 @@ public class GeneratorRuntimeTests
             }
             """;
 
-        Type example = CompileExample(source);
-        object? result = example.GetMethod("Run")!.Invoke(null, null);
-        string counters = string.Join(", ", new[] { "KnownExecutions", "UnknownExecutions", "KnownValue", "UnknownValue" }
-            .Select(name => $"{name}={example.GetField(name)!.GetValue(null)}"));
-        Assert.True(Equals(0, result), $"Stage={result}; {counters}");
+        foreach (bool generateDiagnostics in new[] { false, true })
+        {
+            Type example = CompileExample(source, generateDiagnostics);
+            object? result = example.GetMethod("Run")!.Invoke(null, null);
+            string counters = string.Join(", ", new[] { "KnownExecutions", "UnknownExecutions", "KnownValue", "UnknownValue" }
+                .Select(name => $"{name}={example.GetField(name)!.GetValue(null)}"));
+            Assert.True(Equals(0, result),
+                $"Diagnostics={generateDiagnostics}; Stage={result}; {counters}");
+        }
     }
 
     [Fact]
@@ -510,7 +514,163 @@ public class GeneratorRuntimeTests
             $"Child={example.GetField("ChildExecutions")!.GetValue(null)}");
     }
 
-    private static Type CompileExample(string source)
+    [Fact]
+    public void GeneratedDiagnosticsExposeEventsParameterStatesAndSnapshots()
+    {
+        const string source = """
+            using System;
+            using System.Collections.Generic;
+            using System.Linq;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Diagnostics;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public sealed class Observer : ICompositionObserver
+            {
+                public readonly List<CompositionDiagnosticEvent> Events = new();
+                public bool Throw;
+                public void OnEvent(CompositionDiagnosticEvent value)
+                {
+                    Events.Add(value);
+                    if (Throw) throw new InvalidOperationException("observer failure");
+                }
+            }
+
+            public static partial class Example
+            {
+                public static readonly SnapshotMutableState<int> State = Composables.CreateMutableState(0);
+
+                [Composable]
+                public static void Child(int value)
+                {
+                    _ = value + State.Value;
+                }
+
+                public static int Run()
+                {
+                    using Composition<object> composition =
+                        new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    using CompositionDiagnosticsSession session = composition.StartDiagnostics(
+                        new CompositionDiagnosticsOptions
+                        {
+                            Flags = CompositionDiagnosticsFlags.All
+                        });
+                    Observer good = new Observer();
+                    Observer bad = new Observer { Throw = true };
+                    int observerErrors = 0;
+                    session.ObserverError += (_, _) => observerErrors++;
+                    using IDisposable goodSubscription = session.Subscribe(good);
+                    using IDisposable badSubscription = session.Subscribe(bad);
+
+                    composition.SetContent((context, changed, defaults) =>
+                        Builders.Child(
+                            7,
+                            context,
+                            new ComposableArgumentsState(stackalloc byte[]
+                            {
+                                ComposableArgumentsState.Static
+                            }),
+                            default));
+
+                    CompositionDiagnosticsSnapshot first = session.CaptureSnapshot();
+                    if (!first.IsAvailable || first.Composables.Count != 1) return 1;
+                    ComposableInvocationSnapshot invocation = first.Composables[0];
+                    if (invocation.InvocationId == 0 || invocation.Source.MemberName != "Child") return 2;
+                    if (invocation.Parameters.Count != 1 || invocation.Parameters[0].Name != "value" ||
+                        invocation.Parameters[0].State != CompositionParameterState.Static) return 3;
+                    if (invocation.StateReadCount != 1 ||
+                        invocation.Outcome != ComposableExecutionOutcome.Executed) return 4;
+                    if (observerErrors != 1 || bad.Events.Count != 1) return 5;
+                    if (!good.Events.Any(e => e.Kind == CompositionDiagnosticEventKind.ComposableEnded) ||
+                        !good.Events.Any(e => e.Kind == CompositionDiagnosticEventKind.StateRead) ||
+                        !good.Events.Any(e => e.Kind == CompositionDiagnosticEventKind.ApplyChangesEnded)) return 6;
+
+                    State.Value = 1;
+                    if (!composition.Recompose()) return 7;
+                    composition.ApplyChanges();
+                    CompositionDiagnosticsSnapshot secondSnapshot = session.CaptureSnapshot();
+                    ComposableInvocationSnapshot second = secondSnapshot.Composables[0];
+                    if (second.InvocationId == invocation.InvocationId ||
+                        secondSnapshot.PassId == first.PassId ||
+                        second.Outcome != ComposableExecutionOutcome.Executed ||
+                        second.StateReadCount != 1) return 8;
+                    if (bad.Events.Count != 1 || observerErrors != 1) return 9;
+                    return 0;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source, generateDiagnostics: true);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public void GeneratedEarlyReturnClosesControlFlowGroupBeforeDiagnosticsEnd()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Diagnostics;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public static partial class Example
+            {
+                [Composable]
+                public static void Child()
+                {
+                }
+
+                [Composable]
+                public static void Early(int value)
+                {
+                    if (value == 0)
+                    {
+                        Child();
+                        return;
+                    }
+                }
+
+                public static int Run()
+                {
+                    using Composition<object> composition =
+                        new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    using CompositionDiagnosticsSession session = composition.StartDiagnostics(
+                        new CompositionDiagnosticsOptions { Flags = CompositionDiagnosticsFlags.All });
+
+                    composition.SetContent((context, changed, defaults) =>
+                        Builders.Early(
+                            0,
+                            context,
+                            new ComposableArgumentsState(stackalloc byte[]
+                            {
+                                ComposableArgumentsState.Static
+                            }),
+                            default));
+
+                    ComposableInvocationSnapshot early = session.CaptureSnapshot().Composables[0];
+                    if (early.Source.MemberName != "Early" ||
+                        early.Outcome != ComposableExecutionOutcome.Executed) return 1;
+                    if (early.Children.Count != 1 ||
+                        early.Children[0].Source.MemberName != "Child" ||
+                        early.Children[0].Outcome != ComposableExecutionOutcome.Executed) return 2;
+                    return 0;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source, generateDiagnostics: true);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+        Assert.Equal(0, result);
+    }
+
+    private static Type CompileExample(string source, bool? generateDiagnostics = null)
     {
         IEnumerable<string> paths = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
             .Append(typeof(ComposableAttribute).Assembly.Location)
@@ -521,7 +681,8 @@ public class GeneratorRuntimeTests
             new[] { CSharpSyntaxTree.ParseText(source) },
             paths.Select(path => MetadataReference.CreateFromFile(path)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(new ComposeSourceGenerator());
+        GeneratorDriver driver = GeneratorTestHelper.CreateGeneratorDriver(
+            generateDiagnostics: generateDiagnostics);
         driver = driver.RunGeneratorsAndUpdateCompilation(
             compilation,
             out Compilation output,

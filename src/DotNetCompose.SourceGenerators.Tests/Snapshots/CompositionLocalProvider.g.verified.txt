@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 #nullable enable
+#line hidden
 
 using DotNetCompose.Runtime;
 
@@ -29,14 +30,46 @@ namespace TestNs
                         __value_state = __ctx.Changed(value) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(55797910289099518L, -317830152, "Content", "", 13, "value");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     if (!__changed.IsForced && (__value_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __value_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Skipped;
                         __ctx.SkipToGroupEnd();
                     }
                     else
                     {
+                        __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+                        #line hidden
+                        {
+            #line (15, 9) - (15, 89) 24 ""
+                        {
+            #line hidden
+                        }
+#line hidden
                         global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(LocalNumber.Provides(value), __StoredLambda.__Lambda_0, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+
+                        }
+                        #line hidden
+                        {
+            #line (16, 9) - (18, 27) 24 ""
+                        {
+            #line hidden
+                        }
+#line hidden
                         global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(new ProvidedValue[] { LocalNumber.Provides(value), LocalText.Provides("text") }, __StoredLambda.__Lambda_1, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+
+                        }
+                    }
+
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[] { __value_state });
                     }
                 }
                 finally
@@ -58,8 +91,24 @@ namespace TestNs
                 try
                 {
                     __ctx.StartRestartableGroup(-2084552499);
+                    global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsToken __dncDiagnostics = default;
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported)
+                    {
+                        __dncDiagnostics = global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.Begin(-5419330529625080474L, -2084552499, "Read", "", 22, "");
+                    }
+
+                    global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
+                    __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
+            #line (24, 9) - (24, 35) 20 ""
                     _ = LocalNumber.Current(__ctx, default, default);
+            #line hidden
+            #line (25, 9) - (25, 33) 20 ""
                     _ = LocalText.Current(__ctx, default, default);
+            #line hidden
+                    if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
+                    {
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[0]);
+                    }
                 }
                 finally
                 {

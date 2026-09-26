@@ -95,6 +95,25 @@ namespace DotNetCompose.SourceGenerators
             return hash1 + (hash2 * 1566083941);
         }
 
+        public static long DeterministicHash64(string value)
+        {
+            unchecked
+            {
+                const ulong offset = 14695981039346656037UL;
+                const ulong prime = 1099511628211UL;
+                ulong hash = offset;
+                for (int index = 0; index < value.Length; index++)
+                {
+                    char character = value[index];
+                    hash ^= (byte)character;
+                    hash *= prime;
+                    hash ^= (byte)(character >> 8);
+                    hash *= prime;
+                }
+                return (long)hash;
+            }
+        }
+
         public record StoredLambda(string Name, ImmutableArray<(string Type, string Name)> Parameters, CSharpSyntaxNode MethodDeclaration);
     }
 }

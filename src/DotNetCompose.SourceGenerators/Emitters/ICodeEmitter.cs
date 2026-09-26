@@ -13,7 +13,8 @@ namespace DotNetCompose.SourceGenerators.Emitters
         ImmutableArray<UsingDirectiveSyntax> Usings,
         ImmutableArray<SyntaxNode> InstanceMethods,
         ImmutableArray<SyntaxNode> BuilderMethods,
-        ImmutableArray<RewriterSession> Sessions);
+        ImmutableArray<RewriterSession> Sessions,
+        bool SupportsEnhancedLineDirectives);
 
     internal interface ICodeEmitter
     {

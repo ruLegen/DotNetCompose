@@ -76,6 +76,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     parameter);
             }));
 
+            bool hasComposableLambda = false;
             IEnumerable<ArgumentSyntax> processedArgs = arguments.Select(a =>
             {
                 ArgumentSyntax arg = a.Argument;
@@ -155,6 +156,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                         a.IsReadOnly ? new object[] { a.Parameter?.Name ?? string.Empty } : Array.Empty<object>()));
                     return arg;
                 }
+
+                hasComposableLambda = true;
 
                 ImmutableArray<(string Type, string Name)> argTypes = lambdaParameters.Select(item =>
                 {
@@ -378,7 +381,12 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 session.MarkComposableProcessed();
 
             if (!methodSymbol.IsStatic)
-                return invocationExpression.WithArgumentList(newArgs);
+            {
+                InvocationExpressionSyntax result = invocationExpression.WithArgumentList(newArgs);
+                return hasComposableLambda
+                    ? result.WithAdditionalAnnotations(new SyntaxAnnotation("complex-composable-call"))
+                    : result;
+            }
 
             invocationExpression = ReplaceWithFullQualifiedName(invocationExpression, methodSymbol);
             MemberAccessExpressionSyntax? lastmemberAccess = invocationExpression
@@ -393,12 +401,18 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     invocationExpression,
                     lastAccessedMemberName,
                     newAccessMemberName);
-                return invocationExpression.WithArgumentList(newArgs);
+                InvocationExpressionSyntax result = invocationExpression.WithArgumentList(newArgs);
+                return hasComposableLambda
+                    ? result.WithAdditionalAnnotations(new SyntaxAnnotation("complex-composable-call"))
+                    : result;
             }
             context.Diagnostics.Report(DiagnosticInfo.Create(
                 DiagnosticDescriptors.DNC008_MemberAccessNotFound,
                 invocationExpression.GetLocation()));
-            return invocationExpression.WithArgumentList(newArgs);
+            InvocationExpressionSyntax fallback = invocationExpression.WithArgumentList(newArgs);
+            return hasComposableLambda
+                ? fallback.WithAdditionalAnnotations(new SyntaxAnnotation("complex-composable-call"))
+                : fallback;
         }
 
         private static ExpressionSyntax BuildDefaultExpression(IParameterSymbol parameter, ITypeSymbol? parameterType)
