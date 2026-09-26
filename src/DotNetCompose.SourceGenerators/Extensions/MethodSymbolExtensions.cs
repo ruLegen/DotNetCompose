@@ -1,10 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
 
 namespace DotNetCompose.SourceGenerators.Extensions
@@ -35,47 +31,85 @@ namespace DotNetCompose.SourceGenerators.Extensions
             return isComposable;
         }
 
-        public static ImmutableArray<MethodParameterInfo> GetParametersInfos(this IMethodSymbol method, SemanticModel semanticModel)
+        public static bool IsReadOnlyComposableFunction(this IMethodSymbol? methodSymbol)
+            => methodSymbol.GetComposableMode().IsReadOnly();
+
+        public static bool IsReadOnlyComposableParameter(this IParameterSymbol? parameterSymbol)
+            => parameterSymbol.GetComposableMode().IsReadOnly();
+
+        public static ComposableModeKind GetComposableMode(this ISymbol? symbol)
+        {
+            AttributeData? attribute = symbol?.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.GetFullMetadataName() == Consts.ComposableAttributeFullName);
+            if (attribute == null || attribute.ConstructorArguments.Length == 0)
+                return ComposableModeKind.Restartable;
+
+            TypedConstant argument = attribute.ConstructorArguments[0];
+            if (argument.Value is int value)
+                return (ComposableModeKind)value;
+            return ComposableModeKind.Restartable;
+        }
+
+        public static ImmutableArray<MethodParameterInfo> GetParametersInfos(
+            this IMethodSymbol method,
+            SemanticModel _)
         {
             if (method.Parameters.Length == 0)
                 return ImmutableArray<MethodParameterInfo>.Empty;
 
-            if(method.MethodKind == MethodKind.Ordinary)
-            {
-
-            }else if(method.MethodKind == MethodKind.DelegateInvoke)
-            {
-
-            }
-                //.Select(p => (p.Name, p.Type.IsComposableAction()))
-                using ListPoolObject<MethodParameterInfo> result = ListPool<MethodParameterInfo>.Get();
-            ImmutableArray<ITypeSymbol> genericArguments = ImmutableArray<ITypeSymbol>.Empty;
+            using ListPoolObject<MethodParameterInfo> result = ListPool<MethodParameterInfo>.Get();
+            ComposableModeKind methodMode = method.GetComposableMode();
             int defaultIdx = 0;
             foreach (IParameterSymbol parameter in method.Parameters)
             {
                 bool isComposable = false;
+                ImmutableArray<ITypeSymbol> genericArguments = ImmutableArray<ITypeSymbol>.Empty;
+                ComposableModeKind parameterMode = ComposableModeKind.Restartable;
                 string name = parameter.Name;
                 ITypeSymbol? defaultProviderType = null;
                 AttributeData? composableAttribute = parameter.GetAttributes()
-                                                .FirstOrDefault(attribData => attribData.AttributeClass.GetFullMetadataName() == Consts.ComposableAttributeFullName);
+                    .FirstOrDefault(attribute =>
+                        attribute.AttributeClass?.GetFullMetadataName() ==
+                        Consts.ComposableAttributeFullName);
                 if (composableAttribute != null)
                 {
-                    ISymbol? symbol = parameter.Type;
-                    isComposable = symbol != null && symbol.GetFullMetadataName().Contains("System.Action");
-                    if (isComposable && symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.IsGenericType)
+                    isComposable = parameter.Type is INamedTypeSymbol
+                    {
+                        Name: "Action",
+                        TypeKind: TypeKind.Delegate,
+                    } actionType && actionType.ContainingNamespace.ToDisplayString() == "System";
+                    parameterMode = isComposable
+                        ? parameter.GetComposableMode().EffectiveParameterMode(methodMode)
+                        : ComposableModeKind.Restartable;
+                    if (isComposable && parameter.Type is INamedTypeSymbol
+                        {
+                            IsGenericType: true,
+                        } namedTypeSymbol)
                     {
                         genericArguments = namedTypeSymbol.TypeArguments;
                     }
                 }
                 AttributeData? defaultAttribute = parameter.GetAttributes()
-                    .FirstOrDefault(attribData => attribData.AttributeClass?.OriginalDefinition?.GetFullMetadataName() == Consts.DefaultAttributeFullName);
-                if (defaultAttribute != null && defaultAttribute.AttributeClass is INamedTypeSymbol namedDefaultAttr && namedDefaultAttr.TypeArguments.Length > 0)
+                    .FirstOrDefault(attribute =>
+                        attribute.AttributeClass?.OriginalDefinition?.GetFullMetadataName() ==
+                        Consts.DefaultAttributeFullName);
+                if (defaultAttribute?.AttributeClass is INamedTypeSymbol namedDefaultAttribute &&
+                    namedDefaultAttribute.TypeArguments.Length > 0)
                 {
-                    defaultProviderType = namedDefaultAttr.TypeArguments[0];
+                    defaultProviderType = namedDefaultAttribute.TypeArguments[0];
                 }
+
                 int paramDefaultIdx = defaultProviderType != null ? defaultIdx++ : -1;
-                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, parameter.Type, defaultProviderType, paramDefaultIdx));
+                result.Add(new MethodParameterInfo(
+                    name,
+                    isComposable,
+                    parameterMode,
+                    genericArguments,
+                    parameter.Type,
+                    defaultProviderType,
+                    paramDefaultIdx));
             }
+
             return ImmutableArray.Create<MethodParameterInfo>(result.ToArray());
         }
     }

@@ -1,7 +1,9 @@
 ﻿using DotNetCompose.Runtime;
 
-namespace DotNetCompose.Playground;
+namespace DotNetCompose.Playground
 {
+    using System;
+
     internal partial class NotStaticClass
     {
         [Composable]

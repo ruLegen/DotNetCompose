@@ -14,13 +14,24 @@ namespace DotNetCompose.Runtime
             {
                 object? previous = ctx.RememberedValue();
                 Delegate action = factory();
-                if (previous is ComposableLambdaWrapper existing && existing.Action.Equals(action)) return existing;
+                if (previous is ComposableLambdaWrapper existing && existing.Action.Equals(action))
+                    return existing;
                 // A new wrapper keeps captured arguments private to this pending execution.
                 ComposableLambdaWrapper wrapper = new ComposableLambdaWrapper(action);
                 ctx.UpdateRememberedValue(wrapper);
                 return wrapper;
             }
-            finally { ctx.EndGroup(); }
+            finally
+            {
+                ctx.EndGroup();
+            }
+        }
+
+        public static ComposableLambdaWrapper GetReadonlyLambda(IComposerContext context, int key, Func<Delegate> factory)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (factory == null) throw new ArgumentNullException(nameof(factory));
+            return new ComposableLambdaWrapper(factory());
         }
     }
 }

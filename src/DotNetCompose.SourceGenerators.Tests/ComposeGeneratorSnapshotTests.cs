@@ -98,11 +98,14 @@ public class ComposeGeneratorSnapshotTests
     }
 
     [Fact]
-    public void NonStaticClassComposableReportsDiagnostic()
+    public void NonStaticClassComposableGeneratesOverloadAndBridge()
     {
         var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
-        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "DNC011");
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("EditorBrowsableState.Never", generated);
+        Assert.Contains("__instance", generated);
     }
 
     [Fact]

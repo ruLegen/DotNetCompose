@@ -19,20 +19,16 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         /// <returns></returns>
         public BlockSyntax TransformParameters(BlockSyntax body, TransformationContext context)
         {
+            if (context.IsReadOnly)
+                return body;
             MethodGenerationContext methodCtx = context.MethodCtx;
             RewriterOptions options = context.Options;
-            RewriterSession session = context.Session;
-
-            List<(MethodDeclarationSyntaxExtensions.MethodParameterInfo Param, int Index)> normalParams = methodCtx.Parameters
+            bool canSkip = methodCtx.CanSkip;
+            List<(MethodDeclarationSyntaxExtensions.MethodParameterInfo Param, int Index)> trackedParams = methodCtx.Parameters
                 .Select((p, i) => (Param: p, Index: i))
-                .Where(x => !x.Param.IsComposable)
                 .ToList();
 
-            bool anyNormalParams = normalParams.Any();
-            bool allStable = anyNormalParams
-                && normalParams.All(x => x.Param.Type != null && x.Param.Type.IsStableType());
-
-            if (!allStable || !anyNormalParams)
+            if (!trackedParams.Any())
                 return body;
 
             using ListPoolObject<StatementSyntax> prologueStmts = ListPool<StatementSyntax>.Get();
@@ -40,7 +36,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             string ctxVar = options.ContextVarName;
             string changedVar = options.ChangedVarName;
 
-            foreach ((MethodDeclarationSyntaxExtensions.MethodParameterInfo param, int index) in normalParams)
+            foreach ((MethodDeclarationSyntaxExtensions.MethodParameterInfo param, int index) in trackedParams)
             {
                 string stateVar = $"__{param.Name}_state";
                 stateVarNames.Add(stateVar);
@@ -100,7 +96,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         .WithTrailingNewLine());
                 }
 
-                if (param.Type != null && param.Type.IsStableType())
+                if (canSkip)
                 {
                     prologueStmts.Add(SyntaxFactory.IfStatement(
                         SyntaxFactory.BinaryExpression(
@@ -135,6 +131,14 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                                                 SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.SameField)))))
                                 .WithTrailingNewLine()))));
                 }
+            }
+
+            if (!canSkip)
+            {
+                IEnumerable<StatementSyntax> propagatedStatements = Enumerable.Concat(
+                    prologueStmts,
+                    body.Statements);
+                return SyntaxFactory.Block(propagatedStatements).WithTrailingNewLine();
             }
 
             ExpressionSyntax? condition = null;

@@ -154,11 +154,223 @@ public class ComposeGeneratorCompilationTests
 
 
     [Fact]
-    public void InstanceComposable_ReportsDedicatedDiagnostic()
+    public void InstanceComposable_GeneratesHiddenOverloadAndStaticBridge()
     {
-        var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
-        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "DNC011");
+        const string source = """
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public partial class Box<T> where T : class
+            {
+                [Composable]
+                public virtual void Render<U>(U value) { }
+
+                [Composable]
+                public void Calls(Box<T> other)
+                {
+                    Render(1);
+                    this.Render("two");
+                    other.Render(3);
+                }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("partial class Box<T> where T : class", generated);
+        Assert.Contains("EditorBrowsableState.Never", generated);
+        Assert.Contains("static void Render<U>", generated);
+        Assert.Contains("global::TestNs.Box<T> __instance", generated);
+        Assert.Contains("this.Render(\"two\", __ctx", generated);
+        Assert.Contains("other.Render(3, __ctx", generated);
+    }
+
+    [Fact]
+    public void ReadOnlyComposable_HasNoCompositionProtocolAndInjectsCurrentContext()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public sealed class DefaultValue : IDefaultValueProvider
+            {
+                public static int Value => 5;
+            }
+
+            public static partial class ReadOnlyExample
+            {
+                [Composable(ComposableMode.ReadOnly)]
+                public static int Read([Default<DefaultValue>] int value = default)
+                {
+                    if (Composables.CurrentContext() == null) return -1;
+                    return value;
+                }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("DefaultValue.Value", generated);
+        Assert.Contains("__ctx == null", generated);
+        Assert.DoesNotContain("StartRestartableGroup", generated);
+        Assert.DoesNotContain("StartReplaceableGroup", generated);
+        Assert.DoesNotContain("StartMovableGroup", generated);
+        Assert.DoesNotContain(".Changed(", generated);
+        Assert.DoesNotContain(".Skipping", generated);
+        Assert.DoesNotContain("UpdateScope", generated);
+        Assert.DoesNotContain("Builders.CurrentContext", generated);
+    }
+
+    [Fact]
+    public void ReadOnlyLambdas_UseStoredMethodOrReadonlyHelper()
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public static partial class ReadOnlyLambdas
+            {
+                [Composable]
+                public static void Host([Composable(ComposableMode.ReadOnly)] Action content) { content(); }
+
+                [Composable(ComposableMode.ReadOnly)]
+                public static void Read(int value) { }
+
+                [Composable]
+                public static void Use(int captured)
+                {
+                    Host(() => Read(captured));
+                    Host(() => Read(1));
+                }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Equal(1, generated.Split("GetReadonlyLambda").Length - 1);
+        Assert.Contains("static class __StoredLambda", generated);
+        Assert.Contains("__StoredLambda", generated);
+    }
+
+    [Fact]
+    public void ReadOnlyComposable_RejectsMutableComposableCall()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public static partial class Invalid
+            {
+                [Composable] public static void Mutable() { }
+                [Composable(ComposableMode.ReadOnly)] public static void Read() { Mutable(); }
+            }
+            """;
+
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(source), diagnostic => diagnostic.Id == "DNC016");
+    }
+
+    [Fact]
+    public void ReadOnlyComposable_RejectsNonReadOnlyDelegateParameter()
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public static partial class Invalid
+            {
+                [Composable(ComposableMode.ReadOnly)]
+                public static void Host([Composable] Action content) { }
+
+                [Composable(ComposableMode.ReadOnly)]
+                public static void Read() { Host(() => { }); }
+            }
+            """;
+
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(source), diagnostic => diagnostic.Id == "DNC016");
+    }
+
+    [Fact]
+    public void ReadOnlyDelegate_RequiresProvableContractButAllowsMatchingForwarding()
+    {
+        const string valid = """
+            using System;
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public static partial class Valid
+            {
+                [Composable] public static void Host([Composable(ComposableMode.ReadOnly)] Action content) { content(); }
+                [Composable] public static void Forward([Composable(ComposableMode.ReadOnly)] Action content) { Host(content); }
+            }
+            """;
+        const string invalid = """
+            using System;
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public static partial class Invalid
+            {
+                [Composable] public static void Host([Composable(ComposableMode.ReadOnly)] Action content) { content(); }
+                [Composable(ComposableMode.ReadOnly)] public static void Read() { }
+                [Composable] public static void Forward([Composable] Action content) { Host(content); Host(Read); }
+            }
+            """;
+
+        Assert.DoesNotContain(GeneratorTestHelper.GetDiagnostics(valid), diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(invalid), diagnostic => diagnostic.Id == "DNC017");
+    }
+
+    [Fact]
+    public void ReadOnlyOverrideAndGeneratedSignatureConflict_AreDiagnosed()
+    {
+        const string readOnlyOverride = """
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public partial class Base
+            {
+                [Composable(ComposableMode.ReadOnly)] public virtual void Content() { }
+            }
+            public partial class Derived : Base
+            {
+                [Composable] public override void Content() { }
+            }
+            """;
+        const string signatureConflict = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            namespace TestNs;
+            public partial class Conflict
+            {
+                [Composable] public void Content(int value) { }
+                public void Content(int value, IComposerContext context,
+                    ComposableArgumentsState changed, ComposableArgumentsDefaultState defaults) { }
+            }
+            """;
+
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(readOnlyOverride), diagnostic => diagnostic.Id == "DNC023");
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(signatureConflict), diagnostic => diagnostic.Id == "DNC018");
+    }
+
+    [Fact]
+    public void ReferencedCompositionLocalCurrent_DirectCallIsDiagnosed()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public static class Invalid
+            {
+                public static int Read(CompositionLocal<int> local) => local.Current();
+            }
+            """;
+
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(source), diagnostic => diagnostic.Id == "DNC015");
     }
 
     [Theory]

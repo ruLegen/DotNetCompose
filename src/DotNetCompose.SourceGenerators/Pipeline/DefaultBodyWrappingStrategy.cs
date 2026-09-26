@@ -11,6 +11,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
     {
         public BlockSyntax WrapMethodBody(BlockSyntax body, TransformationContext context)
         {
+            if (!context.MethodCtx.GeneratesRestartGroup)
+                return body;
             RewriterOptions options = context.Options;
             RewriterSession session = context.Session;
             MethodGenerationContext methodContext = context.MethodCtx;

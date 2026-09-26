@@ -21,7 +21,7 @@ public static partial class TestClass
     [Composable]
     private static void Read()
     {
-        _ = LocalNumber.Current;
-        _ = LocalText.Current;
+        _ = LocalNumber.Current();
+        _ = LocalText.Current();
     }
 }

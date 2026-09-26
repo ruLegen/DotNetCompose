@@ -31,18 +31,28 @@ namespace DotNetCompose.SourceGenerators.Handlers
             if (delegateMethodCallInfo == null)
                 return false;
 
-            bool isComposableArgumentCall = context.MethodCtx.Parameters
-                .FirstOrDefault(p => p.Name == delegateMethodCallInfo.RecieverObjectName)?.IsComposable ?? false;
+            MethodParameterInfo? parameter = context.MethodCtx.Parameters
+                .FirstOrDefault(p => p.Name == delegateMethodCallInfo.RecieverObjectName);
+            bool isComposableArgumentCall = parameter?.IsComposable ?? false;
             if (!isComposableArgumentCall)
                 return false;
 
-            replacement = ProcessDelegateCall(expression, delegateMethodCallInfo, context);
+            if (context.IsReadOnly && parameter?.IsReadOnly != true)
+            {
+                context.Diagnostics.Report(DiagnosticInfo.Create(
+                    DiagnosticDescriptors.DNC016_NonReadOnlyCall,
+                    expression.GetLocation(),
+                    delegateMethodCallInfo.RecieverObjectName));
+            }
+
+            replacement = ProcessDelegateCall(expression, delegateMethodCallInfo, parameter?.IsReadOnly == true, context);
             return true;
         }
 
         private ExpressionSyntax ProcessDelegateCall(
             ExpressionSyntax expression,
             DelegateMethodCallInfo delegateMethodCallInfo,
+            bool isReadOnly,
             MethodCallHandlerContext context)
         {
             RewriterOptions options = context.Options;
@@ -69,21 +79,25 @@ namespace DotNetCompose.SourceGenerators.Handlers
             if (delegateMethod != null)
                 delegateParams = delegateMethod.GetParametersInfos(semanticModel);
 
-            ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(delegateParams, invocation.ArgumentList.Arguments, methodCtx);
+            ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(
+                delegateParams,
+                invocation.ArgumentList.Arguments,
+                methodCtx,
+                semanticModel);
 
             ExpressionSyntax result = null;
             if (delegateMethodCallInfo.IsSimpleMemberAccessCall)
             {
                 var invocationSyntax = expression as InvocationExpressionSyntax;
-                    ArgumentListSyntax newArguments = invocationSyntax.ArgumentList.AddArguments(
-                       new ArgumentSyntax[]
-                       {
+                ArgumentListSyntax newArguments = invocationSyntax.ArgumentList.AddArguments(
+                   new ArgumentSyntax[]
+                   {
                              SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
                              SyntaxFactory.Argument(changedArg),
                              SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
-                       }
-                    );
-                    result = invocationSyntax.WithArgumentList(newArguments);
+                   }
+                );
+                result = invocationSyntax.WithArgumentList(newArguments);
             }
             else if (delegateMethodCallInfo.IsDirectCall)
             {
@@ -120,7 +134,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
             }
             if (result != null)
             {
-                session.MarkComposableProcessed();
+                if (!isReadOnly)
+                    session.MarkComposableProcessed();
                 return result;
             }
             else

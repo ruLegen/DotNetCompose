@@ -30,12 +30,6 @@ namespace DotNetCompose.SourceGenerators
         }
 
         public static string NameWithWhiteSpace(string s) => string.Format("{0} ", s);
-        public static class ComposeScope
-        {
-            public const string FullName = "DotNetCompose.Runtime.ComposeScope";
-            public const string GetCurrentContextMethodName = "GetCurrentContext";
-        }
-
         public static class ComposeContext
         {
             public const string FullName  = "DotNetCompose.Runtime.Composer.IComposerContext";

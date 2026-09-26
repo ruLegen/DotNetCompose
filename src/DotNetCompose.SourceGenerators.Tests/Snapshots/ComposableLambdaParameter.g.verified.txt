@@ -30,7 +30,13 @@ namespace TestNs
                         __i_state = __ctx.Changed(i) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
                     }
 
-                    if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
+                    byte __action_state = __changed[1];
+                    if (__action_state == DotNetCompose.Runtime.ComposableArgumentsState.Uncertain)
+                    {
+                        __action_state = __ctx.Changed(action) ? DotNetCompose.Runtime.ComposableArgumentsState.Different : DotNetCompose.Runtime.ComposableArgumentsState.Same;
+                    }
+
+                    if (!__changed.IsForced && (__i_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __i_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && (__action_state == DotNetCompose.Runtime.ComposableArgumentsState.Same || __action_state == DotNetCompose.Runtime.ComposableArgumentsState.Static) && __ctx.Skipping)
                     {
                         __ctx.SkipToGroupEnd();
                     }

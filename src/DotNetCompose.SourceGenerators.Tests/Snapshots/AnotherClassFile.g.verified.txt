@@ -84,6 +84,8 @@ namespace DotNetCompose.Playground
                 try
                 {
                     __ctx.StartRestartableGroup(-402270168);
+                    byte __i_state = __changed[0];
+                    byte __testClass_state = __changed[1];
                 }
                 finally
                 {

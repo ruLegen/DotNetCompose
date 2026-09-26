@@ -8,6 +8,10 @@ internal static class Program
 {
     private static void Main()
     {
+        // COmposition Locals => Context retrieving
+        // Lambda handling GetLambda (start group and so on)
+
+
         // A UI application supplies its own SynchronizationContext.
         DemoContext context = new DemoContext();
         using Recomposer recomposer = new Recomposer(context);

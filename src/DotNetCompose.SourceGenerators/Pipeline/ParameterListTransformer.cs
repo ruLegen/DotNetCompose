@@ -14,11 +14,16 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             var methodParams = method.GetParametersInfos(semanticModel);
             return DefaultSignatureRewriter.ReplaceAllComposableParameters(
                 method, addAttributeToComposableParameters, semanticModel,
-                new MethodGenerationContext(string.Empty, ImmutableArray<string>.Empty, methodParams, false, false));
+                new MethodGenerationContext(
+                    string.Empty,
+                    ImmutableArray<string>.Empty,
+                    methodParams,
+                    false,
+                    ComposableModeKind.Restartable));
         }
 
         internal static ParameterListSyntax AppendComposableContextrelatedParameters(
-            ParameterListSyntax paramList, string contextParamName, string changedParamName,string defaultParamName)
+            ParameterListSyntax paramList, string contextParamName, string changedParamName, string defaultParamName)
         {
             return DefaultSignatureRewriter.AppendComposableContextrelatedParameters(
                 paramList, contextParamName, changedParamName, defaultParamName);

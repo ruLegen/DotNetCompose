@@ -35,6 +35,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         public WellKnownFunctionRegistry WellKnownRegistry { get; }
         public NodeTransformer NodeTransformer { get; }
         public IDiagnosticReporter Diagnostics => Session.Diagnostics;
+        public bool IsReadOnly => Session.IsReadOnly;
+        public ComposableModeKind Mode => MethodCtx.Mode;
         public StrategyContainer Strategies { get; }
     }
 }

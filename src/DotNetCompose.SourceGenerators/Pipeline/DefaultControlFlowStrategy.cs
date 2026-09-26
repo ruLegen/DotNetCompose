@@ -11,6 +11,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
     {
         public IfStatementSyntax RewriteIf(IfStatementSyntax node, TransformationContext context)
         {
+            if (context.IsReadOnly || !context.MethodCtx.GeneratesControlFlowGroups)
+                return node;
             var session = context.Session;
             var options = context.Options;
 
@@ -104,6 +106,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
         public ForStatementSyntax RewriteFor(ForStatementSyntax forStatement, TransformationContext context)
         {
+            if (context.IsReadOnly || !context.MethodCtx.GeneratesControlFlowGroups)
+                return forStatement;
             var session = context.Session;
 
             if (forStatement.Statement is BlockSyntax block)
@@ -119,6 +123,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
         public ForEachStatementSyntax RewriteForEach(ForEachStatementSyntax forEachStatement, TransformationContext context)
         {
+            if (context.IsReadOnly || !context.MethodCtx.GeneratesControlFlowGroups)
+                return forEachStatement;
             var session = context.Session;
 
             if (forEachStatement.Statement is BlockSyntax block)

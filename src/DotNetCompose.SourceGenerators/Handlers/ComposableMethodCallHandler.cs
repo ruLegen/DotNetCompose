@@ -46,21 +46,34 @@ namespace DotNetCompose.SourceGenerators.Handlers
             SemanticModel semanticModel = context.SemanticModel;
 
             ImmutableArray<MethodParameterInfo> parameterInfos = methodSymbol.GetParametersInfos(semanticModel);
+            bool targetIsReadOnly = methodSymbol.IsReadOnlyComposableFunction();
+            if (context.IsReadOnly && !targetIsReadOnly)
+            {
+                context.Diagnostics.Report(DiagnosticInfo.Create(
+                    DiagnosticDescriptors.DNC016_NonReadOnlyCall,
+                    invocationExpression.GetLocation(),
+                    methodSymbol.Name));
+            }
 
-            using ListPoolObject<(ArgumentSyntax Argument, bool IsComposable)> arguments = ListPool<(ArgumentSyntax, bool)>.Get();
+            using ListPoolObject<(ArgumentSyntax Argument, bool IsComposable, bool IsReadOnly, bool IsInline, MethodParameterInfo? Parameter)> arguments =
+                ListPool<(ArgumentSyntax, bool, bool, bool, MethodParameterInfo?)>.Get();
             arguments.AddRange(invocationExpression.ArgumentList.Arguments.Select((arg, index) =>
             {
-                bool isComposable = false;
+                MethodParameterInfo? parameter;
                 if (arg.NameColon != null)
                 {
-                    MethodParameterInfo? argInfo = parameterInfos.FirstOrDefault(a => a.Name == arg.NameColon.Name.Identifier.ValueText);
-                    isComposable = argInfo?.IsComposable ?? false;
+                    parameter = parameterInfos.FirstOrDefault(a => a.Name == arg.NameColon.Name.Identifier.ValueText);
                 }
                 else
                 {
-                    isComposable = parameterInfos[index].IsComposable;
+                    parameter = index < parameterInfos.Length ? parameterInfos[index] : null;
                 }
-                return (arg, isComposable);
+                return (
+                    arg,
+                    parameter?.IsComposable ?? false,
+                    parameter?.IsReadOnly ?? false,
+                    parameter?.IsInline ?? false,
+                    parameter);
             }));
 
             IEnumerable<ArgumentSyntax> processedArgs = arguments.Select(a =>
@@ -69,16 +82,46 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 bool isComposable = a.IsComposable;
                 if (!isComposable)
                     return arg;
+                if (context.IsReadOnly && !a.IsReadOnly)
+                {
+                    context.Diagnostics.Report(DiagnosticInfo.Create(
+                        DiagnosticDescriptors.DNC016_NonReadOnlyCall,
+                        arg.GetLocation(),
+                        methodSymbol.Name));
+                    return arg;
+                }
 
                 if (arg.Expression is IdentifierNameSyntax identifierName)
                 {
-                    IMethodSymbol? argumentMethod = semanticModel.GetSymbolInfo(identifierName).Symbol as IMethodSymbol;
-                    if (argumentMethod != null)
+                    ISymbol? argumentSymbol = semanticModel.GetSymbolInfo(identifierName).Symbol;
+                    if (argumentSymbol is IMethodSymbol argumentMethod)
                     {
                         context.Diagnostics.Report(DiagnosticInfo.Create(
-                            DiagnosticDescriptors.DNC005_DirectComposableReference,
+                            a.IsReadOnly
+                                ? DiagnosticDescriptors.DNC017_UnverifiableReadOnlyDelegate
+                                : DiagnosticDescriptors.DNC005_DirectComposableReference,
                             identifierName.GetLocation(),
-                            argumentMethod.Name));
+                            a.IsReadOnly ? a.Parameter?.Name ?? string.Empty : argumentMethod.Name));
+                        return arg;
+                    }
+                    if (argumentSymbol is IParameterSymbol parameterSymbol)
+                    {
+                        MethodParameterInfo? sourceParameter = methodCtx.Parameters
+                            .FirstOrDefault(parameter => parameter.Name == parameterSymbol.Name);
+                        if (a.IsReadOnly && !parameterSymbol.IsReadOnlyComposableParameter())
+                        {
+                            context.Diagnostics.Report(DiagnosticInfo.Create(
+                                DiagnosticDescriptors.DNC017_UnverifiableReadOnlyDelegate,
+                                identifierName.GetLocation(),
+                                a.Parameter?.Name ?? string.Empty));
+                        }
+                        if (!a.IsInline && sourceParameter?.IsInline == true)
+                        {
+                            context.Diagnostics.Report(DiagnosticInfo.Create(
+                                DiagnosticDescriptors.DNC021_InlineComposableEscape,
+                                identifierName.GetLocation(),
+                                sourceParameter.Name));
+                        }
                         return arg;
                     }
                 }
@@ -91,27 +134,34 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     lambdaParameters = ImmutableArray.Create<ParameterSyntax>(simpleLambdaExpression.Parameter);
                     DataFlowAnalysis analizeInfo = semanticModel.AnalyzeDataFlow(simpleLambdaExpression.Body);
                     isCaptureAnything = analizeInfo.CapturedInside.Length > 0;
-                    newBody = (CSharpSyntaxNode)context.NodeTransformer.Transform(simpleLambdaExpression.Body);
+                    using (session.EnterReadOnlyScope(a.IsReadOnly))
+                        newBody = (CSharpSyntaxNode)context.NodeTransformer.Transform(simpleLambdaExpression.Body);
                 }
                 else if (arg.Expression is ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression)
                 {
                     lambdaParameters = parenthesizedLambdaExpression.ParameterList.Parameters.ToImmutableArray();
                     DataFlowAnalysis analizeInfo = semanticModel.AnalyzeDataFlow(parenthesizedLambdaExpression.Body);
                     isCaptureAnything = analizeInfo.CapturedInside.Length > 0;
-                    newBody = (CSharpSyntaxNode)context.NodeTransformer.Transform(parenthesizedLambdaExpression.Body);
+                    using (session.EnterReadOnlyScope(a.IsReadOnly))
+                        newBody = (CSharpSyntaxNode)context.NodeTransformer.Transform(parenthesizedLambdaExpression.Body);
                 }
                 else
                 {
                     context.Diagnostics.Report(DiagnosticInfo.Create(
-                        DiagnosticDescriptors.DNC006_UnrecognizedLambda,
-                        arg.Expression.GetLocation()));
+                        a.IsReadOnly
+                            ? DiagnosticDescriptors.DNC017_UnverifiableReadOnlyDelegate
+                            : DiagnosticDescriptors.DNC006_UnrecognizedLambda,
+                        arg.Expression.GetLocation(),
+                        a.IsReadOnly ? new object[] { a.Parameter?.Name ?? string.Empty } : Array.Empty<object>()));
                     return arg;
                 }
 
                 ImmutableArray<(string Type, string Name)> argTypes = lambdaParameters.Select(item =>
                 {
                     IParameterSymbol s = semanticModel.GetDeclaredSymbol(item);
-                    return (Type: s.Type.GetFullMetadataName(), Name: s.Name);
+                    return (
+                        Type: s.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        Name: s.Name);
                 }).ToImmutableArray();
 
                 ImmutableArray<(string Type, string Name)> newArgs = argTypes.AddRange(new (string Type, string Name)[] {
@@ -133,6 +183,12 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
                 if (isCaptureAnything)
                 {
+                    if (a.IsInline)
+                    {
+                        return arg.WithExpression(
+                            SyntaxFactory.ParenthesizedLambdaExpression(newParamList, newBody));
+                    }
+
                     TypeSyntax variableType = default;
                     if (argTypes.Length == 0)
                     {
@@ -141,12 +197,17 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     else
                     {
                         variableType = SyntaxFactory.GenericName(
-                                        SyntaxFactory.Identifier(Consts.ComposableAction.FullName),
-                                        SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(argTypes.Select(t => SyntaxFactory.ParseTypeName(t.Type)))));
+                            SyntaxFactory.Identifier(Consts.ComposableAction.FullName),
+                            SyntaxFactory.TypeArgumentList(
+                                SyntaxFactory.SeparatedList(
+                                    argTypes.Select(t => SyntaxFactory.ParseTypeName(t.Type)))));
                     }
                     variableType = variableType.WithTrailingSpace();
 
-                    InvocationExpressionSyntax wrappedLambdaExpression = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs("ComposeHelpers", "GetLambda",
+                    string helperName = a.IsReadOnly ? "GetReadonlyLambda" : "GetLambda";
+                    InvocationExpressionSyntax wrappedLambdaExpression = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
+                        "ComposeHelpers",
+                        helperName,
                         SyntaxFactory.IdentifierName(options.ContextVarName),
                         SyntaxFactoryHelpers.CreateIntLiteral(session.NextLambdaKey()),
                         SyntaxFactory.ParenthesizedLambdaExpression(
@@ -155,7 +216,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
                                 SyntaxFactory.LocalDeclarationStatement(
                                     SyntaxFactory.VariableDeclaration(variableType).AddVariables(
                                         SyntaxFactory.VariableDeclarator("a").WithInitializer(
-                                            SyntaxFactory.EqualsValueClause(SyntaxFactory.ParenthesizedLambdaExpression(newParamList, newBody))).WithLeadingSpace())
+                                            SyntaxFactory.EqualsValueClause(
+                                                SyntaxFactory.ParenthesizedLambdaExpression(newParamList, newBody)))
+                                            .WithLeadingSpace())
                                 ),
                                 SyntaxFactory.ReturnStatement(SyntaxFactory.IdentifierName("a").WithLeadingSpace())
                                             .WithLeadingNewLine()
@@ -177,7 +240,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                                                        SyntaxFactory.GenericName(
                                                             SyntaxFactory.Identifier("Invoke"),
                                                             SyntaxFactory.TypeArgumentList(
-                                                                SyntaxFactory.SeparatedList(argTypes.Select(t => SyntaxFactory.ParseTypeName(t.Type)))
+                                                                SyntaxFactory.SeparatedList(
+                                                                    argTypes.Select(t => SyntaxFactory.ParseTypeName(t.Type)))
                                                             )
                                                        ));
                     }
@@ -196,7 +260,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     BlockSyntax newBodyBlockSyntax = newBody switch
                     {
                         BlockSyntax block => block,
-                        ArrowExpressionClauseSyntax arrowExpression => SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(arrowExpression.Expression)),
+                        ArrowExpressionClauseSyntax arrowExpression => SyntaxFactory.Block(
+                            SyntaxFactory.ExpressionStatement(arrowExpression.Expression)),
                         ExpressionSyntax expressionBody => SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(expressionBody)),
                         _ => SyntaxFactory.Block(),
                     };
@@ -225,7 +290,11 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 }
             });
 
-            ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(parameterInfos, invocationExpression.ArgumentList.Arguments, methodCtx);
+            ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(
+                parameterInfos,
+                invocationExpression.ArgumentList.Arguments,
+                methodCtx,
+                semanticModel);
 
             int defaultCount = parameterInfos.Count(p => p.DefaultProviderType != null);
             bool anyShouldUseDefault = false;
@@ -305,15 +374,25 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
             ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList(allArgs));
-            session.MarkComposableProcessed();
+            if (!targetIsReadOnly)
+                session.MarkComposableProcessed();
+
+            if (!methodSymbol.IsStatic)
+                return invocationExpression.WithArgumentList(newArgs);
 
             invocationExpression = ReplaceWithFullQualifiedName(invocationExpression, methodSymbol);
-            MemberAccessExpressionSyntax? lastmemberAccess = invocationExpression.DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
+            MemberAccessExpressionSyntax? lastmemberAccess = invocationExpression
+                .DescendantNodes()
+                .OfType<MemberAccessExpressionSyntax>()
+                .FirstOrDefault();
             if (lastmemberAccess != null)
             {
                 string lastAccessedMemberName = lastmemberAccess.Name.ToFullString();
                 string newAccessMemberName = $"{options.BuildersClassName}.{lastAccessedMemberName}";
-                invocationExpression = (InvocationExpressionSyntax)ReplaceLastMemberAccess(invocationExpression, lastAccessedMemberName, newAccessMemberName);
+                invocationExpression = (InvocationExpressionSyntax)ReplaceLastMemberAccess(
+                    invocationExpression,
+                    lastAccessedMemberName,
+                    newAccessMemberName);
                 return invocationExpression.WithArgumentList(newArgs);
             }
             context.Diagnostics.Report(DiagnosticInfo.Create(
@@ -340,9 +419,23 @@ namespace DotNetCompose.SourceGenerators.Handlers
                         SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included))));
                 return SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression);
             }
-            if (value is string text) return SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(text));
-            if (value is char character) return SyntaxFactory.LiteralExpression(SyntaxKind.CharacterLiteralExpression, SyntaxFactory.Literal(character));
-            if (value is bool boolean) return SyntaxFactory.LiteralExpression(boolean ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression);
+            if (value is string text)
+            {
+                return SyntaxFactory.LiteralExpression(
+                    SyntaxKind.StringLiteralExpression,
+                    SyntaxFactory.Literal(text));
+            }
+            if (value is char character)
+            {
+                return SyntaxFactory.LiteralExpression(
+                    SyntaxKind.CharacterLiteralExpression,
+                    SyntaxFactory.Literal(character));
+            }
+            if (value is bool boolean)
+            {
+                return SyntaxFactory.LiteralExpression(
+                    boolean ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression);
+            }
 
             string literal = SymbolDisplay.FormatPrimitive(value, quoteStrings: true, useHexadecimalNumbers: false);
             ExpressionSyntax expression = SyntaxFactory.ParseExpression(literal);
@@ -357,7 +450,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
         private static InvocationExpressionSyntax ReplaceWithFullQualifiedName(InvocationExpressionSyntax node, IMethodSymbol methodSymbol)
         {
-            string typeName = methodSymbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
+            string typeName = methodSymbol.ContainingType.ToDisplayString(
+                SymbolDisplayFormat.FullyQualifiedFormat
+                    .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included));
 
             SimpleNameSyntax newIdentifierName = default;
             if (methodSymbol.TypeArguments.Any())

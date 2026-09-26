@@ -23,6 +23,8 @@ namespace TestNs
                 try
                 {
                     __ctx.StartRestartableGroup(5675965);
+                    byte __i_state = __changed[0];
+                    byte __param_state = __changed[1];
                 }
                 finally
                 {

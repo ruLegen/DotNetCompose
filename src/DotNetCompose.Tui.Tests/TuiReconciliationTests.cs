@@ -6,6 +6,7 @@ namespace DotNetCompose.Tui.Tests;
 
 internal sealed record ReconcileItem(int Id, string Label);
 
+[Collection(TuiCompositionCollection.Name)]
 public sealed class TuiReconciliationTests
 {
     private static readonly SnapshotMutableState<IReadOnlyList<ReconcileItem>> Items =
@@ -72,7 +73,9 @@ public sealed class TuiReconciliationTests
             }
 
             Items.Value = next;
-            Assert.True(composition.Recompose());
+            Assert.True(
+                composition.Recompose(),
+                $"No recomposition at iteration {iteration}; previous={identities.Count}; next={next.Count}.");
             composition.ApplyChanges();
             Dictionary<int, TuiNode> current = CurrentNodes(applier);
             Assert.Equal(next.Select(item => item.Id), current.Keys);

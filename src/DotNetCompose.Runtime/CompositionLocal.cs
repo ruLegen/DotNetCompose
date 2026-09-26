@@ -17,7 +17,7 @@ namespace DotNetCompose.Runtime
             out IStateObject? changedState);
     }
 
-    public abstract class CompositionLocal<T> : CompositionLocal
+    public abstract partial class CompositionLocal<T> : CompositionLocal
     {
         private readonly LazyValueHolder<T> _defaultValueHolder;
 
@@ -27,15 +27,12 @@ namespace DotNetCompose.Runtime
             _defaultValueHolder = new LazyValueHolder<T>(defaultFactory);
         }
 
-        public T Current
+        [Composable(ComposableMode.ReadOnly)]
+        public T Current()
         {
-            get
-            {
-                IComposerContext? context = ComposeScope.GetCurrentContext();
-                if (context == null || !context.IsComposing)
-                    throw new InvalidOperationException("CompositionLocal.Current can only be read during composition.");
-                return context.Consume(this);
-            }
+            IComposerContext context = Composables.CurrentContext()
+                ?? throw new InvalidOperationException("CompositionLocal.Current can only be read during composition.");
+            return context.Consume(this);
         }
 
         internal override CompositionLocalValueHolder DefaultValueHolder => _defaultValueHolder;

@@ -35,8 +35,8 @@ namespace TestNs
                     }
                     else
                     {
-                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(LocalNumber.Provides(value), __StoredLambda.__Lambda_0, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Different }), default);
-                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(new ProvidedValue[] { LocalNumber.Provides(value), LocalText.Provides("text") }, __StoredLambda.__Lambda_1, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Different }), default);
+                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(LocalNumber.Provides(value), __StoredLambda.__Lambda_0, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(new ProvidedValue[] { LocalNumber.Provides(value), LocalText.Provides("text") }, __StoredLambda.__Lambda_1, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
                     }
                 }
                 finally
@@ -58,8 +58,8 @@ namespace TestNs
                 try
                 {
                     __ctx.StartRestartableGroup(-2084552499);
-                    _ = LocalNumber.Current;
-                    _ = LocalText.Current;
+                    _ = LocalNumber.Current(__ctx, default, default);
+                    _ = LocalText.Current(__ctx, default, default);
                 }
                 finally
                 {

@@ -45,7 +45,8 @@ namespace DotNetCompose.SourceGenerators.Helpers
         public static ExpressionSyntax BuildChangedArg(
             ImmutableArray<MethodParameterInfo> calleeParams,
             SeparatedSyntaxList<ArgumentSyntax> args,
-            MethodGenerationContext methodCtx)
+            MethodGenerationContext methodCtx,
+            SemanticModel semanticModel)
         {
             using ListPoolObject<ExpressionSyntax> stateExprs = ListPool<ExpressionSyntax>.Get();
             bool hasKnownState = false;
@@ -65,29 +66,9 @@ namespace DotNetCompose.SourceGenerators.Helpers
                     continue;
                 }
 
-                if (calleeParam.IsComposable)
-                {
-                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName),
-                        SyntaxFactory.IdentifierName(ComposableArgumentsState.DifferentField)));
-                    hasKnownState = true;
-                    continue;
-                }
-
                 ExpressionSyntax expr = args[argIdx].Expression;
 
-                if (expr is LiteralExpressionSyntax)
-                {
-                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName),
-                        SyntaxFactory.IdentifierName(ComposableArgumentsState.StaticField)));
-                    hasKnownState = true;
-                    continue;
-                }
-
-                if (!methodCtx.HasUnstableParam && expr is IdentifierNameSyntax idName)
+                if (expr is IdentifierNameSyntax idName)
                 {
                     ImmutableArray<MethodParameterInfo> callerParams = methodCtx.Parameters;
                     bool found = false;
@@ -101,7 +82,39 @@ namespace DotNetCompose.SourceGenerators.Helpers
                             break;
                         }
                     }
-                    if (found) continue;
+                    if (found)
+                        continue;
+                }
+
+                if (calleeParam.IsComposable)
+                {
+                    bool isStaticLambda = expr switch
+                    {
+                        SimpleLambdaExpressionSyntax simple =>
+                            semanticModel.AnalyzeDataFlow(simple.Body).CapturedInside.Length == 0,
+                        ParenthesizedLambdaExpressionSyntax parenthesized =>
+                            semanticModel.AnalyzeDataFlow(parenthesized.Body).CapturedInside.Length == 0,
+                        _ => false,
+                    };
+                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName),
+                        SyntaxFactory.IdentifierName(isStaticLambda
+                            ? ComposableArgumentsState.StaticField
+                            : ComposableArgumentsState.UncertainField)));
+                    if (isStaticLambda)
+                        hasKnownState = true;
+                    continue;
+                }
+
+                if (expr is LiteralExpressionSyntax)
+                {
+                    stateExprs.Add(SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName),
+                        SyntaxFactory.IdentifierName(ComposableArgumentsState.StaticField)));
+                    hasKnownState = true;
+                    continue;
                 }
 
                 stateExprs.Add(SyntaxFactory.MemberAccessExpression(

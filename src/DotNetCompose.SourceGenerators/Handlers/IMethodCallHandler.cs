@@ -29,6 +29,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
         public RewriterSession Session { get; }
         public IDiagnosticReporter Diagnostics { get; }
         public NodeTransformer NodeTransformer { get; }
+        public bool IsReadOnly => Session.IsReadOnly;
     }
 
     internal interface IMethodCallHandler

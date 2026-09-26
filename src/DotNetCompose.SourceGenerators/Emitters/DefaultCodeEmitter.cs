@@ -49,11 +49,20 @@ namespace DotNetCompose.SourceGenerators.Emitters
             sourceBuilder.AppendLine("{");
             sourceBuilder.WithIndent(() =>
             {
-                sourceBuilder.AppendLine($"{input.Accessibility} partial class {input.TypeName}");
+                string typeParameters = input.TypeParameters?.WithoutTrivia().ToFullString() ?? string.Empty;
+                string constraints = string.Join(" ", input.TypeConstraints.Select(item => item.WithoutTrivia().ToFullString()));
+                sourceBuilder.AppendLine($"{input.Accessibility} partial class {input.TypeName}{typeParameters}{(string.IsNullOrEmpty(constraints) ? string.Empty : " " + constraints)}");
                 sourceBuilder.AppendLine("{");
 
                 sourceBuilder.WithIndent(() =>
                 {
+                    int instanceIndent = sourceBuilder.Indent;
+                    foreach (SyntaxNode method in input.InstanceMethods)
+                    {
+                        SyntaxNode normalizedMethod = SyntaxNormalizer.Normalize(method, false, instanceIndent, _indentWhitespace, _eolWhitespace);
+                        sourceBuilder.AppendLineRaw(normalizedMethod.ToFullString());
+                    }
+
                     sourceBuilder.AppendLine($"public partial class {Rewriter.BuildersClassName}");
                     sourceBuilder.AppendLine("{");
                     sourceBuilder.WithIndent(() =>

@@ -233,6 +233,98 @@ public class GeneratorRuntimeTests
     }
 
     [Fact]
+    public void UnstableParentLeavesComparisonSlotOwnershipToChild()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.SlotTable;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public static partial class Example
+            {
+                public static readonly SnapshotMutableState<int> ChildState =
+                    Composables.CreateMutableState(0);
+                public static readonly object Unstable = new object();
+                public static object Remembered;
+                public static int ParentExecutions;
+                public static int ChildExecutions;
+                public static int ChildValue;
+                public static int Parameter = 7;
+
+                [Composable]
+                public static void Parent(int value, object unstable)
+                {
+                    ParentExecutions++;
+                    Child(value);
+                }
+
+                [Composable]
+                public static void Child(int value)
+                {
+                    Remembered = Composables.Remember("child", () => new object());
+                    ChildValue = value + ChildState.Value;
+                    ChildExecutions++;
+                }
+
+                private static bool HasExpectedSlotShape(Composition<object> composition)
+                {
+                    using ComposerSlotTable.Reader reader = composition.SlotTable.OpenReader();
+                    if (reader.Size != 3) return false;
+
+                    reader.StartGroup();
+                    if (reader.GetSlotSize(reader.CurrentGroup) != 0) return false;
+
+                    reader.StartGroup();
+                    if (reader.GetSlotSize(reader.CurrentGroup) != 3) return false;
+                    reader.SkipGroup();
+                    return reader.IsGroupEnd;
+                }
+
+                public static int Run()
+                {
+                    _ = ChildState.Value;
+                    using (Composition<object> composition =
+                        new Composition<object>(new GeneratorRuntimeTests.Applier()))
+                    {
+                        composition.SetContent((context, changed, defaults) =>
+                            Builders.Parent(Parameter, Unstable, context, changed, defaults));
+                        object firstRemembered = Remembered;
+                        if (ParentExecutions != 1 || ChildExecutions != 1 ||
+                            ChildValue != 7 || !HasExpectedSlotShape(composition)) return 1;
+
+                        ChildState.Value = 1;
+                        if (!composition.Recompose()) return 2;
+                        composition.ApplyChanges();
+                        if (ParentExecutions != 1 || ChildExecutions != 2 ||
+                            ChildValue != 8 || !ReferenceEquals(firstRemembered, Remembered) ||
+                            !HasExpectedSlotShape(composition)) return 3;
+
+                        Parameter = 8;
+                        composition.SetContent((context, changed, defaults) =>
+                            Builders.Parent(Parameter, Unstable, context, changed, defaults));
+                        return ParentExecutions == 2 && ChildExecutions == 3 &&
+                            ChildValue == 9 && ReferenceEquals(firstRemembered, Remembered) &&
+                            HasExpectedSlotShape(composition) ? 0 : 4;
+                    }
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+        string counters = string.Join(
+            ", ",
+            new[] { "ParentExecutions", "ChildExecutions", "ChildValue" }
+                .Select(name => $"{name}={example.GetField(name)!.GetValue(null)}"));
+
+        Assert.True(Equals(0, result), $"Stage={result}; {counters}");
+    }
+
+    [Fact]
     public void GeneratedCompositionLocalProviderUsesTheActiveComposer()
     {
         const string source = """
@@ -267,8 +359,8 @@ public class GeneratorRuntimeTests
                 public static void Reader()
                 {
                     ReaderExecutions++;
-                    Seen = LocalValue.Current;
-                    SeenText = LocalText.Current;
+                    Seen = LocalValue.Current();
+                    SeenText = LocalText.Current();
                 }
 
                 public static int Run()
@@ -293,6 +385,129 @@ public class GeneratorRuntimeTests
         object? result = example.GetMethod("Run")!.Invoke(null, null);
         Assert.True(Equals(0, result),
             $"Stage={result}; ReaderExecutions={example.GetField("ReaderExecutions")!.GetValue(null)}; Seen={example.GetField("Seen")!.GetValue(null)}");
+    }
+
+    [Fact]
+    public void GeneratedInstanceComposablesPreserveStateReceiversGenericsAndVirtualDispatch()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public partial class Base
+            {
+                public int Total;
+
+                [Composable]
+                public virtual void Render<T>(T value) { Total += 1; }
+
+                [Composable]
+                public virtual void Render(string value) { Total += 2; }
+
+                [Composable]
+                public void Call(Base other)
+                {
+                    Render(1);
+                    this.Render("value");
+                    other.Render(2);
+                }
+            }
+
+            public partial class Derived : Base
+            {
+                [Composable]
+                public override void Render<T>(T value) { Total += 10; }
+
+                [Composable]
+                public override void Render(string value) { Total += 20; }
+            }
+
+            public static partial class Example
+            {
+                public static int Run()
+                {
+                    Derived instance = new Derived();
+                    Base other = new Base();
+                    using (Composition<object> composition = new Composition<object>(new GeneratorRuntimeTests.Applier()))
+                    {
+                        composition.SetContent((context, changed, defaults) =>
+                            Base.Builders.Call(instance, other, context, changed, defaults));
+                    }
+                    return instance.Total == 30 && other.Total == 1 ? 0 : instance.Total * 100 + other.Total;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public void NonSkippableProviderRunsWhileUnchangedChildSkips()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public static partial class Example
+            {
+                public static readonly ProvidableCompositionLocal<int> Local =
+                    Composables.CompositionLocalOf(() => 0);
+                public static readonly SnapshotMutableState<int> Trigger =
+                    Composables.CreateMutableState(0);
+                public static int ParentExecutions;
+                public static int ChildExecutions;
+
+                [Composable]
+                public static void Parent()
+                {
+                    _ = Trigger.Value;
+                    ParentExecutions++;
+                    Composables.CompositionLocalProvider(
+                        Local.Provides(7),
+                        () => Child(5));
+                }
+
+                [Composable]
+                public static void Child(int stable)
+                {
+                    _ = Local.Current();
+                    ChildExecutions++;
+                }
+
+                public static int Run()
+                {
+                    using (Composition<object> composition =
+                        new Composition<object>(new GeneratorRuntimeTests.Applier()))
+                    {
+                        composition.SetContent(Builders.Parent);
+                        if (ParentExecutions != 1 || ChildExecutions != 1) return 1;
+
+                        Trigger.Value++;
+                        if (!composition.Recompose()) return 2;
+                        composition.ApplyChanges();
+
+                        return ParentExecutions == 2 && ChildExecutions == 1 ? 0 : 3;
+                    }
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        object? result = example.GetMethod("Run")!.Invoke(null, null);
+
+        Assert.True(
+            Equals(0, result),
+            $"Stage={result}; Parent={example.GetField("ParentExecutions")!.GetValue(null)}; " +
+            $"Child={example.GetField("ChildExecutions")!.GetValue(null)}");
     }
 
     private static Type CompileExample(string source)

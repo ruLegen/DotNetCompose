@@ -64,11 +64,8 @@ namespace DotNetCompose.Runtime.Composer
                 : CompositionGroup.Draft(previous);
             root.Locals = CompositionLocalScope.Empty;
             _stack.Push(new Frame(root, CompositionLocalScope.Empty, false));
-            using (ComposeScope.EnterContext(this))
-            {
-                if (recompose && previous != null && !previous.Reads.Overlaps(_invalid)) SkipToGroupEnd();
-                else content(this, ComposableArgumentsState.Empty, ComposableArgumentsDefaultState.Empty);
-            }
+            if (recompose && previous != null && !previous.Reads.Overlaps(_invalid)) SkipToGroupEnd();
+            else content(this, ComposableArgumentsState.Empty, ComposableArgumentsDefaultState.Empty);
             if (_stack.Count != 1) throw new InvalidOperationException("Unbalanced composition groups.");
             _stack.Pop();
             return root;

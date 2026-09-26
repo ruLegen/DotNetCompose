@@ -7,6 +7,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\DotNetCompose.Runtime\DotNetCompose.Runtime.csproj" />
+    <ProjectReference Include="..\DotNetCompose.SourceGenerators\DotNetCompose.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="DotNetCompose.Tui.Tests" />

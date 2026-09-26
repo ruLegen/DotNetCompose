@@ -10,23 +10,26 @@ namespace DotNetCompose.SourceGenerators
 {
     internal sealed class RewriterSession
     {
-        public RewriterSession(int initialGroupId, IDiagnosticReporter diagnostics)
+        public RewriterSession(int initialGroupId, IDiagnosticReporter diagnostics, bool isReadOnly = false)
         {
             _currentGroupId = initialGroupId;
             InitialGroupId = initialGroupId;
             Diagnostics = diagnostics;
+            _readOnlyScopes.Push(isReadOnly);
         }
 
         private int _currentGroupId;
         private int _nextLambdaKey;
         private int _conditionalDepth;
         private bool _hasErrors;
+        private readonly Stack<bool> _readOnlyScopes = new Stack<bool>();
 
         public int InitialGroupId { get; }
         public IDiagnosticReporter Diagnostics { get; }
         public List<StoredLambda> StoredLambdas { get; } = new();
         public bool WasInConditional { get; private set; }
         public bool HasErrors => _hasErrors;
+        public bool IsReadOnly => _readOnlyScopes.Peek();
 
         public int NextGroupId() => ++_currentGroupId;
         public int NextLambdaKey() => _nextLambdaKey++;
@@ -45,6 +48,12 @@ namespace DotNetCompose.SourceGenerators
             _conditionalDepth++;
             if (wasFirst) WasInConditional = false;
             return new ActionDisposable(() => ExitConditional());
+        }
+
+        public IDisposable EnterReadOnlyScope(bool isReadOnly)
+        {
+            _readOnlyScopes.Push(isReadOnly);
+            return new ActionDisposable(() => _readOnlyScopes.Pop());
         }
 
         private void ExitConditional()

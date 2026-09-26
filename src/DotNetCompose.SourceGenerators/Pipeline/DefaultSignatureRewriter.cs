@@ -59,7 +59,11 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                                 : default,
                             oldParam.Syntax.Modifiers,
                             oldParam.ParamInfo.IsComposable
-                                ? SyntaxFactory.ParseTypeName(Consts.ComposableAction.FullNameWithGenericArguments(oldParam.ParamInfo.GenericArguments.Select(t => t.GetFullMetadataName()))).WithTrailingSpace()
+                                ? SyntaxFactory.ParseTypeName(
+                                    Consts.ComposableAction.FullNameWithGenericArguments(
+                                        oldParam.ParamInfo.GenericArguments.Select(
+                                            type => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))
+                                    .WithTrailingSpace()
                                 : oldParam.Syntax.Type,
                             oldParam.Syntax.Identifier,
                             ReplaceDefaultArgumentValue(oldParam.Syntax.Default, oldParam.ParamInfo.IsComposable)

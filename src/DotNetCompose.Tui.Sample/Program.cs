@@ -76,7 +76,6 @@ namespace DotNetCompose.Tui.Sample
             });
         }
 
-
         private static void Add()
         {
             if (string.IsNullOrWhiteSpace(Input.Value)) return;

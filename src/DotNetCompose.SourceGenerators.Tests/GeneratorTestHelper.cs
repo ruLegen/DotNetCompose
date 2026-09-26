@@ -90,6 +90,14 @@ public static class GeneratorTestHelper
         return builder.ToImmutable();
     }
 
+    public static ImmutableArray<Diagnostic> GetOutputCompilationDiagnostics(
+        string source, LanguageVersion langVersion = LanguageVersion.Latest)
+    {
+        var (compilation, driver) = CreateDriver(source, langVersion);
+        driver.RunGeneratorsAndUpdateCompilation(compilation, out Compilation output, out _);
+        return output.GetDiagnostics();
+    }
+
     public static Task RunSnapshotTest(string sourceFileName, string? verifyFileName = null)
     {
         if (string.IsNullOrEmpty(verifyFileName))

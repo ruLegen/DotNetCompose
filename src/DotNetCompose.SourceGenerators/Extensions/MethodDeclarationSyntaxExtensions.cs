@@ -1,17 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
-#nullable enable
-namespace System.Runtime.CompilerServices
-{
-}
+
 namespace DotNetCompose.SourceGenerators.Extensions
 {
-
     public static class MethodDeclarationSyntaxExtensions
     {
         public static string GetMethodID(this MethodDeclarationSyntax method, SemanticModel? semanticModel)
@@ -21,13 +14,26 @@ namespace DotNetCompose.SourceGenerators.Extensions
                            ?? method.Identifier.ValueText;
             return methodId;
         }
+
         public static string GetFullTypeName(this MethodDeclarationSyntax method, Compilation compilation)
         {
             var semanticModel = compilation.GetSemanticModel(method.SyntaxTree);
             var methodSymbol = semanticModel.GetDeclaredSymbol(method);
             return methodSymbol?.ContainingType?.ToDisplayString() ?? string.Empty;
         }
-        public record MethodParameterInfo(string Name, bool IsComposable, ImmutableArray<ITypeSymbol> GenericArguments, ITypeSymbol? Type = null, ITypeSymbol? DefaultProviderType = null, int DefaultIndex = -1);
+        public record MethodParameterInfo(
+            string Name,
+            bool IsComposable,
+            ComposableModeKind Mode,
+            ImmutableArray<ITypeSymbol> GenericArguments,
+            ITypeSymbol? Type = null,
+            ITypeSymbol? DefaultProviderType = null,
+            int DefaultIndex = -1)
+        {
+            public bool IsReadOnly => Mode.IsReadOnly();
+            public bool IsInline => Mode.IsInline();
+        }
+
         public static bool HasAnyComposablesParamaters(this MethodDeclarationSyntax method, SemanticModel semanticModel)
         {
             var r = method.ParameterList
@@ -40,24 +46,43 @@ namespace DotNetCompose.SourceGenerators.Extensions
             return r;
         }
 
-        public static ImmutableArray<MethodParameterInfo> GetParametersInfos(this MethodDeclarationSyntax method, SemanticModel semanticModel)
+        public static ImmutableArray<MethodParameterInfo> GetParametersInfos(
+            this MethodDeclarationSyntax method,
+            SemanticModel semanticModel)
         {
             if (method.ParameterList.Parameters.Count == 0)
                 return ImmutableArray<MethodParameterInfo>.Empty;
+
             using ListPoolObject<MethodParameterInfo> result = ListPool<MethodParameterInfo>.Get();
-            ImmutableArray<ITypeSymbol> genericArguments = ImmutableArray<ITypeSymbol>.Empty;
+            IMethodSymbol? methodSymbol = semanticModel.GetDeclaredSymbol(method) as IMethodSymbol;
+            ComposableModeKind methodMode = methodSymbol.GetComposableMode();
             int defaultIdx = 0;
             foreach (ParameterSyntax parameter in method.ParameterList.Parameters)
             {
                 bool isComposable = false;
-                string name = semanticModel.GetDeclaredSymbol(parameter)?.Name ?? string.Empty;
-                ITypeSymbol? paramType = (semanticModel.GetDeclaredSymbol(parameter) as IParameterSymbol)?.Type;
+                ImmutableArray<ITypeSymbol> genericArguments = ImmutableArray<ITypeSymbol>.Empty;
+                ComposableModeKind parameterMode = ComposableModeKind.Restartable;
+                IParameterSymbol? parameterSymbol = semanticModel.GetDeclaredSymbol(parameter) as IParameterSymbol;
+                string name = parameterSymbol?.Name ?? string.Empty;
+                ITypeSymbol? paramType = parameterSymbol?.Type;
                 ITypeSymbol? defaultProviderType = null;
-                if (parameter.AttributeLists.Any(aList => aList.Attributes.Any(a => IsComposableAttribute(a, semanticModel))))
+                AttributeSyntax? composableAttribute = parameter.AttributeLists
+                    .SelectMany(aList => aList.Attributes)
+                    .FirstOrDefault(a => IsComposableAttribute(a, semanticModel));
+                if (composableAttribute != null)
                 {
-                    ISymbol? symbol = semanticModel.GetSymbolInfo(parameter.Type).Symbol;
-                    isComposable =symbol != null && symbol.GetFullMetadataName().Contains("System.Action");
-                    if (isComposable && symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.IsGenericType)
+                    isComposable = parameterSymbol?.Type is INamedTypeSymbol
+                    {
+                        Name: "Action",
+                        TypeKind: TypeKind.Delegate,
+                    } actionType && actionType.ContainingNamespace.ToDisplayString() == "System";
+                    parameterMode = isComposable
+                        ? parameterSymbol.GetComposableMode().EffectiveParameterMode(methodMode)
+                        : ComposableModeKind.Restartable;
+                    if (isComposable && parameterSymbol?.Type is INamedTypeSymbol
+                        {
+                            IsGenericType: true,
+                        } namedTypeSymbol)
                     {
                         genericArguments = namedTypeSymbol.TypeArguments;
                     }
@@ -76,11 +101,21 @@ namespace DotNetCompose.SourceGenerators.Extensions
                         }
                     }
                 }
+
                 int paramDefaultIdx = defaultProviderType != null ? defaultIdx++ : -1;
-                result.Add(new MethodParameterInfo(name, isComposable, genericArguments, paramType, defaultProviderType, paramDefaultIdx));
+                result.Add(new MethodParameterInfo(
+                    name,
+                    isComposable,
+                    parameterMode,
+                    genericArguments,
+                    paramType,
+                    defaultProviderType,
+                    paramDefaultIdx));
             }
+
             return ImmutableArray.Create<MethodParameterInfo>(result.ToArray());
         }
+
         public static bool IsComposableAttribute(AttributeSyntax s, SemanticModel semanticModel)
         {
             var symbol = semanticModel.GetSymbolInfo(s).Symbol;

@@ -378,7 +378,6 @@ public class CompositionTests
         Assert.Throws<InvalidOperationException>(() => composition.ComposeContent((c, _, _) =>
         { Emit(c, 2); throw new InvalidOperationException(); }));
         Assert.Equal(1, applier.Root.Children[0].Value);
-        Assert.Null(ComposeScope.GetCurrentContext());
         composition.ComposeContent((c, _, _) => Emit(c, 3));
         applier.ThrowOnUpdate = true;
         Assert.Throws<InvalidOperationException>(() => composition.ApplyChanges());

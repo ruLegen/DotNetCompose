@@ -35,7 +35,7 @@ public class CompositionLocalTests
             return "default";
         });
         ProvidableCompositionLocal<int> number = Composables.StaticCompositionLocalOf(() => -1);
-        Assert.Throws<InvalidOperationException>(() => text.Current);
+        Assert.Throws<NotImplementedException>(() => text.Current());
 
         List<string?> seen = new();
         List<int> numbers = new();
@@ -43,21 +43,21 @@ public class CompositionLocalTests
             new Composition<CompositionTests.Node>(new CompositionTests.Applier());
         composition.SetContent((context, _, _) =>
         {
-            seen.Add(text.Current);
-            seen.Add(text.Current);
+            seen.Add(context.Consume(text));
+            seen.Add(context.Consume(text));
             Composables.Builders.CompositionLocalProvider(
                 new ProvidedValue[] { text.Provides("first"), text.Provides("last"), number.Provides(7) },
                 (provided, _, _) =>
                 {
-                    seen.Add(text.Current);
-                    numbers.Add(number.Current);
+                    seen.Add(provided.Consume(text));
+                    numbers.Add(provided.Consume(number));
                     Composables.Builders.CompositionLocalProvider(text.ProvidesDefault("ignored"),
-                        (nestedDefault, _, _) => seen.Add(text.Current), provided);
+                        (nestedDefault, _, _) => seen.Add(nestedDefault.Consume(text)), provided);
                     Composables.Builders.CompositionLocalProvider(text.Provides(null),
-                        (nestedNull, _, _) => seen.Add(text.Current), provided);
-                    seen.Add(text.Current);
+                        (nestedNull, _, _) => seen.Add(nestedNull.Consume(text)), provided);
+                    seen.Add(provided.Consume(text));
                 }, context);
-            seen.Add(text.Current);
+            seen.Add(context.Consume(text));
         });
 
         Assert.Equal(new string?[] { "default", "default", "last", "last", null, "last", "default" }, seen);
@@ -77,8 +77,8 @@ public class CompositionLocalTests
         using Composition<CompositionTests.Node> composition =
             new Composition<CompositionTests.Node>(new CompositionTests.Applier());
 
-        Assert.Throws<InvalidOperationException>(() => composition.SetContent((context, _, _) => _ = local.Current));
-        composition.SetContent((context, _, _) => Assert.Equal(8, local.Current));
+        Assert.Throws<InvalidOperationException>(() => composition.SetContent((context, _, _) => _ = context.Consume(local)));
+        composition.SetContent((context, _, _) => Assert.Equal(8, context.Consume(local)));
         Assert.Equal(2, attempts);
     }
 
@@ -93,10 +93,10 @@ public class CompositionLocalTests
         composition.SetContent((context, _, _) =>
         {
             Composables.Builders.CompositionLocalProvider(local.ProvidesDefault(2),
-                (first, _, _) => seen.Add(local.Current), context);
+                (first, _, _) => seen.Add(first.Consume(local)), context);
             Composables.Builders.CompositionLocalProvider(local.Provides(3),
                 (outer, _, _) => Composables.Builders.CompositionLocalProvider(local.ProvidesDefault(4),
-                    (inner, _, _) => seen.Add(local.Current), outer), context);
+                    (inner, _, _) => seen.Add(inner.Consume(local)), outer), context);
         });
 
         Assert.Equal(new[] { 2, 3 }, seen);
@@ -112,7 +112,7 @@ public class CompositionLocalTests
             new Composition<CompositionTests.Node>(new CompositionTests.Applier());
         ComposableAction content = (context, _, _) =>
             Composables.Builders.CompositionLocalProvider(values,
-                (scope, _, _) => seen = local.Current, context);
+                (scope, _, _) => seen = scope.Consume(local), context);
 
         composition.SetContent(content);
         Assert.Equal(2, seen);
@@ -139,7 +139,7 @@ public class CompositionLocalTests
             int value = source.Value;
             Composables.Builders.CompositionLocalProvider(local.Provides(value), (provided, _, _) =>
             {
-                Restart(provided, 2, child => { readers++; seen = local.Current; });
+                Restart(provided, 2, child => { readers++; seen = child.Consume(local); });
                 Restart(provided, 3, child => nonReaders++);
             }, owner);
         }));
@@ -166,7 +166,7 @@ public class CompositionLocalTests
         {
             int value = source.Value;
             Composables.Builders.CompositionLocalProvider(local.Provides(value), (provided, _, _) =>
-                Restart(provided, 2, child => { readers++; seen = local.Current; }), owner);
+                Restart(provided, 2, child => { readers++; seen = child.Consume(local); }), owner);
         });
 
         composition.SetContent(content);
@@ -200,7 +200,7 @@ public class CompositionLocalTests
                 int value = source.Value;
                 Composables.Builders.CompositionLocalProvider(local.Provides(value), (provided, _, _) =>
                 {
-                    Restart(provided, 2, child => { readers++; seen = local.Current; });
+                    Restart(provided, 2, child => { readers++; seen = child.Consume(local); });
                     Restart(provided, 3, child => nonReaders++);
                 }, owner);
             });
@@ -233,7 +233,7 @@ public class CompositionLocalTests
             int value = source.Value;
             Composables.Builders.CompositionLocalProvider(local.Provides(value), (outer, _, _) =>
                 Composables.Builders.CompositionLocalProvider(local.Provides(10), (inner, _, _) =>
-                    Restart(inner, 2, child => { readers++; seen = local.Current; }), outer), owner);
+                    Restart(inner, 2, child => { readers++; seen = child.Consume(local); }), outer), owner);
         }));
 
         source.Value = 2;
@@ -259,7 +259,7 @@ public class CompositionLocalTests
                 {
                     _ = childState.Value;
                     readers++;
-                    seen = local.Current;
+                    seen = child.Consume(local);
                 });
             }, context));
 
@@ -278,7 +278,7 @@ public class CompositionLocalTests
             new Composition<CompositionTests.Node>(new CompositionTests.Applier());
         ComposableAction content = (context, _, _) =>
             Composables.Builders.CompositionLocalProvider(local.Provides(provided),
-                (scope, _, _) => seen = local.Current, context);
+                (scope, _, _) => seen = scope.Consume(local), context);
 
         composition.SetContent(content);
         provided = 2;
@@ -309,7 +309,7 @@ public class CompositionLocalTests
             {
                 context.StartMovableGroup(90, key);
                 Composables.Builders.CompositionLocalProvider(local.Provides(key * 10),
-                    (scope, _, _) => seen[key] = local.Current, context);
+                    (scope, _, _) => seen[key] = scope.Consume(local), context);
                 context.EndMovableGroup(90);
             }
         };
@@ -321,5 +321,29 @@ public class CompositionLocalTests
         Assert.Equal(30, seen[3]);
         Assert.Equal(10, seen[1]);
         Assert.Equal(20, seen[2]);
+    }
+
+    [Fact]
+    public async Task ParallelCompositionsKeepIndependentLocalScopes()
+    {
+        ProvidableCompositionLocal<int> local = Composables.StaticCompositionLocalOf(() => -1);
+        using Barrier barrier = new Barrier(2);
+
+        Task<int> Compose(int providedValue) => Task.Run(() =>
+        {
+            int seen = 0;
+            using Composition<CompositionTests.Node> composition =
+                new Composition<CompositionTests.Node>(new CompositionTests.Applier());
+            composition.SetContent((context, _, _) =>
+                Composables.Builders.CompositionLocalProvider(local.Provides(providedValue), (scope, _, _) =>
+                {
+                    barrier.SignalAndWait();
+                    seen = scope.Consume(local);
+                }, context));
+            return seen;
+        });
+
+        int[] results = await Task.WhenAll(Compose(10), Compose(20));
+        Assert.Equal(new[] { 10, 20 }, results);
     }
 }

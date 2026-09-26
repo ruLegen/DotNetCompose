@@ -110,14 +110,6 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
-        public static readonly DiagnosticDescriptor DNC011_InstanceComposable = new DiagnosticDescriptor(
-            id: "DNC011",
-            title: "Instance composable method is unsupported",
-            messageFormat: "Composable method '{0}' must be static",
-            category: Category,
-            defaultSeverity: DiagnosticSeverity.Error,
-            isEnabledByDefault: true);
-
         public static readonly DiagnosticDescriptor DNC012_AsyncComposable = new DiagnosticDescriptor(
             id: "DNC012",
             title: "Async composable method is unsupported",
@@ -146,6 +138,62 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
             id: "DNC015",
             title: "Composable called outside composition",
             messageFormat: "Composable method '{0}' cannot be called from non-composable code; use its generated Builders entry point as composition content",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC016_NonReadOnlyCall = new DiagnosticDescriptor(
+            id: "DNC016",
+            title: "Non-read-only composable call",
+            messageFormat: "Read-only composable code cannot call non-read-only composable '{0}'",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC017_UnverifiableReadOnlyDelegate = new DiagnosticDescriptor(
+            id: "DNC017",
+            title: "Unverifiable read-only composable delegate",
+            messageFormat: "Argument for read-only composable parameter '{0}' must be an inline lambda or a read-only composable parameter",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC018_GeneratedSignatureConflict = new DiagnosticDescriptor(
+            id: "DNC018",
+            title: "Generated composable signature conflict",
+            messageFormat: "Composable method '{0}' conflicts with an existing overload that uses the generated composer signature",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC020_InvalidComposableMode = new DiagnosticDescriptor(
+            id: "DNC020",
+            title: "Invalid composable mode",
+            messageFormat: "Composable mode '{0}' is not valid for {1} '{2}'",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC021_InlineComposableEscape = new DiagnosticDescriptor(
+            id: "DNC021",
+            title: "Inline composable parameter escapes",
+            messageFormat: "Inline composable parameter '{0}' can only be invoked or forwarded to another inline composable parameter",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC022_InvalidInlineComposableMethod = new DiagnosticDescriptor(
+            id: "DNC022",
+            title: "Invalid inline composable method",
+            messageFormat: "Inline composable method '{0}' must be concrete and non-virtual",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC023_ComposableOverrideModeMismatch = new DiagnosticDescriptor(
+            id: "DNC023",
+            title: "Composable override mode mismatch",
+            messageFormat: "Composable override '{0}' must preserve the method and parameter modes declared by its base method",
             category: Category,
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);

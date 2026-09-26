@@ -8,7 +8,10 @@ namespace DotNetCompose.SourceGenerators.Emitters
         string Namespace,
         string TypeName,
         string Accessibility,
+        TypeParameterListSyntax? TypeParameters,
+        SyntaxList<TypeParameterConstraintClauseSyntax> TypeConstraints,
         ImmutableArray<UsingDirectiveSyntax> Usings,
+        ImmutableArray<SyntaxNode> InstanceMethods,
         ImmutableArray<SyntaxNode> BuilderMethods,
         ImmutableArray<RewriterSession> Sessions);
 
