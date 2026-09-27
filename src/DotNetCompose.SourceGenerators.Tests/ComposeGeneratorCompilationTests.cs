@@ -22,6 +22,28 @@ public class ComposeGeneratorCompilationTests
     }
 
     [Fact]
+    public void GeneratedBuilderCallResolvesInOutputCompilation()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+
+            namespace TestNs;
+
+            public static partial class Example
+            {
+                [Composable]
+                public static void FooName() { }
+
+                public static void Run(IComposerContext context) => Builders.FooName(context);
+            }
+            """;
+
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
     public void GeneratedCodeContainsContextParameters()
     {
         var source = GeneratorTestHelper.LoadSource("EmptyComposable.cs");
