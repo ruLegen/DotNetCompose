@@ -47,7 +47,7 @@ namespace TestNs
                     {
                         __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
             #line (11, 9) - (11, 42) 24 ""
-                        int r = global::DotNetCompose.Runtime.Composables.Builders.Remember<int>(0, () => 3, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+                        int r = global::DotNetCompose.Runtime.Composables.Builders.Remember<int>(0, () => 3, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), __defaultParamState: default);
             #line hidden
                     }
 

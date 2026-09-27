@@ -52,7 +52,7 @@ public class GeneratorRuntimeTests
 
             public sealed class TestDefaultProvider : IDefaultValueProvider
             {
-                public static int Value => Example.DefaultProvidedValue;
+                public static int Create() => Example.DefaultProvidedValue;
             }
 
             public static partial class Example
@@ -686,6 +686,595 @@ public class GeneratorRuntimeTests
         Type example = CompileExample(source, generateDiagnostics: true);
         object? result = example.GetMethod("Run")!.Invoke(null, null);
         Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public void DefaultsSkipIndependentlyAndTrackStateThroughInlineProvider()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public partial class NumberProvider : IDefaultValueProvider
+            {
+                public static SnapshotMutableState<int> State = Composables.CreateMutableState(10);
+                public static int Calls;
+
+                [Composable(ComposableMode.Inline)]
+                public static int Create()
+                {
+                    Calls++;
+                    return Example.ReadNumber();
+                }
+            }
+
+            public static partial class Example
+            {
+                public static SnapshotMutableState<int> Ordinary = Composables.CreateMutableState(1);
+                public static SnapshotMutableState<bool> Omit = Composables.CreateMutableState(true);
+                public static SnapshotMutableState<int> BodyState = Composables.CreateMutableState(0);
+                public static int RenderCalls;
+                public static int ChildCalls;
+                public static int Seen;
+                public static int ChildSeen;
+
+                [Composable]
+                public static int ReadNumber() { return NumberProvider.State.Value; }
+
+                [Composable]
+                public static void Render(int ordinary, [Default<NumberProvider>] int value = default)
+                {
+                    _ = BodyState.Value;
+                    RenderCalls++;
+                    Seen = value;
+                    Child(value);
+                }
+
+                [Composable]
+                public static void Child(int value)
+                {
+                    ChildCalls++;
+                    ChildSeen = value;
+                }
+
+                private static bool SlotsOwnedByTheirGroups(Composition<object> composition)
+                {
+                    using var reader = composition.SlotTable.OpenReader();
+                    int renderGroup = 1;
+                    int defaultsGroup = renderGroup + 1;
+                    int childGroup = reader.GetGroupEnd(defaultsGroup);
+                    return reader.GetSlotSize(renderGroup) == 3 &&
+                        reader.GetSlotSize(defaultsGroup) == 1 &&
+                        reader.GetSlotSize(childGroup) == 1;
+                }
+
+                public static int Run()
+                {
+                    _ = Ordinary.Value;
+                    _ = Omit.Value;
+                    _ = BodyState.Value;
+                    _ = NumberProvider.State.Value;
+                    Snapshot.SendApplyNotifications();
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) =>
+                    {
+                        bool omit = Omit.Value;
+                        Builders.Render(Ordinary.Value, default, ctx, default,
+                            new ComposableArgumentsDefaultState(new byte[] { omit ? (byte)1 : (byte)0 }));
+                    });
+                    if (NumberProvider.Calls != 1 || RenderCalls != 1 || ChildSeen != 10) return 1;
+                    if (!SlotsOwnedByTheirGroups(composition)) return 10;
+
+                    Ordinary.Value = 2;
+                    if (!composition.Recompose()) return 2;
+                    composition.ApplyChanges();
+                    if (NumberProvider.Calls != 1) return 31;
+                    if (RenderCalls != 2) return 32;
+                    if (ChildCalls != 1) return 33;
+                    if (Seen != 10) return 34;
+                    if (!SlotsOwnedByTheirGroups(composition)) return 11;
+
+                    NumberProvider.State.Value = 20;
+                    if (!composition.Recompose()) return 4;
+                    composition.ApplyChanges();
+                    if (NumberProvider.Calls != 2) return 51;
+                    if (ChildCalls != 2) return 52;
+                    if (ChildSeen != 20) return 53;
+
+                    Omit.Value = false;
+                    if (!composition.Recompose()) return 6;
+                    composition.ApplyChanges();
+                    if (NumberProvider.Calls != 2 || Seen != 0 || ChildSeen != 0) return 7;
+                    if (!SlotsOwnedByTheirGroups(composition)) return 12;
+
+                    NumberProvider.State.Value = 30;
+                    if (composition.Recompose()) return 14;
+
+                    Omit.Value = true;
+                    if (!composition.Recompose()) return 8;
+                    composition.ApplyChanges();
+                    if (NumberProvider.Calls != 3 || Seen != 30 || ChildSeen != 30) return 9;
+                    if (!SlotsOwnedByTheirGroups(composition)) return 13;
+
+                    BodyState.Value = 1;
+                    if (!composition.Recompose()) return 15;
+                    composition.ApplyChanges();
+                    if (NumberProvider.Calls != 4 || ChildSeen != 30) return 16;
+                    return 0;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void DefaultsTrackDynamicAndStaticCompositionLocals()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public partial class DynamicProvider : IDefaultValueProvider
+            {
+                [Composable(ComposableMode.Inline)]
+                public static int Create() { return Example.DynamicLocal.Current(); }
+            }
+
+            public partial class StaticProvider : IDefaultValueProvider
+            {
+                [Composable(ComposableMode.Inline)]
+                public static string Create() { return Example.StaticLocal.Current(); }
+            }
+
+            public static partial class Example
+            {
+                public static readonly ProvidableCompositionLocal<int> DynamicLocal =
+                    Composables.CompositionLocalOf(() => -1);
+                public static readonly ProvidableCompositionLocal<string> StaticLocal =
+                    Composables.StaticCompositionLocalOf(() => "none");
+                public static readonly SnapshotMutableState<int> Dynamic = Composables.CreateMutableState(1);
+                public static readonly SnapshotMutableState<string> Static = Composables.CreateMutableState("first");
+                public static int RenderCalls;
+                public static int ChildCalls;
+                public static string Seen;
+
+                [Composable]
+                public static void Root()
+                {
+                    Composables.CompositionLocalProvider(
+                        new ProvidedValue[] { DynamicLocal.Provides(Dynamic.Value), StaticLocal.Provides(Static.Value) },
+                        () => Render());
+                }
+
+                [Composable]
+                public static void Render(
+                    [Default<DynamicProvider>] int number = default,
+                    [Default<StaticProvider>] string text = default)
+                {
+                    RenderCalls++;
+                    Child(number, text);
+                }
+
+                [Composable]
+                public static void Child(int number, string text)
+                {
+                    ChildCalls++;
+                    Seen = number + ":" + text;
+                }
+
+                public static int Run()
+                {
+                    _ = Dynamic.Value;
+                    _ = Static.Value;
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) => Builders.Root(ctx, changed, defaults));
+                    if (Seen != "1:first" || RenderCalls != 1 || ChildCalls != 1) return 1;
+
+                    Dynamic.Value = 2;
+                    if (!composition.Recompose()) return 2;
+                    composition.ApplyChanges();
+                    if (Seen != "2:first" || RenderCalls != 2 || ChildCalls != 2) return 3;
+
+                    Static.Value = "second";
+                    if (!composition.Recompose()) return 4;
+                    composition.ApplyChanges();
+                    if (Seen != "2:second" || RenderCalls != 3 || ChildCalls != 3) return 5;
+                    return 0;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void MultipleDefaultsKeepRememberSlotsAcrossMaskChanges()
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public partial class FirstProvider : IDefaultValueProvider
+            {
+                public static int Calls;
+                [Composable(ComposableMode.Inline)]
+                public static object Create()
+                {
+                    Calls++;
+                    return Composables.Remember("first", () => new object());
+                }
+            }
+
+            public partial class SecondProvider : IDefaultValueProvider
+            {
+                public static int Calls;
+                [Composable(ComposableMode.Inline)]
+                public static object Create()
+                {
+                    Calls++;
+                    _ = Example.Dependency.Value;
+                    return Composables.Remember("second", () => new object());
+                }
+            }
+
+            public static partial class Example
+            {
+                public static readonly SnapshotMutableState<int> Trigger = Composables.CreateMutableState(1);
+                public static readonly SnapshotMutableState<int> Dependency = Composables.CreateMutableState(1);
+                public static readonly SnapshotMutableState<bool> OmitFirst = Composables.CreateMutableState(true);
+                public static readonly object Explicit = new object();
+                public static object SeenFirst;
+                public static object SeenSecond;
+
+                [Composable]
+                public static void Render(int trigger,
+                    [Default<FirstProvider>] object first = default,
+                    [Default<SecondProvider>] object second = default)
+                {
+                    SeenFirst = first;
+                    SeenSecond = second;
+                }
+
+                public static int Run()
+                {
+                    _ = Trigger.Value;
+                    _ = Dependency.Value;
+                    _ = OmitFirst.Value;
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) =>
+                    {
+                        bool omit = OmitFirst.Value;
+                        Builders.Render(Trigger.Value, omit ? default : Explicit, default, ctx, default,
+                            new ComposableArgumentsDefaultState(new byte[] { omit ? (byte)1 : (byte)0, 1 }));
+                    });
+                    object first = SeenFirst;
+                    object second = SeenSecond;
+                    if (first == null || second == null || FirstProvider.Calls != 1 || SecondProvider.Calls != 1) return 1;
+
+                    Trigger.Value = 2;
+                    if (!composition.Recompose()) return 2;
+                    composition.ApplyChanges();
+                    if (!ReferenceEquals(first, SeenFirst) || !ReferenceEquals(second, SeenSecond) ||
+                        FirstProvider.Calls != 1 || SecondProvider.Calls != 1) return 3;
+
+                    OmitFirst.Value = false;
+                    if (!composition.Recompose()) return 4;
+                    composition.ApplyChanges();
+                    if (!ReferenceEquals(Explicit, SeenFirst) || !ReferenceEquals(second, SeenSecond) ||
+                        FirstProvider.Calls != 1 || SecondProvider.Calls != 2) return 5;
+
+                    OmitFirst.Value = true;
+                    if (!composition.Recompose()) return 6;
+                    composition.ApplyChanges();
+                    object replacement = SeenFirst;
+                    if (ReferenceEquals(first, replacement) || !ReferenceEquals(second, SeenSecond) ||
+                        FirstProvider.Calls != 2 || SecondProvider.Calls != 3) return 7;
+
+                    Dependency.Value = 2;
+                    if (!composition.Recompose()) return 8;
+                    composition.ApplyChanges();
+                    if (!ReferenceEquals(replacement, SeenFirst) || !ReferenceEquals(second, SeenSecond) ||
+                        FirstProvider.Calls != 3 || SecondProvider.Calls != 4) return 9;
+                    return 0;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void OmittedArgumentsDifferFromExplicitDefaultAndNamedArguments()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public class FirstProvider : IDefaultValueProvider
+            {
+                public static int Calls;
+                public static int Create() { Calls++; return 7; }
+            }
+            public class SecondProvider : IDefaultValueProvider
+            {
+                public static int Calls;
+                public static int Create() { Calls++; return 9; }
+            }
+            public static partial class Example
+            {
+                public static readonly List<string> Values = new List<string>();
+                public static int PlainSeen;
+
+                [Composable]
+                public static void Plain(int value = 5) { PlainSeen = value; }
+
+                [Composable]
+                public static void Render(
+                    [Default<FirstProvider>] int first = default,
+                    [Default<SecondProvider>] int second = default)
+                {
+                    Values.Add(first + ":" + second);
+                }
+
+                [Composable]
+                public static void Root()
+                {
+                    Render();
+                    Render(default);
+                    Render(second: 4);
+                    Render(second: default, first: default);
+                    Plain();
+                }
+
+                public static int Run()
+                {
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) => Builders.Root(ctx, changed, defaults));
+                    if (Values.Count != 4) return 1;
+                    if (Values[0] != "7:9" || Values[1] != "0:9" ||
+                        Values[2] != "7:4" || Values[3] != "0:0") return 2;
+                    if (FirstProvider.Calls != 2 || SecondProvider.Calls != 2) return 3;
+                    if (PlainSeen != 5) return 4;
+                    return 0;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void InlineComposableDefaultForwardsChangedValueWithoutOwnRestartScope()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public class Provider : IDefaultValueProvider
+            {
+                public static SnapshotMutableState<int> State = Composables.CreateMutableState(1);
+                public static int Create() { return State.Value; }
+            }
+
+            public static partial class Example
+            {
+                public static int ChildCalls;
+                public static int Seen;
+
+                [Composable]
+                public static void Root() { InlineRender(); }
+
+                [Composable(ComposableMode.Inline)]
+                public static void InlineRender([Default<Provider>] int value = default)
+                {
+                    Child(value);
+                }
+
+                [Composable]
+                public static void Child(int value)
+                {
+                    ChildCalls++;
+                    Seen = value;
+                }
+
+                public static int Run()
+                {
+                    _ = Provider.State.Value;
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) => Builders.Root(ctx, changed, defaults));
+                    if (Seen != 1 || ChildCalls != 1) return 1;
+                    Provider.State.Value = 2;
+                    if (!composition.Recompose()) return 2;
+                    composition.ApplyChanges();
+                    return Seen == 2 && ChildCalls == 2 ? 0 : 3;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Theory]
+    [InlineData(nameof(ComposableMode.Restartable), 1, 1)]
+    [InlineData(nameof(ComposableMode.NonSkippable), 2, 1)]
+    [InlineData(nameof(ComposableMode.Inline), 2, 2)]
+    [InlineData(nameof(ComposableMode.NonRestartable), 2, 2)]
+    [InlineData(nameof(ComposableMode.ReadOnly), 2, 2)]
+    public void DefaultProviderFollowsMethodMode(
+        string mode, int expectedRenderCalls, int expectedProviderCalls)
+    {
+        string source = $$"""
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public class Provider : IDefaultValueProvider
+            {
+                public static int Calls;
+                public static int Create() { Calls++; return 7; }
+            }
+
+            public static partial class Example
+            {
+                public static SnapshotMutableState<int> Trigger = Composables.CreateMutableState(1);
+                public static int RenderCalls;
+                public static int Seen;
+
+                [Composable]
+                public static void Root() { _ = Trigger.Value; Render(); }
+
+                [Composable(ComposableMode.{{mode}})]
+                public static void Render([Default<Provider>] int value = default)
+                {
+                    RenderCalls++;
+                    Child(value);
+                }
+
+                [Composable(ComposableMode.ReadOnly)]
+                public static void Child(int value) { Seen = value; }
+
+                public static int Run()
+                {
+                    _ = Trigger.Value;
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) => Builders.Root(ctx, changed, defaults));
+                    if (RenderCalls != 1 || Provider.Calls != 1 || Seen != 7) return 1;
+                    Trigger.Value = 2;
+                    if (!composition.Recompose()) return 2;
+                    composition.ApplyChanges();
+                    return RenderCalls == {{expectedRenderCalls}} && Provider.Calls == {{expectedProviderCalls}} && Seen == 7 ? 0 : 3;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void UnstableRestartableRunsBodyButReusesDefault()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public class Provider : IDefaultValueProvider
+            {
+                public static int Calls;
+                public static int Create() { Calls++; return 7; }
+            }
+
+            public static partial class Example
+            {
+                public static SnapshotMutableState<int> Trigger = Composables.CreateMutableState(1);
+                public static int RenderCalls;
+
+                [Composable]
+                public static void Root() { Render((object)Trigger.Value); }
+
+                [Composable]
+                public static void Render(object unstable, [Default<Provider>] int value = default)
+                {
+                    RenderCalls++;
+                }
+
+                public static int Run()
+                {
+                    _ = Trigger.Value;
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) => Builders.Root(ctx, changed, defaults));
+                    Trigger.Value = 2;
+                    if (!composition.Recompose()) return 1;
+                    composition.ApplyChanges();
+                    return RenderCalls == 2 && Provider.Calls == 1 ? 0 : 2;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void TwoDefaultsOwnOneMaskSlotAndTwoValueSlots()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public class FirstProvider : IDefaultValueProvider
+            {
+                public static int Create() => 1;
+            }
+            public class SecondProvider : IDefaultValueProvider
+            {
+                public static int Create() => 2;
+            }
+
+            public static partial class Example
+            {
+                [Composable]
+                public static void Render(
+                    [Default<FirstProvider>] int first = default,
+                    [Default<SecondProvider>] int second = default)
+                {
+                    Child(first, second);
+                }
+
+                [Composable]
+                public static void Child(int first, int second) { }
+
+                public static int Run()
+                {
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent((ctx, changed, defaults) => Builders.Render(
+                        default, default, ctx, default,
+                        new ComposableArgumentsDefaultState(new byte[] { 1, 1 })));
+                    using var reader = composition.SlotTable.OpenReader();
+                    return reader.GetSlotSize(1) == 3 && reader.GetSlotSize(2) == 1 ? 0 : 1;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
     }
 
     private static Type CompileExample(string source, bool? generateDiagnostics = null)

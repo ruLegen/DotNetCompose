@@ -10,6 +10,7 @@ namespace DotNetCompose.Runtime.Composer
         Root,
         Group,
         Replaceable,
+        Defaults,
         Movable,
         Restart,
         Node,

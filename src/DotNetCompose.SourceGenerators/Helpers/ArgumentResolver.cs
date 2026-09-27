@@ -2,6 +2,7 @@ using DotNetCompose.SourceGenerators.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -12,6 +13,34 @@ namespace DotNetCompose.SourceGenerators.Helpers
 {
     internal static class ArgumentResolver
     {
+        public static int[] BindArgumentIndices(
+            InvocationExpressionSyntax invocation,
+            IMethodSymbol method,
+            SemanticModel semanticModel)
+        {
+            SeparatedSyntaxList<ArgumentSyntax> args = invocation.ArgumentList.Arguments;
+            int[] indices = Enumerable.Repeat(-1, method.Parameters.Length).ToArray();
+            if (semanticModel.GetOperation(invocation) is IInvocationOperation operation)
+            {
+                foreach (IArgumentOperation bound in operation.Arguments)
+                {
+                    if (bound.IsImplicit || bound.Parameter == null)
+                        continue;
+                    for (int index = 0; index < args.Count; index++)
+                    {
+                        if (args[index].Span != bound.Syntax.Span)
+                            continue;
+                        indices[bound.Parameter.Ordinal] = index;
+                        break;
+                    }
+                }
+                return indices;
+            }
+            for (int index = 0; index < indices.Length; index++)
+                indices[index] = FindArgumentIndex(args, index, method.Parameters[index].Name);
+            return indices;
+        }
+
         public static int FindArgumentIndex(
             SeparatedSyntaxList<ArgumentSyntax> args,
             int paramIndex,
@@ -45,6 +74,7 @@ namespace DotNetCompose.SourceGenerators.Helpers
         public static ExpressionSyntax BuildChangedArg(
             ImmutableArray<MethodParameterInfo> calleeParams,
             SeparatedSyntaxList<ArgumentSyntax> args,
+            int[] argumentIndices,
             MethodGenerationContext methodCtx,
             SemanticModel semanticModel)
         {
@@ -55,7 +85,7 @@ namespace DotNetCompose.SourceGenerators.Helpers
             {
                 MethodParameterInfo calleeParam = calleeParams[i];
 
-                int argIdx = FindArgumentIndex(args, i, calleeParam.Name);
+                int argIdx = argumentIndices[i];
 
                 if (argIdx == -1)
                 {

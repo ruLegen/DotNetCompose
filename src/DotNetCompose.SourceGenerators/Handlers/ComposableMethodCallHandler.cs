@@ -46,6 +46,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             SemanticModel semanticModel = context.SemanticModel;
 
             ImmutableArray<MethodParameterInfo> parameterInfos = methodSymbol.GetParametersInfos(semanticModel);
+            int[] argumentIndices = ArgumentResolver.BindArgumentIndices(invocationExpression, methodSymbol, semanticModel);
             bool targetIsReadOnly = methodSymbol.IsReadOnlyComposableFunction();
             if (context.IsReadOnly && !targetIsReadOnly)
             {
@@ -60,14 +61,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
             arguments.AddRange(invocationExpression.ArgumentList.Arguments.Select((arg, index) =>
             {
                 MethodParameterInfo? parameter;
-                if (arg.NameColon != null)
-                {
-                    parameter = parameterInfos.FirstOrDefault(a => a.Name == arg.NameColon.Name.Identifier.ValueText);
-                }
-                else
-                {
-                    parameter = index < parameterInfos.Length ? parameterInfos[index] : null;
-                }
+                int parameterIndex = Array.IndexOf(argumentIndices, index);
+                parameter = parameterIndex >= 0 ? parameterInfos[parameterIndex] : null;
                 return (
                     arg,
                     parameter?.IsComposable ?? false,
@@ -296,6 +291,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(
                 parameterInfos,
                 invocationExpression.ArgumentList.Arguments,
+                argumentIndices,
                 methodCtx,
                 semanticModel);
 
@@ -308,19 +304,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 if (paramInfo.DefaultProviderType == null)
                     continue;
 
-                int argIdx = ArgumentResolver.FindArgumentIndex(invocationExpression.ArgumentList.Arguments, i, paramInfo.Name);
-
-                if (argIdx >= 0)
-                {
-                    ExpressionSyntax argExpr = invocationExpression.ArgumentList.Arguments[argIdx].Expression;
-                    if (argExpr.IsKind(SyntaxKind.DefaultLiteralExpression))
-                    {
-                        defaultStateBytes[paramInfo.DefaultIndex] = 1;
-                        anyShouldUseDefault = true;
-                        continue;
-                    }
-                }
-                else
+                if (argumentIndices[i] < 0)
                 {
                     defaultStateBytes[paramInfo.DefaultIndex] = 1;
                     anyShouldUseDefault = true;
@@ -356,25 +340,44 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
             ArgumentSyntax[] processedArgsArray = processedArgs.ToArray();
 
-            List<ArgumentSyntax> allArgs = new List<ArgumentSyntax>();
+            bool ignored = methodSymbol.GetAttributes().Any(attribute =>
+                attribute.AttributeClass?.GetFullMetadataName() == Consts.ComposableIgnoreAttributeFullName);
+            List<ArgumentSyntax> allArgs = ignored
+                ? new List<ArgumentSyntax>()
+                : new List<ArgumentSyntax>(processedArgsArray);
             for (int i = 0; i < parameterInfos.Length; i++)
             {
-                int argIdx = ArgumentResolver.FindArgumentIndex(invocationExpression.ArgumentList.Arguments, i, parameterInfos[i].Name);
-
-                if (argIdx >= 0)
+                if (argumentIndices[i] >= 0)
                 {
-                    allArgs.Add(processedArgsArray[argIdx]);
+                    if (ignored)
+                        allArgs.Add(processedArgsArray[argumentIndices[i]].WithNameColon(null));
                 }
                 else
                 {
                     ExpressionSyntax defaultExpr = BuildDefaultExpression(methodSymbol.Parameters[i], parameterInfos[i].Type);
-                    allArgs.Add(SyntaxFactory.Argument(defaultExpr));
+                    ArgumentSyntax defaultArgument = SyntaxFactory.Argument(defaultExpr);
+                    allArgs.Add(ignored
+                        ? defaultArgument
+                        : defaultArgument.WithNameColon(
+                            SyntaxFactory.NameColon(SyntaxFactory.IdentifierName(parameterInfos[i].Name))));
                 }
             }
 
-            allArgs.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)));
-            allArgs.Add(SyntaxFactory.Argument(changedArg));
-            allArgs.Add(defaultStateArg);
+            if (ignored)
+            {
+                allArgs.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)));
+                allArgs.Add(SyntaxFactory.Argument(changedArg));
+                allArgs.Add(defaultStateArg);
+            }
+            else
+            {
+                allArgs.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName))
+                    .WithNameColon(SyntaxFactory.NameColon(SyntaxFactory.IdentifierName(options.ContextVarName))));
+                allArgs.Add(SyntaxFactory.Argument(changedArg)
+                    .WithNameColon(SyntaxFactory.NameColon(SyntaxFactory.IdentifierName(options.ChangedVarName))));
+                allArgs.Add(defaultStateArg.WithNameColon(
+                    SyntaxFactory.NameColon(SyntaxFactory.IdentifierName(options.DefaultParamName))));
+            }
 
             ArgumentListSyntax newArgs = SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList(allArgs));

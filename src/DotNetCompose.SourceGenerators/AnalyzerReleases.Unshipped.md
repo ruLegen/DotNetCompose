@@ -15,3 +15,5 @@ DNC020 | ComposeGenerator | Error | Composable modes must be valid for their dec
 DNC021 | ComposeGenerator | Error | Inline composable parameters cannot escape their in-place context
 DNC022 | ComposeGenerator | Error | Inline composable methods must be concrete and non-virtual
 DNC023 | ComposeGenerator | Error | Composable overrides must preserve method and parameter modes
+DNC024 | ComposeGenerator | Error | Default providers must expose a compatible static Create method
+DNC025 | ComposeGenerator | Error | Default providers are not supported in ExplicitGroups composables

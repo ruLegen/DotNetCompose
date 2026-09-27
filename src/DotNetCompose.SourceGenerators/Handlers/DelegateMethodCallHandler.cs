@@ -83,6 +83,9 @@ namespace DotNetCompose.SourceGenerators.Handlers
             ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(
                 delegateParams,
                 invocation.ArgumentList.Arguments,
+                delegateMethod == null
+                    ? System.Array.Empty<int>()
+                    : ArgumentResolver.BindArgumentIndices(invocation, delegateMethod, semanticModel),
                 methodCtx,
                 semanticModel);
 

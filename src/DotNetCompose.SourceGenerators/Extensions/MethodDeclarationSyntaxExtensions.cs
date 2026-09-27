@@ -87,20 +87,12 @@ namespace DotNetCompose.SourceGenerators.Extensions
                         genericArguments = namedTypeSymbol.TypeArguments;
                     }
                 }
-                foreach (var attributeList in parameter.AttributeLists)
-                {
-                    foreach (var attribute in attributeList.Attributes)
-                    {
-                        string? attrName = (attribute.Name as SimpleNameSyntax)?.Identifier.ValueText;
-                        bool isDefaultAttr = attrName == "Default" || attrName == "DefaultAttribute";
-                        if (isDefaultAttr && attribute.Name is GenericNameSyntax genericName &&
-                            genericName.TypeArgumentList.Arguments.Count > 0)
-                        {
-                            var typeArg = genericName.TypeArgumentList.Arguments[0];
-                            defaultProviderType = semanticModel.GetTypeInfo(typeArg).Type;
-                        }
-                    }
-                }
+                AttributeData? defaultAttribute = parameterSymbol?.GetAttributes()
+                    .FirstOrDefault(attribute =>
+                        attribute.AttributeClass?.GetFullMetadataName() == Consts.DefaultAttributeFullName);
+                if (defaultAttribute?.AttributeClass is INamedTypeSymbol namedDefaultAttribute &&
+                    namedDefaultAttribute.TypeArguments.Length == 1)
+                    defaultProviderType = namedDefaultAttribute.TypeArguments[0];
 
                 int paramDefaultIdx = defaultProviderType != null ? defaultIdx++ : -1;
                 result.Add(new MethodParameterInfo(

@@ -12,9 +12,6 @@ namespace DotNetCompose.SourceGenerators.Pipeline
     {
         public BlockSyntax TransformParameters(BlockSyntax body, TransformationContext context)
         {
-            if (context.IsReadOnly)
-                return body;
-
             MethodGenerationContext methodCtx = context.MethodCtx;
             RewriterOptions options = context.Options;
             bool canSkip = methodCtx.CanSkip;
@@ -27,6 +24,28 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             using ListPoolObject<string> stateVariableNames = ListPool<string>.Get();
             string contextVariable = options.ContextVarName;
             string changedVariable = options.ChangedVarName;
+            string? maskChangedVariable = null;
+            HashSet<string> generatedNames = new HashSet<string>(
+                body.DescendantTokens().Where(token => token.IsKind(SyntaxKind.IdentifierToken))
+                    .Select(token => token.ValueText));
+            foreach (var parameter in methodCtx.Parameters)
+                generatedNames.Add(parameter.Name);
+
+            if (canSkip && methodCtx.HasDefaultParams)
+            {
+                maskChangedVariable = AllocateName(generatedNames, "__dncDefaultMaskChanged");
+                int defaultCount = methodCtx.Parameters.Count(parameter => parameter.DefaultProviderType != null);
+                prologueStatements.Add(SyntaxFactory.LocalDeclarationStatement(
+                    SyntaxFactory.VariableDeclaration(
+                        SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.BoolKeyword)))
+                    .WithVariables(SyntaxFactory.SingletonSeparatedList(
+                        SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(maskChangedVariable))
+                        .WithInitializer(SyntaxFactory.EqualsValueClause(
+                            SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
+                                contextVariable, "ChangedDefaultMask",
+                                SyntaxFactory.IdentifierName(options.DefaultParamName),
+                                SyntaxFactoryHelpers.CreateIntLiteral(defaultCount))))))));
+            }
 
             foreach ((MethodDeclarationSyntaxExtensions.MethodParameterInfo parameter, int index) in trackedParams)
             {
@@ -65,10 +84,28 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         .WithTrailingNewLine());
 
                 if (canSkip)
-                    prologueStatements.Add(CreateResolveUncertainStatement(
-                        contextVariable,
-                        stateVariable,
-                        parameter.Name));
+                {
+                    if (parameter.DefaultProviderType != null)
+                    {
+                        // The runtime consumes exactly one slot for every default parameter,
+                        // but compares the value only when its forwarded state requires it.
+                        prologueStatements.Add(SyntaxFactory.ExpressionStatement(
+                            SyntaxFactory.AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                SyntaxFactory.IdentifierName(stateVariable),
+                                SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
+                                    contextVariable, "ResolveDefaultParameterState",
+                                    SyntaxFactory.IdentifierName(parameter.Name),
+                                    SyntaxFactory.IdentifierName(stateVariable)))));
+                    }
+                    else
+                    {
+                        prologueStatements.Add(CreateResolveUncertainStatement(
+                            contextVariable,
+                            stateVariable,
+                            parameter.Name));
+                    }
+                }
             }
 
             DiagnosticsNames? diagnostics = null;
@@ -122,7 +159,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 executedStatements.AddRange(executionBody.Statements);
 
                 statements.Add(SyntaxFactory.IfStatement(
-                    CreateSkipCondition(contextVariable, changedVariable, stateVariableNames),
+                    CreateSkipCondition(contextVariable, changedVariable, stateVariableNames, maskChangedVariable),
                     SyntaxFactory.Block(skippedStatements),
                     SyntaxFactory.ElseClause(SyntaxFactory.Block(executedStatements))));
             }
@@ -201,7 +238,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         private static ExpressionSyntax CreateSkipCondition(
             string contextVariable,
             string changedVariable,
-            IEnumerable<string> stateVariables)
+            IEnumerable<string> stateVariables,
+            string? maskChangedVariable)
         {
             ExpressionSyntax? parameterCondition = null;
             foreach (string stateVariable in stateVariables)
@@ -243,13 +281,21 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxFactory.IdentifierName(contextVariable),
                 SyntaxFactory.IdentifierName(Consts.ComposeContext.SkippingProperty));
 
-            return SyntaxFactory.BinaryExpression(
+            ExpressionSyntax condition = SyntaxFactory.BinaryExpression(
                 SyntaxKind.LogicalAndExpression,
                 notForced,
                 SyntaxFactory.BinaryExpression(
                     SyntaxKind.LogicalAndExpression,
                     parameterCondition!,
                     skipping));
+            return maskChangedVariable == null
+                ? condition
+                : SyntaxFactory.BinaryExpression(
+                    SyntaxKind.LogicalAndExpression,
+                    SyntaxFactory.PrefixUnaryExpression(
+                        SyntaxKind.LogicalNotExpression,
+                        SyntaxFactory.IdentifierName(maskChangedVariable)),
+                    condition);
         }
 
         private static IEnumerable<StatementSyntax> CreateDiagnosticsPrologue(

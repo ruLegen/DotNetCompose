@@ -352,6 +352,56 @@ public sealed class ComposableModeTests
     }
 
     [Fact]
+    public void ExplicitGroupsRejectsDefaultProviders()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public class Provider : IDefaultValueProvider
+            {
+                public static int Create() => 1;
+            }
+
+            public static partial class Example
+            {
+                [Composable(ComposableMode.ExplicitGroups)]
+                public static void Render([Default<Provider>] int value = default) { }
+            }
+            """;
+
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(source),
+            diagnostic => diagnostic.Id == "DNC025");
+    }
+
+    [Fact]
+    public void ReadOnlyInlineRemainsInvalidForProviderMethods()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public static partial class Provider : IDefaultValueProvider
+            {
+                [Composable(ComposableMode.ReadOnlyInline)]
+                public static int Create() => 1;
+            }
+
+            public static partial class Example
+            {
+                [Composable(ComposableMode.ReadOnly)]
+                public static void Render([Default<Provider>] int value = default) { }
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "DNC020");
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "DNC024");
+    }
+
+    [Fact]
     public void InlineVirtualMethodAndOverrideModeChangesAreDiagnosed()
     {
         const string source = """

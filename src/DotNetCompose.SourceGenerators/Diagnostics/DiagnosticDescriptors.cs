@@ -200,6 +200,22 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        public static readonly DiagnosticDescriptor DNC024_InvalidDefaultProvider = new DiagnosticDescriptor(
+            id: "DNC024",
+            title: "Invalid default provider",
+            messageFormat: "Default provider '{0}' for parameter '{1}' must expose one accessible static parameterless Create() with a compatible return type; a composable Create() must be Inline",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DNC025_DefaultInExplicitGroups = new DiagnosticDescriptor(
+            id: "DNC025",
+            title: "Default provider in explicit groups",
+            messageFormat: "Default provider for parameter '{0}' is not supported in ExplicitGroups composables",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public static readonly DiagnosticDescriptor DNC900_InternalError = new DiagnosticDescriptor(
             id: "DNC900",
             title: "Internal generator error",

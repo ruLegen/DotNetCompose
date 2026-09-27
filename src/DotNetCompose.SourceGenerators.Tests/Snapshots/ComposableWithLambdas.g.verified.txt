@@ -65,7 +65,7 @@ namespace TestNs
             #line hidden
                             };
                             return a;
-                        }).Invoke<int>, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), default);
+                        }).Invoke<int>, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Uncertain }), __defaultParamState: default);
 
                         }
                     }

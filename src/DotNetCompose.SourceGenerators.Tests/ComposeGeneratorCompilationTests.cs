@@ -148,8 +148,41 @@ public class ComposeGeneratorCompilationTests
     {
         var source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
         var result = GeneratorTestHelper.RunSingleGenerator(source);
-        Assert.Contains("MyIntProvider.Value", result);
+        Assert.Contains("MyIntProvider.Create()", result);
         Assert.Contains("ShouldUseDefault", result);
+    }
+
+    [Fact]
+    public void ComposableWithDefault_GeneratedCSharpCompiles()
+    {
+        string source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Theory]
+    [InlineData("public int Value => 1;")]
+    [InlineData("public int Create() => 1;")]
+    [InlineData("public static string Create() => \"wrong\";")]
+    [InlineData("private static int Create() => 1;")]
+    [InlineData("[Composable] public static int Create() { return 1; }")]
+    public void InvalidDefaultProvider_ReportsDiagnostic(string providerMember)
+    {
+        string source = $$"""
+            using DotNetCompose.Runtime;
+            namespace TestNs;
+            public class Provider : IDefaultValueProvider
+            {
+                {{providerMember}}
+            }
+            public static partial class Example
+            {
+                [Composable]
+                public static void Render([Default<Provider>] int value = default) { }
+            }
+            """;
+
+        Assert.Contains(GeneratorTestHelper.GetDiagnostics(source), diagnostic => diagnostic.Id == "DNC024");
     }
 
 
@@ -198,7 +231,7 @@ public class ComposeGeneratorCompilationTests
 
             public sealed class DefaultValue : IDefaultValueProvider
             {
-                public static int Value => 5;
+                public static int Create() => 5;
             }
 
             public static partial class ReadOnlyExample
@@ -216,7 +249,7 @@ public class ComposeGeneratorCompilationTests
         ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        Assert.Contains("DefaultValue.Value", generated);
+        Assert.Contains("DefaultValue.Create()", generated);
         Assert.Contains("__ctx == null", generated);
         Assert.DoesNotContain("StartRestartableGroup", generated);
         Assert.DoesNotContain("StartReplaceableGroup", generated);

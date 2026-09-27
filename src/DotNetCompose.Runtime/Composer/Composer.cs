@@ -85,14 +85,28 @@ namespace DotNetCompose.Runtime.Composer
 
         internal void RecordRead(object state)
         {
+            RecordReadInScopes(state);
+            if (CompositionDiagnosticsRuntime.IsSupported)
+                CompositionDiagnosticsRuntime.RecordStateRead(state);
+        }
+
+        private void RecordReadInScopes(object state)
+        {
+            bool propagateFromDefaults = false;
+            bool recordedNearestScope = false;
             foreach (Frame frame in _stack)
             {
-                if (frame.Group.Kind == CompositionGroupKind.Restart || frame.Group.Kind == CompositionGroupKind.Root)
+                if (frame.Group.Kind == CompositionGroupKind.Defaults)
                 {
                     frame.Group.Reads.Add(state);
-                    if (CompositionDiagnosticsRuntime.IsSupported)
-                        CompositionDiagnosticsRuntime.RecordStateRead(state);
-                    return;
+                    propagateFromDefaults = true;
+                }
+                if (frame.Group.Kind == CompositionGroupKind.Restart || frame.Group.Kind == CompositionGroupKind.Root)
+                {
+                    if (!recordedNearestScope || propagateFromDefaults)
+                        frame.Group.Reads.Add(state);
+                    recordedNearestScope = true;
+                    propagateFromDefaults = false;
                 }
             }
         }
@@ -194,6 +208,8 @@ namespace DotNetCompose.Runtime.Composer
         }
         public void StartReplaceableGroup(int key) => Start(key, CompositionGroupKind.Replaceable);
         public void EndReplaceableGroup(int key) => End(CompositionGroupKind.Replaceable, key);
+        public void StartDefaults(int key) => Start(key, CompositionGroupKind.Defaults);
+        public void EndDefaults(int key) => End(CompositionGroupKind.Defaults, key);
         public void StartMovableGroup(int key) => StartMovableGroup(key, null);
         public void StartMovableGroup(int key, object? dataKey) => Start(key, CompositionGroupKind.Movable, dataKey);
         public void EndMovableGroup(int key) => End(CompositionGroupKind.Movable, key);
@@ -202,6 +218,22 @@ namespace DotNetCompose.Runtime.Composer
         public bool Inserting => Current.Group.Previous == null;
         public bool IsComposing => !_closed && _stack.Count > 0;
         public bool Skipping => !Inserting && !Current.ProvidersInvalid && !Current.Group.Previous!.Reads.Overlaps(_invalid);
+        public bool DefaultsInvalid
+        {
+            get
+            {
+                if (Current.Group.Kind != CompositionGroupKind.Defaults)
+                    throw new InvalidOperationException("DefaultsInvalid requires an active defaults group.");
+                if (!Skipping)
+                    return true;
+                foreach (Frame frame in _stack)
+                {
+                    if (frame.Group.Kind == CompositionGroupKind.Restart || frame.Group.Kind == CompositionGroupKind.Root)
+                        return frame.Group.Previous?.Reads.Overlaps(_invalid) ?? true;
+                }
+                return true;
+            }
+        }
 
         public object? RememberedValue()
         {
@@ -231,6 +263,26 @@ namespace DotNetCompose.Runtime.Composer
             if (!same)
                 UpdateRememberedValue(value);
             return !same;
+        }
+
+        public bool ChangedDefaultMask(ComposableArgumentsDefaultState mask, int count)
+        {
+            object? previous = RememberedValue();
+            if (previous is DefaultMaskSnapshot snapshot && snapshot.Matches(mask, count))
+                return false;
+            UpdateRememberedValue(DefaultMaskSnapshot.Capture(mask, count));
+            return true;
+        }
+
+        public byte ResolveDefaultParameterState<T>(T value, byte state)
+        {
+            if (state == ComposableArgumentsState.Uncertain)
+                return Changed(value) ? ComposableArgumentsState.Different : ComposableArgumentsState.Same;
+            if (state == ComposableArgumentsState.Different)
+                Changed(value);
+            else
+                RememberedValue();
+            return state;
         }
 
         public void CreateNode<T>(Func<T> factory) where T : class
@@ -372,6 +424,11 @@ namespace DotNetCompose.Runtime.Composer
             for (int i = frame.SlotCursor; i < old.Slots.Count; i++)
                 frame.Group.Slots.Add(_reader.GroupGet(_table.IndexOf(old.Anchor), i));
             frame.Group.Reads.UnionWith(old.Reads);
+            if (frame.Group.Kind == CompositionGroupKind.Defaults)
+            {
+                foreach (object state in old.Reads)
+                    RecordReadInScopes(state);
+            }
             foreach (CompositionGroup child in old.Children)
                 frame.Group.Children.Add(RecomposeChild(child));
             frame.Skipped = true;

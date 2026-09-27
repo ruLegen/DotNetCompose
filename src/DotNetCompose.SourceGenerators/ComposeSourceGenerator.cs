@@ -207,6 +207,29 @@ namespace DotNetCompose.SourceGenerators
                         for (int parameterIndex = 0; parameterIndex < methodSymbol.Parameters.Length; parameterIndex++)
                         {
                             IParameterSymbol parameterSymbol = methodSymbol.Parameters[parameterIndex];
+                            MethodDeclarationSyntaxExtensions.MethodParameterInfo parameterInfo = parameterInfos[parameterIndex];
+                            ParameterSyntax parameterSyntax = declaration.ParameterList.Parameters[parameterIndex];
+                            if (methodMode == ComposableModeKind.ExplicitGroups &&
+                                parameterInfo.DefaultProviderType != null)
+                            {
+                                results.Add(MethodDiagnostic(
+                                    method,
+                                    DiagnosticDescriptors.DNC025_DefaultInExplicitGroups,
+                                    parameterSyntax.GetLocation(),
+                                    parameterSymbol.Name));
+                            }
+                            if (parameterInfo.DefaultProviderType is { } providerType &&
+                                parameterInfo.Type is { } valueType &&
+                                DefaultProviderResolver.Resolve(providerType, valueType, semanticModel,
+                                    parameterSyntax.SpanStart, methodMode.IsReadOnly()) == null)
+                            {
+                                results.Add(MethodDiagnostic(
+                                    method,
+                                    DiagnosticDescriptors.DNC024_InvalidDefaultProvider,
+                                    parameterSyntax.GetLocation(),
+                                    providerType.ToDisplayString(),
+                                    parameterSymbol.Name));
+                            }
                             AttributeData? composableAttribute = parameterSymbol.GetAttributes()
                                 .FirstOrDefault(attribute =>
                                     attribute.AttributeClass?.GetFullMetadataName() == Consts.ComposableAttributeFullName);
@@ -214,8 +237,6 @@ namespace DotNetCompose.SourceGenerators
                                 continue;
 
                             ComposableModeKind declaredMode = parameterSymbol.GetComposableMode();
-                            MethodDeclarationSyntaxExtensions.MethodParameterInfo parameterInfo = parameterInfos[parameterIndex];
-                            ParameterSyntax parameterSyntax = declaration.ParameterList.Parameters[parameterIndex];
                             if (!declaredMode.IsValidParameterMode() || !parameterInfo.IsComposable)
                             {
                                 results.Add(MethodDiagnostic(

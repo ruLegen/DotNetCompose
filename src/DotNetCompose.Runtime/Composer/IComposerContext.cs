@@ -16,11 +16,15 @@ namespace DotNetCompose.Runtime.Composer
         IComposeUpdateScope? EndRestartableGroup(int key);
         void StartReplaceableGroup(int key);
         void EndReplaceableGroup(int key);
+        void StartDefaults(int key);
+        void EndDefaults(int key);
         void StartMovableGroup(int key);
         void StartMovableGroup(int key, object? dataKey) => StartMovableGroup(key);
         void EndMovableGroup(int key);
 
         bool Changed<T>(T value);
+        bool ChangedDefaultMask(ComposableArgumentsDefaultState mask, int count);
+        byte ResolveDefaultParameterState<T>(T value, byte state);
 
         object? RememberedValue();
         void UpdateRememberedValue(object? value);
@@ -41,6 +45,7 @@ namespace DotNetCompose.Runtime.Composer
         T Consume<T>(CompositionLocal<T> key) => throw new NotSupportedException();
 
         bool Skipping { get; }
+        bool DefaultsInvalid { get; }
         void SkipToGroupEnd();
 
         bool Inserting { get; }

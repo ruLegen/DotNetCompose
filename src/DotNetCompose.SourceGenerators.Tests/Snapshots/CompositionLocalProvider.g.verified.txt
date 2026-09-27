@@ -52,7 +52,7 @@ namespace TestNs
             #line hidden
                         }
 #line hidden
-                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(LocalNumber.Provides(value), __StoredLambda.__Lambda_0, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(LocalNumber.Provides(value), __StoredLambda.__Lambda_0, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
 
                         }
                         #line hidden
@@ -62,7 +62,7 @@ namespace TestNs
             #line hidden
                         }
 #line hidden
-                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(new ProvidedValue[] { LocalNumber.Provides(value), LocalText.Provides("text") }, __StoredLambda.__Lambda_1, __ctx, new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), default);
+                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(new ProvidedValue[] { LocalNumber.Provides(value), LocalText.Provides("text") }, __StoredLambda.__Lambda_1, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
 
                         }
                     }
@@ -100,10 +100,10 @@ namespace TestNs
                     global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome __dncOutcome;
                     __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
             #line (24, 9) - (24, 35) 20 ""
-                    _ = LocalNumber.Current(__ctx, default, default);
+                    _ = LocalNumber.Current(__ctx: __ctx, __changed: default, __defaultParamState: default);
             #line hidden
             #line (25, 9) - (25, 33) 20 ""
-                    _ = LocalText.Current(__ctx, default, default);
+                    _ = LocalText.Current(__ctx: __ctx, __changed: default, __defaultParamState: default);
             #line hidden
                     if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
                     {
@@ -126,11 +126,11 @@ namespace TestNs
             {
                 public static void __Lambda_0(DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
-                    global::TestNs.TestClass.Builders.Read(__ctx, default, default);
+                    global::TestNs.TestClass.Builders.Read(__ctx: __ctx, __changed: default, __defaultParamState: default);
                 }
                 public static void __Lambda_1(DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
-                    global::TestNs.TestClass.Builders.Read(__ctx, default, default);
+                    global::TestNs.TestClass.Builders.Read(__ctx: __ctx, __changed: default, __defaultParamState: default);
                 }
             }
         }
