@@ -405,12 +405,12 @@ namespace DotNetCompose.SourceGenerators
             {
                 InvocationExpressionSyntax invocation => invocation.Expression == use,
                 MemberAccessExpressionSyntax memberAccess when memberAccess.Expression == use &&
-                    memberAccess.Name.Identifier.ValueText == "Invoke" =>
+                    memberAccess.Name.Identifier.ValueText == Consts.ComposableAction.InvokeMethod =>
                     memberAccess.Parent is InvocationExpressionSyntax invocation && invocation.Expression == memberAccess,
                 ConditionalAccessExpressionSyntax conditional when conditional.Expression == use &&
                     conditional.WhenNotNull is InvocationExpressionSyntax conditionalInvocation &&
                     conditionalInvocation.Expression is MemberBindingExpressionSyntax memberBinding &&
-                    memberBinding.Name.Identifier.ValueText == "Invoke" => true,
+                    memberBinding.Name.Identifier.ValueText == Consts.ComposableAction.InvokeMethod => true,
                 _ => false,
             };
 
@@ -477,7 +477,7 @@ namespace DotNetCompose.SourceGenerators
                 return SymbolEqualityComparer.Default.Equals(source.Type, candidate.Type);
             if (source.Type is not INamedTypeSymbol sourceDelegate || candidate.Type is not INamedTypeSymbol generatedDelegate)
                 return false;
-            if (generatedDelegate.Name != "ComposableAction" ||
+            if (generatedDelegate.Name != Consts.ComposableAction.Name ||
                 generatedDelegate.ContainingNamespace?.ToDisplayString() != "DotNetCompose.Runtime" ||
                 sourceDelegate.TypeArguments.Length != generatedDelegate.TypeArguments.Length)
                 return false;

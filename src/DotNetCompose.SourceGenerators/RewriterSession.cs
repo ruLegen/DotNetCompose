@@ -34,7 +34,7 @@ namespace DotNetCompose.SourceGenerators
 
         public int NextGroupId() => ++_currentGroupId;
         public int NextLambdaKey() => _nextLambdaKey++;
-        public string NextLambdaName() => $"__Lambda_{(uint)NextLambdaKey()}";
+        public string NextLambdaName() => Consts.Rewriter.LambdaName(NextLambdaKey());
 
         public void Report(DiagnosticInfo diagnostic)
         {

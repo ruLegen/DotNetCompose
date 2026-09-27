@@ -30,8 +30,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             usedNames.Add(changedVariable);
             usedNames.Add(defaultStateVariable);
 
-            string scopeUpdaterName = AllocateName(usedNames, "__dncScopeUpdater");
-            string restartContextName = AllocateName(usedNames, "__dncRestartContext");
+            string scopeUpdaterName = AllocateName(usedNames, Consts.Restart.ScopeUpdaterName);
+            string restartContextName = AllocateName(usedNames, Consts.Restart.ContextName);
 
             List<StatementSyntax> tryStatements = new List<StatementSyntax>();
             tryStatements.Add(SyntaxFactoryHelpers.CreateMethodCallOnIdentifierWithArgs(
@@ -61,7 +61,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             List<StatementSyntax> restartStatements = new List<StatementSyntax>();
             for (int index = 0; index < methodContext.Parameters.Length; index++)
             {
-                string captureName = AllocateName(usedNames, $"__dncRestartChanged{index}");
+                string captureName = AllocateName(usedNames, Consts.Restart.ChangedName(index));
                 restartChangedNames.Add(captureName);
                 restartStatements.Add(SyntaxFactory.ParseStatement(
                     $"byte {captureName} = {Consts.ComposableArgumentsState.FullName}.{Consts.ComposableArgumentsState.NormalizeForRestartMethod}({changedVariable}[{index}]);"));
@@ -71,7 +71,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             List<string> restartDefaultNames = new List<string>(defaultParameterCount);
             for (int index = 0; index < defaultParameterCount; index++)
             {
-                string captureName = AllocateName(usedNames, $"__dncRestartDefault{index}");
+                string captureName = AllocateName(usedNames, Consts.Restart.DefaultName(index));
                 restartDefaultNames.Add(captureName);
                 restartStatements.Add(SyntaxFactory.ParseStatement(
                     $"byte {captureName} = {defaultStateVariable}[{index}];"));

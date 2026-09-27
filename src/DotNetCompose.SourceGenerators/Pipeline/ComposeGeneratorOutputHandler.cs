@@ -184,14 +184,14 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 SyntaxFactory.ParseName("global::System.ComponentModel.EditorBrowsableState"),
-                                SyntaxFactory.IdentifierName("Never"))))));
+                                SyntaxFactory.IdentifierName(Consts.EditorBrowsable.NeverField))))));
             return method.AddAttributeLists(
                 SyntaxFactory.AttributeList(SyntaxFactory.SingletonSeparatedList(attribute)));
         }
 
         private static MethodDeclarationSyntax CreateInstanceBridge(MethodDeclarationSyntax method, IMethodSymbol symbol)
         {
-            string receiverName = "__instance";
+            string receiverName = Consts.Rewriter.InstanceReceiverName;
             while (method.ParameterList.Parameters.Any(parameter => parameter.Identifier.ValueText == receiverName))
                 receiverName += "_";
 

@@ -106,7 +106,7 @@ namespace DotNetCompose.SourceGenerators.Helpers
                     {
                         if (callerParams[cp].Name == idName.Identifier.Text)
                         {
-                            stateExprs.Add(SyntaxFactory.IdentifierName($"__{idName.Identifier.Text}_state"));
+                            stateExprs.Add(SyntaxFactory.IdentifierName(Rewriter.ParameterStateName(idName.Identifier.Text)));
                             hasKnownState = true;
                             found = true;
                             break;

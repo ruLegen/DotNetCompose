@@ -64,7 +64,7 @@ namespace DotNetCompose.SourceGenerators
                                       SyntaxFactory.MemberAccessExpression(
                                           SyntaxKind.SimpleMemberAccessExpression,
                                           SyntaxFactory.IdentifierName("System.ComponentModel.EditorBrowsableState"),
-                                          SyntaxFactory.IdentifierName("Never")
+                                          SyntaxFactory.IdentifierName(Consts.EditorBrowsable.NeverField)
                                      ))
                               }
                        )));

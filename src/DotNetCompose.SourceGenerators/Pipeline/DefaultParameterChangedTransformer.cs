@@ -33,7 +33,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
             if (canSkip && methodCtx.HasDefaultParams)
             {
-                maskChangedVariable = AllocateName(generatedNames, "__dncDefaultMaskChanged");
+                maskChangedVariable = AllocateName(generatedNames, Consts.Defaults.MaskChangedName);
                 int defaultCount = methodCtx.Parameters.Count(parameter => parameter.DefaultProviderType != null);
                 prologueStatements.Add(SyntaxFactory.LocalDeclarationStatement(
                     SyntaxFactory.VariableDeclaration(
@@ -42,14 +42,14 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(maskChangedVariable))
                         .WithInitializer(SyntaxFactory.EqualsValueClause(
                             SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
-                                contextVariable, "ChangedDefaultMask",
+                                contextVariable, Consts.ComposeContext.ChangedDefaultMaskMethod,
                                 SyntaxFactory.IdentifierName(options.DefaultParamName),
                                 SyntaxFactoryHelpers.CreateIntLiteral(defaultCount))))))));
             }
 
             foreach ((MethodDeclarationSyntaxExtensions.MethodParameterInfo parameter, int index) in trackedParams)
             {
-                string stateVariable = $"__{parameter.Name}_state";
+                string stateVariable = Consts.Rewriter.ParameterStateName(parameter.Name);
                 stateVariableNames.Add(stateVariable);
 
                 ExpressionSyntax initialState = parameter.DefaultProviderType != null
@@ -65,7 +65,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName),
-                                SyntaxFactory.IdentifierName("ShouldUseDefault"))),
+                                SyntaxFactory.IdentifierName(Consts.ComposableArgumentsDefaultState.ShouldUseDefaultField))),
                         SyntaxFactory.MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName),
@@ -94,7 +94,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                                 SyntaxKind.SimpleAssignmentExpression,
                                 SyntaxFactory.IdentifierName(stateVariable),
                                 SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
-                                    contextVariable, "ResolveDefaultParameterState",
+                                    contextVariable, Consts.ComposeContext.ResolveDefaultParameterStateMethod,
                                     SyntaxFactory.IdentifierName(parameter.Name),
                                     SyntaxFactory.IdentifierName(stateVariable)))));
                     }
@@ -123,9 +123,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     usedNames.Add(stateVariable);
 
                 diagnostics = new DiagnosticsNames(
-                    AllocateName(usedNames, "__dncDiagnostics"),
-                    AllocateName(usedNames, "__dncOutcome"),
-                    AllocateName(usedNames, "__dncDiagnosticsEnd"));
+                    AllocateName(usedNames, Consts.CompositionDiagnostics.TokenName),
+                    AllocateName(usedNames, Consts.CompositionDiagnostics.OutcomeName),
+                    AllocateName(usedNames, Consts.CompositionDiagnostics.EndLabelName));
 
                 prologueStatements.AddRange(CreateDiagnosticsPrologue(context, diagnostics.Value));
                 ReturnToDiagnosticsEndRewriter returnRewriter =
@@ -142,7 +142,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 List<StatementSyntax> skippedStatements = new List<StatementSyntax>();
                 AddIfNotNull(skippedStatements, CreateOutcomeAssignment(
                     diagnostics,
-                    ComposableExecutionOutcomeName.Skipped));
+                    Consts.CompositionDiagnostics.SkippedField));
                 skippedStatements.Add(
                     SyntaxFactory.ExpressionStatement(
                             SyntaxFactory.InvocationExpression(
@@ -155,7 +155,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 List<StatementSyntax> executedStatements = new List<StatementSyntax>();
                 AddIfNotNull(executedStatements, CreateOutcomeAssignment(
                     diagnostics,
-                    ComposableExecutionOutcomeName.Executed));
+                    Consts.CompositionDiagnostics.ExecutedField));
                 executedStatements.AddRange(executionBody.Statements);
 
                 statements.Add(SyntaxFactory.IfStatement(
@@ -167,7 +167,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             {
                 AddIfNotNull(statements, CreateOutcomeAssignment(
                     diagnostics,
-                    ComposableExecutionOutcomeName.Executed));
+                    Consts.CompositionDiagnostics.ExecutedField));
                 statements.AddRange(executionBody.Statements);
             }
 
@@ -372,7 +372,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     SyntaxFactory.MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         SyntaxFactory.IdentifierName(names.Token),
-                        SyntaxFactory.IdentifierName("IsActive"))),
+                        SyntaxFactory.IdentifierName(Consts.CompositionDiagnostics.IsActiveProperty))),
                 SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(end)));
 
             if (emitEndLabel)
@@ -407,7 +407,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             return SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 SyntaxFactory.ParseName(Consts.CompositionDiagnostics.RuntimeFullName),
-                SyntaxFactory.IdentifierName("IsSupported"));
+                SyntaxFactory.IdentifierName(Consts.CompositionDiagnostics.IsSupportedProperty));
         }
 
         private static ArgumentSyntax CreateStringArgument(string value)
@@ -439,12 +439,6 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             public string Token { get; }
             public string Outcome { get; }
             public string EndLabel { get; }
-        }
-
-        private static class ComposableExecutionOutcomeName
-        {
-            public const string Executed = "Executed";
-            public const string Skipped = "Skipped";
         }
 
         private sealed class ReturnToDiagnosticsEndRewriter : CSharpSyntaxRewriter

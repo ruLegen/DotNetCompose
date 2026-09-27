@@ -22,7 +22,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
 
             if (methodSymbol.MethodKind != MethodKind.Ordinary)
                 return false;
-            if (methodSymbol.Name != "Invoke")
+            if (methodSymbol.Name != MovableContent.InvokeMethod)
                 return false;
 
             var containingType = methodSymbol.ContainingType;
@@ -59,7 +59,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             var target = SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 SyntaxFactory.ParseName("global::DotNetCompose.Runtime.Composables.Builders"),
-                SyntaxFactory.IdentifierName("InsertMovableContent"));
+                SyntaxFactory.IdentifierName(MovableContent.InsertMethod));
 
             // If we have type arguments, attach them (but InsertMovableContent<T> uses the same T)
             if (typeArgs.Length > 0)
@@ -67,7 +67,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 target = SyntaxFactory.MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     SyntaxFactory.ParseName("global::DotNetCompose.Runtime.Composables.Builders"),
-                    SyntaxFactory.GenericName("InsertMovableContent")
+                    SyntaxFactory.GenericName(MovableContent.InsertMethod)
                         .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
                             SyntaxFactory.SeparatedList(typeArgs.Select(t =>
                                 SyntaxFactory.ParseTypeName(t.ToDisplayString(

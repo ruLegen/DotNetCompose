@@ -202,9 +202,11 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     }
                     variableType = variableType.WithTrailingSpace();
 
-                    string helperName = a.IsReadOnly ? "GetReadonlyLambda" : "GetLambda";
+                    string helperName = a.IsReadOnly
+                        ? Consts.ComposeHelpers.GetReadonlyLambdaMethod
+                        : Consts.ComposeHelpers.GetLambdaMethod;
                     InvocationExpressionSyntax wrappedLambdaExpression = SyntaxFactoryHelpers.CreateMethodCallSyntaxWithArgs(
-                        "ComposeHelpers",
+                        Consts.ComposeHelpers.Name,
                         helperName,
                         SyntaxFactory.IdentifierName(options.ContextVarName),
                         SyntaxFactoryHelpers.CreateIntLiteral(session.NextLambdaKey()),
@@ -213,12 +215,12 @@ namespace DotNetCompose.SourceGenerators.Handlers
                             SyntaxFactory.Block(
                                 SyntaxFactory.LocalDeclarationStatement(
                                     SyntaxFactory.VariableDeclaration(variableType).AddVariables(
-                                        SyntaxFactory.VariableDeclarator("a").WithInitializer(
+                                        SyntaxFactory.VariableDeclarator(Consts.Rewriter.LambdaValueName).WithInitializer(
                                             SyntaxFactory.EqualsValueClause(
                                                 SyntaxFactory.ParenthesizedLambdaExpression(newParamList, newBody)))
                                             .WithLeadingSpace())
                                 ),
-                                SyntaxFactory.ReturnStatement(SyntaxFactory.IdentifierName("a").WithLeadingSpace())
+                                SyntaxFactory.ReturnStatement(SyntaxFactory.IdentifierName(Consts.Rewriter.LambdaValueName).WithLeadingSpace())
                                             .WithLeadingNewLine()
                            )
                         ));
@@ -228,7 +230,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                         newLambdaExpression = SyntaxFactory.MemberAccessExpression(
                                                        SyntaxKind.SimpleMemberAccessExpression,
                                                        wrappedLambdaExpression,
-                                                       SyntaxFactory.IdentifierName("Invoke"));
+                                                       SyntaxFactory.IdentifierName(Consts.ComposableAction.InvokeMethod));
                     }
                     else
                     {
@@ -236,7 +238,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                                                        SyntaxKind.SimpleMemberAccessExpression,
                                                        wrappedLambdaExpression,
                                                        SyntaxFactory.GenericName(
-                                                            SyntaxFactory.Identifier("Invoke"),
+                                                            SyntaxFactory.Identifier(Consts.ComposableAction.InvokeMethod),
                                                             SyntaxFactory.TypeArgumentList(
                                                                 SyntaxFactory.SeparatedList(
                                                                     argTypes.Select(t => SyntaxFactory.ParseTypeName(t.Type)))

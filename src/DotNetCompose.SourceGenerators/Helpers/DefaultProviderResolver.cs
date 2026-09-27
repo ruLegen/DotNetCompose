@@ -13,7 +13,7 @@ namespace DotNetCompose.SourceGenerators.Helpers
             int position,
             bool readOnly)
         {
-            IMethodSymbol[] candidates = providerType.GetMembers("Create")
+            IMethodSymbol[] candidates = providerType.GetMembers(Consts.DefaultProvider.CreateMethod)
                 .OfType<IMethodSymbol>()
                 .Where(method => method.IsStatic && method.Arity == 0 && method.Parameters.Length == 0 &&
                     !method.ReturnsVoid && !method.ReturnsByRef && !method.ReturnsByRefReadonly &&

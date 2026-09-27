@@ -27,6 +27,55 @@ namespace DotNetCompose.SourceGenerators
             public const string DefaultParamName = "__defaultParamState";
             public const string StoredLambdaClassName = "__StoredLambda";
             public const string BuildersClassName = "Builders";
+            public const string InstanceReceiverName = "__instance";
+            public const string LambdaValueName = "a";
+            public static readonly Func<int, string> LambdaName = index => $"__Lambda_{(uint)index}";
+            public static readonly Func<string, string> ParameterStateName = name => $"__{name}_state";
+        }
+
+        public static class Restart
+        {
+            public const string ScopeUpdaterName = "__dncScopeUpdater";
+            public const string ContextName = "__dncRestartContext";
+            public static readonly Func<int, string> ChangedName = index => $"__dncRestartChanged{index}";
+            public static readonly Func<int, string> DefaultName = index => $"__dncRestartDefault{index}";
+        }
+
+        public static class Defaults
+        {
+            public const string CacheName = "__dncDefaultsCache";
+            public const string MaskMatchesName = "__dncDefaultMaskMatches";
+            public const string MaskChangedName = "__dncDefaultMaskChanged";
+        }
+
+        public static class DefaultProvider
+        {
+            public const string CreateMethod = "Create";
+        }
+
+        public static class ComposableDefaultsCache
+        {
+            public const string FullName = "global::DotNetCompose.Runtime.ComposableDefaultsCache";
+            public const string MatchesMethod = "Matches";
+            public const string GetMethod = "Get";
+        }
+
+        public static class ComposeHelpers
+        {
+            public const string Name = "ComposeHelpers";
+            public const string GetLambdaMethod = "GetLambda";
+            public const string GetReadonlyLambdaMethod = "GetReadonlyLambda";
+        }
+
+        public static class MovableContent
+        {
+            public const string InvokeMethod = ComposableAction.InvokeMethod;
+            public const string InsertMethod = "InsertMovableContent";
+        }
+
+        public static class EditorBrowsable
+        {
+            public const string NeverField = "Never";
         }
 
         public static string NameWithWhiteSpace(string s) => string.Format("{0} ", s);
@@ -43,6 +92,13 @@ namespace DotNetCompose.SourceGenerators
             public const string EndMovableGroupMethod = "EndMovableGroup";
 
             public const string ChangedMethod = "Changed";
+            public const string ChangedDefaultMaskMethod = "ChangedDefaultMask";
+            public const string ResolveDefaultParameterStateMethod = "ResolveDefaultParameterState";
+            public const string RememberedValueMethod = "RememberedValue";
+            public const string UpdateRememberedValueMethod = "UpdateRememberedValue";
+            public const string StartDefaultsMethod = "StartDefaults";
+            public const string EndDefaultsMethod = "EndDefaults";
+            public const string DefaultsInvalidProperty = "DefaultsInvalid";
             public const string SkippingProperty = "Skipping";
             public const string SkipToGroupEndMethod = "SkipToGroupEnd";
         }
@@ -53,6 +109,13 @@ namespace DotNetCompose.SourceGenerators
             public const string OutcomeFullName = "global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome";
             public const string BeginMethod = "Begin";
             public const string EndMethod = "End";
+            public const string IsSupportedProperty = "IsSupported";
+            public const string IsActiveProperty = "IsActive";
+            public const string TokenName = "__dncDiagnostics";
+            public const string OutcomeName = "__dncOutcome";
+            public const string EndLabelName = "__dncDiagnosticsEnd";
+            public const string ExecutedField = "Executed";
+            public const string SkippedField = "Skipped";
         }
         public static class ComposableArgumentsState
         {
@@ -75,16 +138,18 @@ namespace DotNetCompose.SourceGenerators
         {
             public const string FullName = "DotNetCompose.Runtime.ComposableArgumentsDefaultState";
             public const string DefaultParamName = "_defaultParamState";
+            public const string ShouldUseDefaultField = "ShouldUseDefault";
         }
 
         public static class ComposableLabmdaWrapper
         {
             public const string FullName = "DotNetCompose.Runtime.ComposableLambdaWrapper";
-            public const string InvokeMethod = "Invoke";
+            public const string InvokeMethod = ComposableAction.InvokeMethod;
         }
 
         public static class ComposableAction
         {
+            public const string Name = "ComposableAction";
             public const string FullName = "DotNetCompose.Runtime.ComposableAction";
             public const string InvokeMethod = "Invoke";
 

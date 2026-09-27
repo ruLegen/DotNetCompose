@@ -36,15 +36,15 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     .Select(token => token.ValueText));
             foreach (var parameter in context.MethodCtx.Parameters)
                 names.Add(parameter.Name);
-            string cacheName = AllocateName(names, "__dncDefaultsCache");
-            string matchesName = AllocateName(names, "__dncDefaultMaskMatches");
+            string cacheName = AllocateName(names, Consts.Defaults.CacheName);
+            string matchesName = AllocateName(names, Consts.Defaults.MaskMatchesName);
             int groupKey = context.Session.NextGroupId();
 
             StatementSyntax cacheDeclaration = Local(SyntaxFactory.IdentifierName("var"), cacheName,
                 SyntaxFactory.BinaryExpression(
                     SyntaxKind.AsExpression,
-                    ComposerCall(composer, "RememberedValue"),
-                    SyntaxFactory.ParseTypeName("global::DotNetCompose.Runtime.ComposableDefaultsCache")));
+                    ComposerCall(composer, Consts.ComposeContext.RememberedValueMethod),
+                    SyntaxFactory.ParseTypeName(Consts.ComposableDefaultsCache.FullName)));
             ExpressionSyntax cacheNotNull = SyntaxFactory.BinaryExpression(
                 SyntaxKind.NotEqualsExpression,
                 SyntaxFactory.IdentifierName(cacheName),
@@ -54,12 +54,12 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxFactory.BinaryExpression(
                     SyntaxKind.LogicalAndExpression,
                     cacheNotNull,
-                    Call(Member(SyntaxFactory.IdentifierName(cacheName), "Matches"),
+                    Call(Member(SyntaxFactory.IdentifierName(cacheName), Consts.ComposableDefaultsCache.MatchesMethod),
                         SyntaxFactory.IdentifierName(mask))));
 
             List<StatementSyntax> cached = new List<StatementSyntax>
             {
-                SyntaxFactory.ExpressionStatement(ComposerCall(composer, "SkipToGroupEnd"))
+                SyntaxFactory.ExpressionStatement(ComposerCall(composer, Consts.ComposeContext.SkipToGroupEndMethod))
             };
             cached.AddRange(parameters.Select(parameter => RestoreParameter(parameter, mask, cacheName)));
 
@@ -68,7 +68,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 ResetExplicitStatesWhenMaskChanges(parameters, mask, matchesName)
             };
             recompute.AddRange(BuildProviders(context, parameters, body.SpanStart));
-            recompute.Add(SyntaxFactory.ExpressionStatement(ComposerCall(composer, "UpdateRememberedValue",
+            recompute.Add(SyntaxFactory.ExpressionStatement(ComposerCall(composer, Consts.ComposeContext.UpdateRememberedValueMethod,
                 CreateCache(mask, parameters))));
 
             ExpressionSyntax cacheValid = SyntaxFactory.BinaryExpression(
@@ -76,20 +76,20 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxFactory.IdentifierName(matchesName),
                 SyntaxFactory.PrefixUnaryExpression(
                     SyntaxKind.LogicalNotExpression,
-                    Member(SyntaxFactory.IdentifierName(composer), "DefaultsInvalid")));
+                    Member(SyntaxFactory.IdentifierName(composer), Consts.ComposeContext.DefaultsInvalidProperty)));
             StatementSyntax chooseDefaults = SyntaxFactory.IfStatement(
                 cacheValid,
                 SyntaxFactory.Block(cached),
                 SyntaxFactory.ElseClause(SyntaxFactory.Block(recompute)));
 
             return SyntaxFactory.Block(
-                SyntaxFactory.ExpressionStatement(ComposerCall(composer, "StartDefaults",
+                SyntaxFactory.ExpressionStatement(ComposerCall(composer, Consts.ComposeContext.StartDefaultsMethod,
                     SyntaxFactoryHelpers.CreateIntLiteral(groupKey))),
                 SyntaxFactory.TryStatement(
                     SyntaxFactory.Block(cacheDeclaration, matchesDeclaration, chooseDefaults),
                     default,
                     SyntaxFactory.FinallyClause(SyntaxFactory.Block(
-                        SyntaxFactory.ExpressionStatement(ComposerCall(composer, "EndDefaults",
+                        SyntaxFactory.ExpressionStatement(ComposerCall(composer, Consts.ComposeContext.EndDefaultsMethod,
                             SyntaxFactoryHelpers.CreateIntLiteral(groupKey)))))));
         }
 
@@ -100,7 +100,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         {
             TypeSyntax type = TypeOf(parameter.Type!);
             GenericNameSyntax get = SyntaxFactory.GenericName(
-                SyntaxFactory.Identifier("Get"),
+                SyntaxFactory.Identifier(Consts.ComposableDefaultsCache.GetMethod),
                 SyntaxFactory.TypeArgumentList(SyntaxFactory.SingletonSeparatedList(type)));
             ExpressionSyntax cache = SyntaxFactory.PostfixUnaryExpression(
                 SyntaxKind.SuppressNullableWarningExpression,
@@ -109,7 +109,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxFactory.Block(
                     Assign(parameter.Name, Call(Member(cache, get),
                         SyntaxFactoryHelpers.CreateIntLiteral(parameter.DefaultIndex))),
-                    Assign(StateName(parameter), State("Same"))));
+                    Assign(StateName(parameter), State(Consts.ComposableArgumentsState.SameField))));
         }
 
         private static StatementSyntax ResetExplicitStatesWhenMaskChanges(
@@ -127,8 +127,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                             SyntaxKind.NotEqualsExpression,
                             MaskBit(mask, parameter.DefaultIndex),
                             Member(SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName),
-                                "ShouldUseDefault")),
-                        Assign(StateName(parameter), State("Uncertain"))))));
+                                Consts.ComposableArgumentsDefaultState.ShouldUseDefaultField)),
+                        Assign(StateName(parameter), State(Consts.ComposableArgumentsState.UncertainField))))));
         }
 
         private static IEnumerable<StatementSyntax> BuildProviders(
@@ -150,15 +150,15 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 {
                     int groupKey = context.Session.NextGroupId();
                     statements.Add(SyntaxFactory.ExpressionStatement(ComposerCall(composer,
-                        "StartReplaceableGroup", SyntaxFactoryHelpers.CreateIntLiteral(groupKey))));
+                        Consts.ComposeContext.StartReplaceableGroupMethod, SyntaxFactoryHelpers.CreateIntLiteral(groupKey))));
                     statements.Add(SyntaxFactory.TryStatement(
                         SyntaxFactory.Block(assign),
                         default,
                         SyntaxFactory.FinallyClause(SyntaxFactory.Block(
                             SyntaxFactory.ExpressionStatement(ComposerCall(composer,
-                                "EndReplaceableGroup", SyntaxFactoryHelpers.CreateIntLiteral(groupKey)))))));
+                                Consts.ComposeContext.EndReplaceableGroupMethod, SyntaxFactoryHelpers.CreateIntLiteral(groupKey)))))));
                 }
-                statements.Add(Assign(StateName(parameter), State("Uncertain")));
+                statements.Add(Assign(StateName(parameter), State(Consts.ComposableArgumentsState.UncertainField)));
                 yield return SyntaxFactory.IfStatement(
                     MaskIsOmitted(mask, parameter.DefaultIndex),
                     SyntaxFactory.Block(statements));
@@ -178,8 +178,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
             ExpressionSyntax provider = TypeOf(parameter.DefaultProviderType!);
             if (!method.IsComposableFunction())
-                return Call(Member(provider, "Create"));
-            return Call(Member(Member(provider, "Builders"), "Create"),
+                return Call(Member(provider, Consts.DefaultProvider.CreateMethod));
+            return Call(Member(Member(provider, Consts.Rewriter.BuildersClassName), Consts.DefaultProvider.CreateMethod),
                 SyntaxFactory.IdentifierName(context.Options.ContextVarName),
                 SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression),
                 SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression));
@@ -200,7 +200,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     SyntaxFactory.SeparatedList<ExpressionSyntax>(parameters.Select(parameter =>
                         SyntaxFactory.IdentifierName(parameter.Name)))));
             return SyntaxFactory.ObjectCreationExpression(
-                    SyntaxFactory.ParseTypeName("global::DotNetCompose.Runtime.ComposableDefaultsCache"))
+                    SyntaxFactory.ParseTypeName(Consts.ComposableDefaultsCache.FullName))
                 .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
                 {
                     SyntaxFactory.Argument(SyntaxFactory.IdentifierName(mask)),
@@ -213,7 +213,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 SyntaxKind.EqualsExpression,
                 MaskBit(mask, index),
                 Member(SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName),
-                    "ShouldUseDefault"));
+                    Consts.ComposableArgumentsDefaultState.ShouldUseDefaultField));
 
         private static ElementAccessExpressionSyntax MaskBit(string mask, int index) =>
             SyntaxFactory.ElementAccessExpression(SyntaxFactory.IdentifierName(mask))
@@ -228,7 +228,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             Member(SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsState.FullName), name);
 
         private static string StateName(MethodDeclarationSyntaxExtensions.MethodParameterInfo parameter) =>
-            $"__{parameter.Name}_state";
+            Consts.Rewriter.ParameterStateName(parameter.Name);
 
         private static LocalDeclarationStatementSyntax Local(
             TypeSyntax type, string name, ExpressionSyntax value) =>
