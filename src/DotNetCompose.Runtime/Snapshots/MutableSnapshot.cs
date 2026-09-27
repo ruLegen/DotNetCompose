@@ -103,7 +103,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 }
             }
 
-            if (failureResult.HasValue) 
+            if (failureResult.HasValue)
                 return failureResult.Value;
 
             Applied = true;
@@ -115,11 +115,19 @@ namespace DotNetCompose.Runtime.Snapshots
                 {
                     foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
                     {
-                        try { obs(globalModified, this); }
-                        catch { }
+                        try
+                        {
+                            obs(globalModified, this);
+                        }
+                        catch
+                        {
+                        }
                     }
                 }
-                finally { System.Threading.Interlocked.Decrement(ref PendingApplyObserverCount); }
+                finally
+                {
+                    System.Threading.Interlocked.Decrement(ref PendingApplyObserverCount);
+                }
             }
 
             if (modified != null && modified.Count > 0)
@@ -129,11 +137,19 @@ namespace DotNetCompose.Runtime.Snapshots
                 {
                     foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
                     {
-                        try { obs(modified, this); }
-                        catch { }
+                        try
+                        {
+                            obs(modified, this);
+                        }
+                        catch
+                        {
+                        }
                     }
                 }
-                finally { System.Threading.Interlocked.Decrement(ref PendingApplyObserverCount); }
+                finally
+                {
+                    System.Threading.Interlocked.Decrement(ref PendingApplyObserverCount);
+                }
             }
 
             using (Snapshot.Lock())
@@ -219,7 +235,8 @@ namespace DotNetCompose.Runtime.Snapshots
                     if (Modified != null)
                         foreach (IStateObject state in Modified)
                             for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next)
-                                if (record.SnapshotId == Id || PreviousIds.Get(record.SnapshotId)) record.SnapshotId = SnapshotId.Invalid;
+                                if (record.SnapshotId == Id || PreviousIds.Get(record.SnapshotId))
+                                    record.SnapshotId = SnapshotId.Invalid;
                     CloseLocked();
                 }
             }
@@ -246,12 +263,14 @@ namespace DotNetCompose.Runtime.Snapshots
             MutableSnapshot target)
         {
             ValidateOpen(snapshot);
-            if (target.Disposed || target.Applied) return SnapshotApplyResult.Failure("The parent snapshot is closed.");
+            if (target.Disposed || target.Applied)
+                return SnapshotApplyResult.Failure("The parent snapshot is closed.");
             List<(IStateObject State, StateRecord Record)> writes = new List<(IStateObject, StateRecord)>();
             foreach (IStateObject state in modified)
             {
                 StateRecord? appliedRecord = ReadableSilent(state.FirstStateRecord, snapshot.Id, snapshot.Invalid);
-                if (appliedRecord == null) continue;
+                if (appliedRecord == null)
+                    continue;
                 StateRecord? current = ReadableSilent(state.FirstStateRecord, target.Id, target.Invalid.Set(snapshot.Id).Or(snapshot.PreviousIds));
                 StateRecord? previous = ReadableSilent(state.FirstStateRecord, snapshot._initialId - 1, snapshot._initialInvalid);
                 StateRecord selected = appliedRecord;

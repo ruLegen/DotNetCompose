@@ -7,7 +7,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
     internal class GapBufferSlotMap<T>
     {
         private const int DefaultCapacity = 16;
-        public GapBufferSlotMap(int initialCapacity = DefaultCapacity) 
+        public GapBufferSlotMap(int initialCapacity = DefaultCapacity)
             : this(new GapBuffer<T>(initialCapacity))
         {
         }
@@ -99,7 +99,7 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public void Set(GapBufferItemAnchor handle, T item)
         {
-            EnsureValid(handle);    
+            EnsureValid(handle);
 
             int address = _handleToAddress[handle.Id];
             _source.SetAtAddress(address, item);
@@ -121,7 +121,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
                 throw new ArgumentOutOfRangeException(nameof(from));
             if (to < 0 || to > _source.Count)
                 throw new ArgumentOutOfRangeException(nameof(to));
-            if (count == 0 || to == from || to == from + count) return;
+            if (count == 0 || to == from || to == from + count)
+                return;
             if (to > from && to < from + count)
                 throw new ArgumentException("The destination is inside the moved range.", nameof(to));
 
@@ -144,7 +145,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
                 EnsurePhysicalCapacity(address);
                 _source.SetAtAddress(address, values[i]);
                 _addressToHandle[address] = handles[i];
-                if (handles[i] >= 0) _handleToAddress[handles[i]] = address;
+                if (handles[i] >= 0)
+                    _handleToAddress[handles[i]] = address;
             }
         }
 
@@ -190,7 +192,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         private void OnElementsMoved(int fromAddress, int toAddress, int count)
         {
-            if (fromAddress == toAddress) return;
+            if (fromAddress == toAddress)
+                return;
 
             if (fromAddress < toAddress)
             {

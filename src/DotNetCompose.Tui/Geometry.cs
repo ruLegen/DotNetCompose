@@ -33,7 +33,12 @@ public readonly record struct TuiConstraints(int MinWidth, int MaxWidth, int Min
         new(size.Width, size.Width, size.Height, size.Height);
 }
 
-public enum TuiLengthKind { Auto, Cells, Fill }
+public enum TuiLengthKind
+{
+    Auto,
+    Cells,
+    Fill
+}
 
 public readonly record struct TuiLength(TuiLengthKind Kind, int Value)
 {

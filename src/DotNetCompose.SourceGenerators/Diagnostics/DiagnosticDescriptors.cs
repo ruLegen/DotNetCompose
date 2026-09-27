@@ -19,7 +19,9 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
     internal sealed record DiagnosticInfo(DiagnosticDescriptor Descriptor, LocationInfo? Location, object?[]? MessageArgs)
     {
         public DiagnosticInfo(DiagnosticDescriptor descriptor, LocationInfo? location)
-            : this(descriptor, location, null) { }
+            : this(descriptor, location, null)
+        {
+        }
 
         public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, Location location, params object[]? MessageArgs)
              => new DiagnosticInfo(descriptor, LocationInfo.FromLocation(location), MessageArgs);

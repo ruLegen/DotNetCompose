@@ -24,11 +24,13 @@ namespace DotNetCompose.Runtime.Snapshots
         public override SnapshotApplyResult Apply()
         {
             ValidateOpen(this);
-            if (_parent.Disposed || _parent.Applied) return SnapshotApplyResult.Failure("The parent snapshot is closed.");
+            if (_parent.Disposed || _parent.Applied)
+                return SnapshotApplyResult.Failure("The parent snapshot is closed.");
             HashSet<IStateObject>? modified = Modified;
             if (modified == null || modified.Count == 0)
             {
-                using (Snapshot.Lock()) CloseLocked();
+                using (Snapshot.Lock())
+                    CloseLocked();
                 Applied = true;
                 return SnapshotApplyResult.Success;
             }
@@ -54,7 +56,8 @@ namespace DotNetCompose.Runtime.Snapshots
                 Applied = true;
                 Modified = null;
                 if (ReferenceEquals(_parent, GlobalSnapshot))
-                    foreach (IStateObject state in modified) NotifyGlobalWrite(state);
+                    foreach (IStateObject state in modified)
+                        NotifyGlobalWrite(state);
             }
 
             return mergeResult;

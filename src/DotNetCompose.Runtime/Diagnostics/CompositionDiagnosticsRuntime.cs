@@ -85,11 +85,13 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         internal static IDisposable RegisterSessionFlags(CompositionDiagnosticsFlags flags)
         {
-            if (flags == CompositionDiagnosticsFlags.None) return EmptyRegistration.Instance;
+            if (flags == CompositionDiagnosticsFlags.None)
+                return EmptyRegistration.Instance;
             lock (s_gate)
             {
                 for (int bit = 0; bit < s_sessionFlagCounts.Length; bit++)
-                    if ((((int)flags) & (1 << bit)) != 0) s_sessionFlagCounts[bit]++;
+                    if ((((int)flags) & (1 << bit)) != 0)
+                        s_sessionFlagCounts[bit]++;
                 RecomputeEnabledFlagsLocked();
             }
             return new FlagRegistration(flags);
@@ -108,14 +110,16 @@ namespace DotNetCompose.Runtime.Diagnostics
         {
             int flags = s_eventSourceFlags;
             for (int bit = 0; bit < s_sessionFlagCounts.Length; bit++)
-                if (s_sessionFlagCounts[bit] > 0) flags |= 1 << bit;
+                if (s_sessionFlagCounts[bit] > 0)
+                    flags |= 1 << bit;
             Volatile.Write(ref s_enabledFlags, flags);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void BeginCompositionPass(object composition, bool recompose)
         {
-            if (!IsEnabled(CompositionDiagnosticsFlags.All)) return;
+            if (!IsEnabled(CompositionDiagnosticsFlags.All))
+                return;
             BeginCompositionPassCore(composition, recompose);
         }
 
@@ -128,12 +132,14 @@ namespace DotNetCompose.Runtime.Diagnostics
                 CompositionState? state;
                 if (!s_compositions.TryGetValue(composition, out state))
                 {
-                    if (eventFlags == CompositionDiagnosticsFlags.None) return;
+                    if (eventFlags == CompositionDiagnosticsFlags.None)
+                        return;
                     state = s_compositions.GetValue(composition, CreateCompositionState);
                 }
 
                 CompositionDiagnosticsFlags flags = state.Dispatcher.EnabledFlags | eventFlags;
-                if (flags == CompositionDiagnosticsFlags.None) return;
+                if (flags == CompositionDiagnosticsFlags.None)
+                    return;
 
                 PassFrame pass = new PassFrame(
                     state,
@@ -152,7 +158,8 @@ namespace DotNetCompose.Runtime.Diagnostics
         internal static void CompleteCompositionPass(object composition)
         {
             PassFrame? pass = FindCurrentPass(composition);
-            if (pass == null) return;
+            if (pass == null)
+                return;
             try
             {
                 AbortOpenInvocations(pass);
@@ -175,7 +182,9 @@ namespace DotNetCompose.Runtime.Diagnostics
                     pass.State.Dispatcher.ReplaceSnapshot(CreateSnapshot(pass));
                 pass.State.PendingPass = pass;
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 RemoveCurrentPass(pass);
@@ -185,7 +194,8 @@ namespace DotNetCompose.Runtime.Diagnostics
         internal static void ReportCompositionPassException(object composition, Exception exception)
         {
             PassFrame? pass = FindCurrentPass(composition);
-            if (pass == null) return;
+            if (pass == null)
+                return;
             try
             {
                 AbortOpenInvocations(pass);
@@ -205,7 +215,9 @@ namespace DotNetCompose.Runtime.Diagnostics
                         exception.Message);
                 pass.State.PendingPass = null;
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 RemoveCurrentPass(pass);
@@ -221,11 +233,14 @@ namespace DotNetCompose.Runtime.Diagnostics
             int sourceLine,
             string parameterNames)
         {
-            if (!IsSupported) return default;
+            if (!IsSupported)
+                return default;
             PassFrame? pass = CurrentPass;
-            if (pass == null) return default;
+            if (pass == null)
+                return default;
             CompositionDiagnosticsFlags flags = CurrentFlags(pass.State);
-            if ((flags & ComposableFrameFlags) == 0) return default;
+            if ((flags & ComposableFrameFlags) == 0)
+                return default;
             return BeginCore(pass, flags, methodId, groupKey, memberName, sourcePath, sourceLine, parameterNames);
         }
 
@@ -297,14 +312,18 @@ namespace DotNetCompose.Runtime.Diagnostics
             bool forced,
             ReadOnlySpan<byte> parameterStates)
         {
-            if (!token.IsActive) return;
+            if (!token.IsActive)
+                return;
             try
             {
                 PassFrame? pass = CurrentPass;
-                if (pass == null || pass.PassId != token.PassId) return;
+                if (pass == null || pass.PassId != token.PassId)
+                    return;
                 int index = pass.OpenInvocations.Count - 1;
-                while (index >= 0 && pass.OpenInvocations[index].InvocationId != token.InvocationId) index--;
-                if (index < 0) return;
+                while (index >= 0 && pass.OpenInvocations[index].InvocationId != token.InvocationId)
+                    index--;
+                if (index < 0)
+                    return;
                 while (pass.OpenInvocations.Count - 1 > index)
                     CompleteInvocation(pass, pass.OpenInvocations[pass.OpenInvocations.Count - 1],
                         ComposableExecutionOutcome.Aborted, false, ReadOnlySpan<byte>.Empty);
@@ -321,11 +340,13 @@ namespace DotNetCompose.Runtime.Diagnostics
             try
             {
                 PassFrame? pass = CurrentPass;
-                if (pass == null || (CurrentFlags(pass.State) & CompositionDiagnosticsFlags.StateReads) == 0) return;
+                if (pass == null || (CurrentFlags(pass.State) & CompositionDiagnosticsFlags.StateReads) == 0)
+                    return;
                 InvocationFrame? invocation = pass.OpenInvocations.Count == 0
                     ? null
                     : pass.OpenInvocations[pass.OpenInvocations.Count - 1];
-                if (invocation != null) invocation.StateReadCount++;
+                if (invocation != null)
+                    invocation.StateReadCount++;
                 int stateId = RuntimeHelpers.GetHashCode(state);
                 pass.State.Dispatcher.Publish(new CompositionDiagnosticEvent(
                     CompositionDiagnosticEventKind.StateRead,
@@ -345,18 +366,23 @@ namespace DotNetCompose.Runtime.Diagnostics
                     invocation?.Descriptor.MethodId ?? 0,
                     stateId);
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         internal static void BeginApplyChanges(object composition, int operationCount)
         {
-            if (!s_compositions.TryGetValue(composition, out CompositionState? state)) return;
+            if (!s_compositions.TryGetValue(composition, out CompositionState? state))
+                return;
             PassFrame? pass = state.PendingPass;
-            if (pass == null) return;
+            if (pass == null)
+                return;
             CompositionDiagnosticsFlags flags = CurrentFlags(state);
             if ((flags & (CompositionDiagnosticsFlags.ApplyChanges |
                 CompositionDiagnosticsFlags.Timings |
-                CompositionDiagnosticsFlags.DetailedTimeline)) == 0) return;
+                CompositionDiagnosticsFlags.DetailedTimeline)) == 0)
+                return;
             pass.ApplyActive = true;
             pass.ApplyStartedTimestamp = (flags & CompositionDiagnosticsFlags.Timings) != 0
                 ? Stopwatch.GetTimestamp()
@@ -372,9 +398,11 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         internal static void CompleteApplyChanges(object composition, int operationCount)
         {
-            if (!s_compositions.TryGetValue(composition, out CompositionState? state)) return;
+            if (!s_compositions.TryGetValue(composition, out CompositionState? state))
+                return;
             PassFrame? pass = state.PendingPass;
-            if (pass == null) return;
+            if (pass == null)
+                return;
             try
             {
                 if (pass.ApplyActive)
@@ -392,7 +420,9 @@ namespace DotNetCompose.Runtime.Diagnostics
                     EventSource.ApplyChangesEnded(state.CompositionId, pass.PassId, operationCount, duration);
                 }
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 state.PendingPass = null;
@@ -401,9 +431,11 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         internal static void ReportApplyChangesException(object composition, Exception exception)
         {
-            if (!s_compositions.TryGetValue(composition, out CompositionState? state)) return;
+            if (!s_compositions.TryGetValue(composition, out CompositionState? state))
+                return;
             PassFrame? pass = state.PendingPass;
-            if (pass == null) return;
+            if (pass == null)
+                return;
             try
             {
                 state.Dispatcher.Publish(new CompositionDiagnosticEvent(
@@ -418,7 +450,9 @@ namespace DotNetCompose.Runtime.Diagnostics
                     exception.GetType().FullName ?? exception.GetType().Name,
                     exception.Message);
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 state.PendingPass = null;
@@ -427,9 +461,11 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         internal static void ReportChangesDiscarded(object composition, int operationCount)
         {
-            if (!s_compositions.TryGetValue(composition, out CompositionState? state)) return;
+            if (!s_compositions.TryGetValue(composition, out CompositionState? state))
+                return;
             PassFrame? pass = state.PendingPass;
-            if (pass == null) return;
+            if (pass == null)
+                return;
             try
             {
                 CompositionDiagnosticsFlags flags = CurrentFlags(state);
@@ -445,7 +481,9 @@ namespace DotNetCompose.Runtime.Diagnostics
                     EventSource.ChangesDiscarded(state.CompositionId, pass.PassId, operationCount);
                 }
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 state.PendingPass = null;
@@ -454,7 +492,8 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         internal static void ReportCompositionDisposed(object composition)
         {
-            if (!s_compositions.TryGetValue(composition, out CompositionState? state)) return;
+            if (!s_compositions.TryGetValue(composition, out CompositionState? state))
+                return;
             try
             {
                 state.Dispatcher.Publish(new CompositionDiagnosticEvent(
@@ -464,7 +503,9 @@ namespace DotNetCompose.Runtime.Diagnostics
                     state.PendingPass?.PassId ?? 0));
                 state.Dispatcher.Dispose();
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 s_compositions.Remove(composition);
@@ -495,7 +536,8 @@ namespace DotNetCompose.Runtime.Diagnostics
             ReadOnlySpan<byte> parameterStates)
         {
             int last = pass.OpenInvocations.Count - 1;
-            if (last < 0 || !ReferenceEquals(pass.OpenInvocations[last], frame)) return;
+            if (last < 0 || !ReferenceEquals(pass.OpenInvocations[last], frame))
+                return;
             pass.OpenInvocations.RemoveAt(last);
             frame.Outcome = outcome;
             frame.Forced = forced;
@@ -525,7 +567,8 @@ namespace DotNetCompose.Runtime.Diagnostics
             if ((frame.Flags & (CompositionDiagnosticsFlags.Composables |
                 CompositionDiagnosticsFlags.ParameterStates |
                 CompositionDiagnosticsFlags.Timings |
-                CompositionDiagnosticsFlags.DetailedTimeline)) == 0) return;
+                CompositionDiagnosticsFlags.DetailedTimeline)) == 0)
+                return;
 
             ulong states0 = Pack(parameterStates, 0);
             ulong states1 = Pack(parameterStates, 32);
@@ -567,7 +610,8 @@ namespace DotNetCompose.Runtime.Diagnostics
         private static CompositionDiagnosticsSnapshot CreateSnapshot(PassFrame pass)
         {
             ComposableInvocationSnapshot[] roots = new ComposableInvocationSnapshot[pass.Roots.Count];
-            for (int index = 0; index < roots.Length; index++) roots[index] = Freeze(pass.Roots[index]);
+            for (int index = 0; index < roots.Length; index++)
+                roots[index] = Freeze(pass.Roots[index]);
             return new CompositionDiagnosticsSnapshot(
                 true,
                 roots.Length == 0
@@ -581,7 +625,8 @@ namespace DotNetCompose.Runtime.Diagnostics
         private static ComposableInvocationSnapshot Freeze(InvocationFrame frame)
         {
             ComposableInvocationSnapshot[] children = new ComposableInvocationSnapshot[frame.Children.Count];
-            for (int index = 0; index < children.Length; index++) children[index] = Freeze(frame.Children[index]);
+            for (int index = 0; index < children.Length; index++)
+                children[index] = Freeze(frame.Children[index]);
             return new ComposableInvocationSnapshot(
                 frame.InvocationId,
                 frame.ParentInvocationId,
@@ -607,7 +652,8 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         private static PassFrame? FindCurrentPass(object composition)
         {
-            if (!s_compositions.TryGetValue(composition, out CompositionState? state)) return null;
+            if (!s_compositions.TryGetValue(composition, out CompositionState? state))
+                return null;
             PassFrame? pass = CurrentPass;
             return pass != null && ReferenceEquals(pass.State, state) ? pass : null;
         }
@@ -615,9 +661,11 @@ namespace DotNetCompose.Runtime.Diagnostics
         private static void RemoveCurrentPass(PassFrame pass)
         {
             List<PassFrame>? stack = t_passStack;
-            if (stack == null || stack.Count == 0 || !ReferenceEquals(stack[stack.Count - 1], pass)) return;
+            if (stack == null || stack.Count == 0 || !ReferenceEquals(stack[stack.Count - 1], pass))
+                return;
             stack.RemoveAt(stack.Count - 1);
-            if (stack.Count == 0) t_passStack = null;
+            if (stack.Count == 0)
+                t_passStack = null;
         }
 
         private static CompositionDiagnosticsFlags CurrentFlags(CompositionState state) =>
@@ -639,7 +687,8 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         private static ulong Pack(ReadOnlySpan<byte> states, int offset)
         {
-            if (offset >= states.Length) return 0;
+            if (offset >= states.Length)
+                return 0;
             ulong packed = 0;
             int count = Math.Min(32, states.Length - offset);
             for (int index = 0; index < count; index++)
@@ -756,12 +805,14 @@ namespace DotNetCompose.Runtime.Diagnostics
             public void Dispose()
             {
                 CompositionDiagnosticsFlags flags = _flags;
-                if (flags == CompositionDiagnosticsFlags.None) return;
+                if (flags == CompositionDiagnosticsFlags.None)
+                    return;
                 _flags = CompositionDiagnosticsFlags.None;
                 lock (s_gate)
                 {
                     for (int bit = 0; bit < s_sessionFlagCounts.Length; bit++)
-                        if ((((int)flags) & (1 << bit)) != 0) s_sessionFlagCounts[bit]--;
+                        if ((((int)flags) & (1 << bit)) != 0)
+                            s_sessionFlagCounts[bit]--;
                     RecomputeEnabledFlagsLocked();
                 }
             }
@@ -770,7 +821,9 @@ namespace DotNetCompose.Runtime.Diagnostics
         private sealed class EmptyRegistration : IDisposable
         {
             internal static readonly EmptyRegistration Instance = new EmptyRegistration();
-            public void Dispose() { }
+            public void Dispose()
+            {
+            }
         }
 
         [EventSource(Name = "DotNetCompose-Composition")]
@@ -792,15 +845,23 @@ namespace DotNetCompose.Runtime.Diagnostics
 
             protected override void OnEventCommand(EventCommandEventArgs command)
             {
-                if (command.Command == EventCommand.Enable) Interlocked.Increment(ref _epoch);
+                if (command.Command == EventCommand.Enable)
+                    Interlocked.Increment(ref _epoch);
                 CompositionDiagnosticsFlags flags = CompositionDiagnosticsFlags.None;
-                if (IsEnabled(EventLevel.Informational, Keywords.Passes)) flags |= CompositionDiagnosticsFlags.Passes;
-                if (IsEnabled(EventLevel.Verbose, Keywords.Composables)) flags |= CompositionDiagnosticsFlags.Composables;
-                if (IsEnabled(EventLevel.Verbose, Keywords.ParameterStates)) flags |= CompositionDiagnosticsFlags.ParameterStates;
-                if (IsEnabled(EventLevel.Verbose, Keywords.StateReads)) flags |= CompositionDiagnosticsFlags.StateReads;
-                if (IsEnabled(EventLevel.Informational, Keywords.ApplyChanges)) flags |= CompositionDiagnosticsFlags.ApplyChanges;
-                if (IsEnabled(EventLevel.Verbose, Keywords.Timings)) flags |= CompositionDiagnosticsFlags.Timings;
-                if (IsEnabled(EventLevel.Verbose, Keywords.DetailedTimeline)) flags |= CompositionDiagnosticsFlags.DetailedTimeline;
+                if (IsEnabled(EventLevel.Informational, Keywords.Passes))
+                    flags |= CompositionDiagnosticsFlags.Passes;
+                if (IsEnabled(EventLevel.Verbose, Keywords.Composables))
+                    flags |= CompositionDiagnosticsFlags.Composables;
+                if (IsEnabled(EventLevel.Verbose, Keywords.ParameterStates))
+                    flags |= CompositionDiagnosticsFlags.ParameterStates;
+                if (IsEnabled(EventLevel.Verbose, Keywords.StateReads))
+                    flags |= CompositionDiagnosticsFlags.StateReads;
+                if (IsEnabled(EventLevel.Informational, Keywords.ApplyChanges))
+                    flags |= CompositionDiagnosticsFlags.ApplyChanges;
+                if (IsEnabled(EventLevel.Verbose, Keywords.Timings))
+                    flags |= CompositionDiagnosticsFlags.Timings;
+                if (IsEnabled(EventLevel.Verbose, Keywords.DetailedTimeline))
+                    flags |= CompositionDiagnosticsFlags.DetailedTimeline;
                 SetEventSourceFlags(flags);
             }
 
@@ -808,8 +869,10 @@ namespace DotNetCompose.Runtime.Diagnostics
             internal void EnsureMethodDefinition(MethodDescriptor descriptor)
             {
                 int epoch = Epoch;
-                if (epoch == 0 || Volatile.Read(ref descriptor.EventSourceEpoch) == epoch) return;
-                if (Interlocked.Exchange(ref descriptor.EventSourceEpoch, epoch) == epoch) return;
+                if (epoch == 0 || Volatile.Read(ref descriptor.EventSourceEpoch) == epoch)
+                    return;
+                if (Interlocked.Exchange(ref descriptor.EventSourceEpoch, epoch) == epoch)
+                    return;
                 MethodDefinition(
                     descriptor.MethodId,
                     descriptor.Source.MemberName,

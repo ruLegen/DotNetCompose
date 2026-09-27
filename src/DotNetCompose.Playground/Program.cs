@@ -21,8 +21,10 @@ internal static class Program
         composition.ComposeContent((composer, changed, defaults) =>
         {
             composer.StartNode(10);
-            if (composer.Inserting) composer.CreateNode(() => new TextNode());
-            else composer.UseNode();
+            if (composer.Inserting)
+                composer.CreateNode(() => new TextNode());
+            else
+                composer.UseNode();
             composer.ApplyNode<TextNode, string>($"Count: {count.Value}", (node, text) => node.Text = text);
             composer.EndNode();
         });
@@ -49,7 +51,8 @@ internal static class Program
     private static void PrintChanges(IControlledComposition composition)
     {
         Console.WriteLine("Pending operations:");
-        foreach (CompositionOperation operation in composition.PendingChanges!) Console.WriteLine($"  {operation}");
+        foreach (CompositionOperation operation in composition.PendingChanges!)
+            Console.WriteLine($"  {operation}");
     }
 
     private sealed class TextNode
@@ -63,13 +66,19 @@ internal static class Program
         private readonly Stack<TextNode> _path = new Stack<TextNode>();
         public TextNode Root { get; } = new TextNode();
         public TextNode Current => _path.Count == 0 ? Root : _path.Peek();
-        public void OnBeginChanges() { }
-        public void OnEndChanges() { }
+        public void OnBeginChanges()
+        {
+        }
+        public void OnEndChanges()
+        {
+        }
         public void Down(TextNode node) => _path.Push(node);
         public void Up() => _path.Pop();
         public void InsertTopDown(int index, TextNode instance) => Current.Children.Insert(index, instance);
         // This backend inserts top-down. A bottom-up backend would insert here instead.
-        public void InsertBottomUp(int index, TextNode instance) { }
+        public void InsertBottomUp(int index, TextNode instance)
+        {
+        }
         public void Remove(int index, int count) => Current.Children.RemoveRange(index, count);
         public void Move(int from, int to, int count)
         {
@@ -78,20 +87,32 @@ internal static class Program
             Current.Children.InsertRange(to > from ? to - count : to, moved);
         }
         public void Apply(Action<TextNode, object?> block, object? value) => block(Current, value);
-        public void Clear() { _path.Clear(); Root.Children.Clear(); }
+        public void Clear()
+        {
+            _path.Clear();
+            Root.Children.Clear();
+        }
     }
 
     private sealed class DemoContext : SynchronizationContext
     {
         private readonly Queue<Action> _queue = new Queue<Action>();
         public override void Post(SendOrPostCallback callback, object? state)
-        { lock (_queue) _queue.Enqueue(() => callback(state)); }
+        {
+            lock (_queue)
+                _queue.Enqueue(() => callback(state));
+        }
         public void Drain()
         {
             while (true)
             {
                 Action action;
-                lock (_queue) { if (_queue.Count == 0) return; action = _queue.Dequeue(); }
+                lock (_queue)
+                {
+                    if (_queue.Count == 0)
+                        return;
+                    action = _queue.Dequeue();
+                }
                 action();
             }
         }

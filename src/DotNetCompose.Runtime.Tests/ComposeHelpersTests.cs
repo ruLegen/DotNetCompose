@@ -39,7 +39,9 @@ public class ComposeHelpersTests
     public void GetReadonlyLambdaValidatesArguments()
     {
         IComposerContext context = DispatchProxy.Create<IComposerContext, ThrowingComposerProxy>();
-        Assert.Throws<ArgumentNullException>(() => ComposeHelpers.GetReadonlyLambda(null!, 0, () => (Action)(() => { })));
+        Assert.Throws<ArgumentNullException>(() => ComposeHelpers.GetReadonlyLambda(null!, 0, () => (Action)(() =>
+        {
+        })));
         Assert.Throws<ArgumentNullException>(() => ComposeHelpers.GetReadonlyLambda(context, 0, null!));
     }
 

@@ -127,8 +127,10 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public SnapshotIdSet AndNot(SnapshotIdSet other)
         {
-            if (other == Empty) return this;
-            if (this == Empty) return Empty;
+            if (other == Empty)
+                return this;
+            if (this == Empty)
+                return Empty;
             if (other._lowerBound == _lowerBound && ReferenceEquals(other._belowBound, _belowBound))
                 return new SnapshotIdSet(_upperSet & ~other._upperSet, _lowerSet & ~other._lowerSet, _lowerBound, null);
             return FastFold(other._belowBound, other._lowerSet, other._upperSet, other._lowerBound, this, (acc, id) => acc.Clear(id));
@@ -136,7 +138,8 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public SnapshotIdSet And(SnapshotIdSet other)
         {
-            if (other == Empty || this == Empty) return Empty;
+            if (other == Empty || this == Empty)
+                return Empty;
             if (other._lowerBound == _lowerBound && ReferenceEquals(other._belowBound, _belowBound))
             {
                 long newUpper = _upperSet & other._upperSet;
@@ -153,8 +156,10 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public SnapshotIdSet Or(SnapshotIdSet other)
         {
-            if (other == Empty) return this;
-            if (this == Empty) return other;
+            if (other == Empty)
+                return this;
+            if (this == Empty)
+                return other;
             if (other._lowerBound == _lowerBound && ReferenceEquals(other._belowBound, _belowBound))
                 return new SnapshotIdSet(_upperSet | other._upperSet, _lowerSet | other._lowerSet, _lowerBound, _belowBound);
             if (_belowBound == null)
@@ -229,7 +234,8 @@ namespace DotNetCompose.Runtime.Snapshots
         private static long[] AppendBitsToArray(long[]? existing, long bits, long baseId)
         {
             int count = PopCount(bits);
-            if (count == 0) return existing ?? Array.Empty<long>();
+            if (count == 0)
+                return existing ?? Array.Empty<long>();
 
             long[] newArray = new long[(existing?.Length ?? 0) + count];
             if (existing != null)
@@ -267,9 +273,14 @@ namespace DotNetCompose.Runtime.Snapshots
 
         private static int TrailingZeroCount(long value)
         {
-            if (value == 0) return 64;
+            if (value == 0)
+                return 64;
             int count = 0;
-            while ((value & 1) == 0) { count++; value >>= 1; }
+            while ((value & 1) == 0)
+            {
+                count++;
+                value >>= 1;
+            }
             return count;
         }
 
@@ -277,7 +288,11 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             int count = 0;
             ulong bits = unchecked((ulong)value);
-            while (bits != 0) { count += (int)(bits & 1); bits >>= 1; }
+            while (bits != 0)
+            {
+                count += (int)(bits & 1);
+                bits >>= 1;
+            }
             return count;
         }
     }

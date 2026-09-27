@@ -270,6 +270,7 @@ namespace DotNetCompose.Runtime.Diagnostics
         public bool Forced => _invocation.Forced;
         public int StateReadCount => _invocation.StateReadCount;
         public long DurationTicks => _invocation.DurationTicks;
+        public TimeSpan DurationTime => TimeSpan.FromTicks(DurationTicks);
         public IReadOnlyList<CompositionParameterInfo> Parameters => _invocation.Parameters;
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
         public IReadOnlyList<ComposableInvocationSnapshot> Children => _invocation.Children;

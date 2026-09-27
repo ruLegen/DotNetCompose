@@ -8,13 +8,19 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public bool Equivalent(T a, T b)
         {
-            if (a == null) return b == null;
-            if (b == null) return false;
+            if (a == null)
+                return b == null;
+            if (b == null)
+                return false;
             return EqualityComparer<T>.Default.Equals(a, b);
         }
 
         public T? Merge(T previous, T current, T applied) => default;
-        public bool TryMerge(T previous, T current, T applied, out T result) { result = default!; return false; }
+        public bool TryMerge(T previous, T current, T applied, out T result)
+        {
+            result = default!;
+            return false;
+        }
     }
 
     public class ReferentialPolicy<T> : ISnapshotMutationPolicy<T>
@@ -24,7 +30,11 @@ namespace DotNetCompose.Runtime.Snapshots
         public bool Equivalent(T a, T b) => ReferenceEquals(a, b);
 
         public T? Merge(T previous, T current, T applied) => default;
-        public bool TryMerge(T previous, T current, T applied, out T result) { result = default!; return false; }
+        public bool TryMerge(T previous, T current, T applied, out T result)
+        {
+            result = default!;
+            return false;
+        }
     }
 
     public class NeverEqualPolicy<T> : ISnapshotMutationPolicy<T>
@@ -34,6 +44,10 @@ namespace DotNetCompose.Runtime.Snapshots
         public bool Equivalent(T a, T b) => false;
 
         public T? Merge(T previous, T current, T applied) => default;
-        public bool TryMerge(T previous, T current, T applied, out T result) { result = default!; return false; }
+        public bool TryMerge(T previous, T current, T applied, out T result)
+        {
+            result = default!;
+            return false;
+        }
     }
 }

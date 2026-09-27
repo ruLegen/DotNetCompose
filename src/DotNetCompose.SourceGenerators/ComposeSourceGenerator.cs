@@ -1,4 +1,5 @@
-﻿using DotNetCompose.SourceGenerators.Diagnostics;
+﻿
+using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Extensions;
 using DotNetCompose.SourceGenerators.Helpers;
 using DotNetCompose.SourceGenerators.Pipeline;
@@ -122,7 +123,8 @@ namespace DotNetCompose.SourceGenerators
                     foreach (MethodFullNameAndDeclaration method in cls.Methods)
                     {
                         MethodDeclarationSyntax? declaration = method.Declaration;
-                        if (declaration == null) continue;
+                        if (declaration == null)
+                            continue;
                         string methodName = declaration.Identifier.Text;
                         if (declaration.ExpressionBody != null)
                         {
@@ -310,12 +312,16 @@ namespace DotNetCompose.SourceGenerators
                             .DescendantNodes()
                             .OfType<InvocationExpressionSyntax>())
                         {
-                            if (invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is not { } containing) continue;
+                            if (invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is not { } containing)
+                                continue;
                             IMethodSymbol? containingSymbol = model.GetDeclaredSymbol(containing, token);
                             if (containingSymbol?.GetAttributes().Any(attribute =>
-                                attribute.AttributeClass?.GetFullMetadataName() == Consts.ComposableAttributeFullName) == true) continue;
-                            if (model.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol target) continue;
-                            if (!target.IsComposableFunction()) continue;
+                                attribute.AttributeClass?.GetFullMetadataName() == Consts.ComposableAttributeFullName) == true)
+                                continue;
+                            if (model.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol target)
+                                continue;
+                            if (!target.IsComposableFunction())
+                                continue;
                             diagnostics.Add(Diagnostic.Create(DiagnosticDescriptors.DNC015_DirectComposableCall,
                                 invocation.GetLocation(), target.Name));
                         }

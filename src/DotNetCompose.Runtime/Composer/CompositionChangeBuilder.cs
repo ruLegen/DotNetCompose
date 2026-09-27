@@ -12,27 +12,38 @@ namespace DotNetCompose.Runtime.Composer
 
         internal CompositionChangeBuilder(CompositionGroup? old, CompositionGroup next)
         {
-            using (ComposerSlotTable.Writer writer = _insertTable.OpenWriter()) PrepareInserts(writer, next);
-            if (old == null) Insert(next, 0, null);
-            else DiffGroup(old, next, 0);
+            using (ComposerSlotTable.Writer writer = _insertTable.OpenWriter())
+                PrepareInserts(writer, next);
+            if (old == null)
+                Insert(next, 0, null);
+            else
+                DiffGroup(old, next, 0);
             DiffNodes(old?.Children ?? new List<CompositionGroup>(), next.Children);
         }
 
         private static void WriteNew(ComposerSlotTable.Writer writer, CompositionGroup group)
         {
-            if (group.IsNode) writer.StartNode(group.Key, null);
-            else if (group.Kind == CompositionGroupKind.Movable) writer.StartGroup(group.Key, group.ObjectKey);
-            else writer.StartGroup(group.Key);
+            if (group.IsNode)
+                writer.StartNode(group.Key, null);
+            else if (group.Kind == CompositionGroupKind.Movable)
+                writer.StartGroup(group.Key, group.ObjectKey);
+            else
+                writer.StartGroup(group.Key);
             group.TemporaryAnchor = writer.CurrentAnchor;
-            foreach (object? slot in group.Slots) writer.AppendSlot(slot);
-            foreach (CompositionGroup child in group.Children) WriteNew(writer, child);
+            foreach (object? slot in group.Slots)
+                writer.AppendSlot(slot);
+            foreach (CompositionGroup child in group.Children)
+                WriteNew(writer, child);
             writer.EndGroup();
         }
 
         private static void PrepareInserts(ComposerSlotTable.Writer writer, CompositionGroup group)
         {
-            if (group.Anchor.IsEmpty) WriteNew(writer, group);
-            else foreach (CompositionGroup child in group.Children) PrepareInserts(writer, child);
+            if (group.Anchor.IsEmpty)
+                WriteNew(writer, group);
+            else
+                foreach (CompositionGroup child in group.Children)
+                    PrepareInserts(writer, child);
         }
 
         private void Insert(CompositionGroup group, int insertionIndex, CompositionGroup? parent)
@@ -42,7 +53,8 @@ namespace DotNetCompose.Runtime.Composer
 
         private void DiffGroup(CompositionGroup old, CompositionGroup next, int groupIndex)
         {
-            if (ReferenceEquals(old, next)) return;
+            if (ReferenceEquals(old, next))
+                return;
             for (int slotOffset = 0; slotOffset < next.Slots.Count; slotOffset++)
             {
                 object? value = next.Slots[slotOffset];
@@ -61,13 +73,15 @@ namespace DotNetCompose.Runtime.Composer
             {
                 CompositionGroup? previous = child.Previous ?? (remaining.Contains(child) ? child : null);
                 int found = previous == null ? -1 : remaining.IndexOf(previous);
-                if (found < 0) Insert(child, position, next);
+                if (found < 0)
+                    Insert(child, position, next);
                 else
                 {
                     if (found > 0)
                     {
                         int sourceGroupIndex = position;
-                        for (int index = 0; index < found; index++) sourceGroupIndex += remaining[index].Size;
+                        for (int index = 0; index < found; index++)
+                            sourceGroupIndex += remaining[index].Size;
                         Operations.Add(CompositionOperation.MoveGroup(child, position, sourceGroupIndex));
                     }
                     remaining.RemoveAt(found);
@@ -84,8 +98,10 @@ namespace DotNetCompose.Runtime.Composer
             List<CompositionGroup> nodes = new List<CompositionGroup>();
             foreach (CompositionGroup group in groups)
             {
-                if (group.IsNode) nodes.Add(group);
-                else nodes.AddRange(Nodes(group.Children));
+                if (group.IsNode)
+                    nodes.Add(group);
+                else
+                    nodes.AddRange(Nodes(group.Children));
             }
             return nodes;
         }
@@ -100,7 +116,8 @@ namespace DotNetCompose.Runtime.Composer
                 int found = -1;
                 for (int candidateIndex = nodeIndex; candidateIndex < working.Count; candidateIndex++)
                 {
-                    if (!ReferenceEquals(working[candidateIndex].Node, node.Node)) continue;
+                    if (!ReferenceEquals(working[candidateIndex].Node, node.Node))
+                        continue;
                     found = candidateIndex;
                     break;
                 }
@@ -127,7 +144,8 @@ namespace DotNetCompose.Runtime.Composer
                     DiffNodes(old?.Children ?? new List<CompositionGroup>(), node.Children);
                     if (Operations.Count == start + 1 && old != null)
                         Operations.RemoveAt(start);
-                    else Operations.Add(CompositionOperation.Up());
+                    else
+                        Operations.Add(CompositionOperation.Up());
                 }
                 if (found < 0)
                     Operations.Add(CompositionOperation.InsertBottomUp(node, nodeIndex));

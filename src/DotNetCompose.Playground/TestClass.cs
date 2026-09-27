@@ -16,12 +16,12 @@ namespace DotNetCompose.Playground
     {
         public partial class Builders
         {
-            public static void IgnoredComposable(IComposerContext _ctx, ComposableArgumentsState changed = default,ComposableArgumentsDefaultState __defaultParamState = default)
+            public static void IgnoredComposable(IComposerContext _ctx, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 Console.WriteLine("Print");
             }
 
-            public static void IgnoredComposable2(IComposerContext _ctx, ComposableArgumentsState changed = default,ComposableArgumentsDefaultState __defaultParamState = default)
+            public static void IgnoredComposable2(IComposerContext _ctx, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 Console.WriteLine("Print2");
             }
@@ -33,7 +33,7 @@ namespace DotNetCompose.Playground
             IgnoredComposable2();
         }
 
-      
+
 
         [Composable]
         [ComposableIgnore]
@@ -76,9 +76,9 @@ namespace DotNetCompose.Playground
             int rememberedInt = Composables.Remember(0, () => 3);
             string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
             Unstable(argInt, new object());
-            Stable(argInt,"", 3,"","");
-            StableTestGeneric<int>(argInt,3);
-            StableTestGeneric<object>(argInt,new object());
+            Stable(argInt, "", 3, "", "");
+            StableTestGeneric<int>(argInt, 3);
+            StableTestGeneric<object>(argInt, new object());
 
             ComposableTest(3, i =>
             {

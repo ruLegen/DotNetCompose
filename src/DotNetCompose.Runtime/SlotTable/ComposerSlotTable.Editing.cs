@@ -14,7 +14,8 @@ namespace DotNetCompose.Runtime.SlotTable
             public void Reposition(int groupIndex)
             {
                 EnsureOpen();
-                if (groupIndex < 0 || groupIndex > _groups.Count) throw new ArgumentOutOfRangeException(nameof(groupIndex));
+                if (groupIndex < 0 || groupIndex > _groups.Count)
+                    throw new ArgumentOutOfRangeException(nameof(groupIndex));
                 CurrentGroup = groupIndex;
             }
 
@@ -23,7 +24,8 @@ namespace DotNetCompose.Runtime.SlotTable
                 EnsureOpen();
                 GapBufferItemAnchor item = Table.Resolve(anchor);
                 int index = _groups.IndexOf(item);
-                if (!_existingGroups.Add(item)) throw new InvalidOperationException("Group is already open.");
+                if (!_existingGroups.Add(item))
+                    throw new InvalidOperationException("Group is already open.");
                 CurrentGroup = index + 1;
                 _groupStack.Push(item);
             }
@@ -46,11 +48,13 @@ namespace DotNetCompose.Runtime.SlotTable
                 int remaining = _groups.Count;
                 while (parent != GapBufferItemAnchor.Empty)
                 {
-                    if (remaining-- == 0) throw new InvalidOperationException("A group cannot be its own ancestor.");
+                    if (remaining-- == 0)
+                        throw new InvalidOperationException("A group cannot be its own ancestor.");
                     ref GroupRecord group = ref _groups.GetRef(parent);
                     group.Size += size;
                     group.NodeCount += nodes;
-                    if (group.IsNode) nodes = 0;
+                    if (group.IsNode)
+                        nodes = 0;
                     parent = group.ParentAnchor;
                 }
             }
@@ -63,7 +67,8 @@ namespace DotNetCompose.Runtime.SlotTable
                 while (boundary < insertionIndex && boundary < end)
                 {
                     int size = RecordAt(boundary).Size;
-                    if (size <= 0) throw new InvalidOperationException($"Invalid group size at {boundary}.");
+                    if (size <= 0)
+                        throw new InvalidOperationException($"Invalid group size at {boundary}.");
                     boundary += size;
                 }
                 if (insertionIndex < first || insertionIndex > end || boundary != insertionIndex)
@@ -75,7 +80,8 @@ namespace DotNetCompose.Runtime.SlotTable
                 ComposerSlotTable source, GroupAnchor sourceAnchor, int insertionIndex, GroupAnchor parent)
             {
                 EnsureOpen();
-                if (ReferenceEquals(source, Table)) throw new ArgumentException("Use MoveGroup within one table.", nameof(source));
+                if (ReferenceEquals(source, Table))
+                    throw new ArgumentException("Use MoveGroup within one table.", nameof(source));
                 GapBufferItemAnchor parentItem = Table.Resolve(parent, allowEmpty: true);
                 GapBufferItemAnchor sourceItem = source.Resolve(sourceAnchor);
                 ValidateInsertion(insertionIndex, parentItem);
@@ -97,7 +103,8 @@ namespace DotNetCompose.Runtime.SlotTable
                     {
                         object? value = source._slots.GetAt(sourceData + j);
                         GapBufferItemAnchor dataAnchor = _slots.InsertTrackedAt(dataIndex++, value);
-                        if (j == 0) group.DataAnchor = dataAnchor;
+                        if (j == 0)
+                            group.DataAnchor = dataAnchor;
                     }
                     GapBufferItemAnchor newAnchor = _groups.InsertTrackedAt(insertionIndex + i, group);
                     mapping.Add(oldAnchor, newAnchor);
@@ -113,13 +120,15 @@ namespace DotNetCompose.Runtime.SlotTable
                 GapBufferItemAnchor item = Table.Resolve(anchor);
                 int index = _groups.IndexOf(item);
                 GroupRecord root = _groups.Get(item);
-                if (root.Size <= 0) throw new InvalidOperationException($"Invalid group size at {index}.");
+                if (root.Size <= 0)
+                    throw new InvalidOperationException($"Invalid group size at {index}.");
                 for (int i = 0; i < root.Size; i++)
                 {
                     GroupRecord group = RecordAt(index);
                     int count = group.MetadataSlotCount + group.SlotCount;
                     int data = count == 0 ? 0 : _slots.IndexOf(group.DataAnchor);
-                    for (int j = 0; j < count; j++) _slots.RemoveAt(data);
+                    for (int j = 0; j < count; j++)
+                        _slots.RemoveAt(data);
                     _groups.RemoveAt(index);
                 }
                 AdjustAncestors(root.ParentAnchor, -root.Size, -(root.IsNode ? 1 : root.NodeCount));
@@ -134,7 +143,8 @@ namespace DotNetCompose.Runtime.SlotTable
                 int from = _groups.IndexOf(item);
                 GroupRecord group = _groups.Get(item);
                 ValidateInsertion(insertionIndex, group.ParentAnchor);
-                if (insertionIndex == from || insertionIndex == from + group.Size) return;
+                if (insertionIndex == from || insertionIndex == from + group.Size)
+                    return;
                 int dataFrom = DataBoundary(from);
                 int dataEnd = DataBoundary(from + group.Size);
                 int dataTo = DataBoundary(insertionIndex);
@@ -146,7 +156,8 @@ namespace DotNetCompose.Runtime.SlotTable
             {
                 EnsureOpen();
                 GroupRecord group = _groups.Get(Table.Resolve(anchor));
-                if (slotOffset < 0 || slotOffset >= group.SlotCount) throw new ArgumentOutOfRangeException(nameof(slotOffset));
+                if (slotOffset < 0 || slotOffset >= group.SlotCount)
+                    throw new ArgumentOutOfRangeException(nameof(slotOffset));
                 int index = _slots.IndexOf(group.DataAnchor) + group.MetadataSlotCount + slotOffset;
                 _slots.SetAt(index, value);
             }
@@ -156,27 +167,38 @@ namespace DotNetCompose.Runtime.SlotTable
                 EnsureOpen();
                 GapBufferItemAnchor item = Table.Resolve(anchor);
                 _groupStack.Push(item);
-                try { AppendSlot(value); }
-                finally { _groupStack.Pop(); }
+                try
+                {
+                    AppendSlot(value);
+                }
+                finally
+                {
+                    _groupStack.Pop();
+                }
             }
 
             public void TrimSlots(GroupAnchor anchor, int count)
             {
                 EnsureOpen();
                 ref GroupRecord group = ref _groups.GetRef(Table.Resolve(anchor));
-                if (count < 0 || count > group.SlotCount) throw new ArgumentOutOfRangeException(nameof(count));
-                if (count == group.SlotCount) return;
+                if (count < 0 || count > group.SlotCount)
+                    throw new ArgumentOutOfRangeException(nameof(count));
+                if (count == group.SlotCount)
+                    return;
                 int index = _slots.IndexOf(group.DataAnchor) + group.MetadataSlotCount + count;
-                for (int i = count; i < group.SlotCount; i++) _slots.RemoveAt(index);
+                for (int i = count; i < group.SlotCount; i++)
+                    _slots.RemoveAt(index);
                 group.SlotCount = count;
-                if (count + group.MetadataSlotCount == 0) group.DataAnchor = GapBufferItemAnchor.Empty;
+                if (count + group.MetadataSlotCount == 0)
+                    group.DataAnchor = GapBufferItemAnchor.Empty;
             }
 
             public void UpdateNode(GroupAnchor anchor, object? node)
             {
                 EnsureOpen();
                 GroupRecord group = _groups.Get(Table.Resolve(anchor));
-                if (!group.IsNode) throw new InvalidOperationException("Expected a node group.");
+                if (!group.IsNode)
+                    throw new InvalidOperationException("Expected a node group.");
                 _slots.Set(group.DataAnchor, node);
             }
 
@@ -184,7 +206,8 @@ namespace DotNetCompose.Runtime.SlotTable
             {
                 EnsureOpen();
                 GroupRecord group = _groups.Get(Table.Resolve(anchor));
-                if (!group.HasAux) throw new InvalidOperationException("Group has no auxiliary slot.");
+                if (!group.HasAux)
+                    throw new InvalidOperationException("Group has no auxiliary slot.");
                 int index = _slots.IndexOf(group.DataAnchor) + (group.IsNode ? 1 : 0) + (group.HasObjectKey ? 1 : 0);
                 _slots.SetAt(index, aux);
             }

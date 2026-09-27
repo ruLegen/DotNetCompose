@@ -17,7 +17,8 @@ namespace DotNetCompose.Runtime.Composer
             IReadOnlyDictionary<GroupAnchor, GroupAnchor> mapping)
         {
             group.Anchor = mapping[group.TemporaryAnchor];
-            foreach (CompositionGroup child in group.Children) AssignAnchors(child, mapping);
+            foreach (CompositionGroup child in group.Children)
+                AssignAnchors(child, mapping);
         }
 
         private static void RemoveGroup(ComposerSlotTable.Writer writer, CompositionGroup group) =>

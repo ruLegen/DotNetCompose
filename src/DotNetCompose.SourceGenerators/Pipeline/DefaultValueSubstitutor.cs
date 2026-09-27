@@ -20,7 +20,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             for (int i = 0; i < methodCtx.Parameters.Length; i++)
             {
                 var p = methodCtx.Parameters[i];
-                if (p.DefaultProviderType == null) continue;
+                if (p.DefaultProviderType == null)
+                    continue;
 
                 string providerTypeName = p.DefaultProviderType.ToDisplayString(
                     SymbolDisplayFormat.FullyQualifiedFormat

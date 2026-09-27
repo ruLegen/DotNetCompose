@@ -18,7 +18,7 @@ namespace DotNetCompose.SourceGenerators
         public const string DefaultAttributeFullName = "DotNetCompose.Runtime.DefaultAttribute`1";
 
         public const string DefaultEOL = "\r\n";
-        public static string DefaultIndent = new string(' ',4);
+        public static string DefaultIndent = new string(' ', 4);
 
         public static class Rewriter
         {
@@ -32,15 +32,15 @@ namespace DotNetCompose.SourceGenerators
         public static string NameWithWhiteSpace(string s) => string.Format("{0} ", s);
         public static class ComposeContext
         {
-            public const string FullName  = "DotNetCompose.Runtime.Composer.IComposerContext";
-            public const string StartRestartableGroupMethod  = "StartRestartableGroup";
-            public const string EndRestartableGroupMethod  = "EndRestartableGroup";
+            public const string FullName = "DotNetCompose.Runtime.Composer.IComposerContext";
+            public const string StartRestartableGroupMethod = "StartRestartableGroup";
+            public const string EndRestartableGroupMethod = "EndRestartableGroup";
 
-            public const string StartReplaceableGroupMethod  = "StartReplaceableGroup";
-            public const string EndReplaceableGroupMethod  = "EndReplaceableGroup";
+            public const string StartReplaceableGroupMethod = "StartReplaceableGroup";
+            public const string EndReplaceableGroupMethod = "EndReplaceableGroup";
 
-            public const string StartMovableGroupMethod  = "StartMovableGroup";
-            public const string EndMovableGroupMethod  = "EndMovableGroup";
+            public const string StartMovableGroupMethod = "StartMovableGroup";
+            public const string EndMovableGroupMethod = "EndMovableGroup";
 
             public const string ChangedMethod = "Changed";
             public const string SkippingProperty = "Skipping";
@@ -90,7 +90,7 @@ namespace DotNetCompose.SourceGenerators
 
             public static string FullNameWithGenericArguments(IEnumerable<string> genericNames)
             {
-                if(genericNames == null || !genericNames.Any())
+                if (genericNames == null || !genericNames.Any())
                     return FullName;
                 return string.Format("{0}<{1}>", FullName, string.Join(",", genericNames));
             }

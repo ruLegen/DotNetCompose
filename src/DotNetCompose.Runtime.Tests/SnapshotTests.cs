@@ -51,7 +51,10 @@ namespace DotNetCompose.Runtime.Tests
             var readValue = 0;
 
             using var ms = Snapshot.TakeMutableSnapshot();
-            ms.Enter(() => { state.Value = 20; });
+            ms.Enter(() =>
+            {
+                state.Value = 20;
+            });
             ms.Apply();
 
             Snapshot.SendApplyNotifications();
@@ -70,7 +73,10 @@ namespace DotNetCompose.Runtime.Tests
             Snapshot.Observe(
                 readObserver: obj => readObjects.Add(obj!),
                 writeObserver: null,
-                block: () => { var _ = state.Value; }
+                block: () =>
+                {
+                    var _ = state.Value;
+                }
             );
 
             Assert.Contains(state, readObjects);
@@ -86,7 +92,10 @@ namespace DotNetCompose.Runtime.Tests
             Snapshot.Observe(
                 readObserver: null,
                 writeObserver: obj => writeObjects.Add(obj!),
-                block: () => { state.Value = 99; }
+                block: () =>
+                {
+                    state.Value = 99;
+                }
             );
 
             Assert.Contains(state, writeObjects);

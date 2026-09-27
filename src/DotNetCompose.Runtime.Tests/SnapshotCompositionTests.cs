@@ -11,7 +11,11 @@ public class SnapshotCompositionTests
         var a = Composables.CreateMutableState(0);
         var b = Composables.CreateMutableState(0);
         using var pending = Snapshot.TakeMutableSnapshot();
-        pending.Enter(() => { a.Value = 1; b.Value = 1; });
+        pending.Enter(() =>
+        {
+            a.Value = 1;
+            b.Value = 1;
+        });
         b.Value = 2;
         Assert.False(pending.Apply().Succeeded);
         Assert.Equal(0, a.Value);
@@ -34,7 +38,10 @@ public class SnapshotCompositionTests
             Assert.Equal(0, state.Value);
         }
         for (int i = 0; i < 100; i++)
-        { using var unrelated = Snapshot.TakeMutableSnapshot(); Assert.True(unrelated.Apply().Succeeded); }
+        {
+            using var unrelated = Snapshot.TakeMutableSnapshot();
+            Assert.True(unrelated.Apply().Succeeded);
+        }
         Assert.Equal(0, state.Value);
     }
 
@@ -44,7 +51,8 @@ public class SnapshotCompositionTests
         var writes = new List<object>();
         using var observer = Snapshot.RegisterGlobalWriteObserver(writes.Add);
         var state = Composables.CreateMutableState(0);
-        state.Value = 1; state.Value = 2;
+        state.Value = 1;
+        state.Value = 2;
         Assert.Equal(2, writes.Count);
         using var snapshot = Snapshot.TakeMutableSnapshot();
         snapshot.Enter(() => state.Value = 3);
@@ -70,7 +78,8 @@ public class SnapshotCompositionTests
         SnapshotIdSet set = SnapshotIdSet.Empty;
         foreach (long id in new long[] { 1, 63, 64, 127, 128, 255, 300, 1000, 4000 })
         {
-            set = set.Set(id); expected.Add(id);
+            set = set.Set(id);
+            expected.Add(id);
             Assert.Equal(expected, set);
         }
         Assert.True(set.AndNot(set).IsEmpty);
@@ -78,8 +87,16 @@ public class SnapshotCompositionTests
         for (int i = 0; i < 500; i++)
         {
             long id = random.Next(5000);
-            if (random.Next(2) == 0) { expected.Add(id); set = set.Set(id); }
-            else { expected.Remove(id); set = set.Clear(id); }
+            if (random.Next(2) == 0)
+            {
+                expected.Add(id);
+                set = set.Set(id);
+            }
+            else
+            {
+                expected.Remove(id);
+                set = set.Clear(id);
+            }
             Assert.Equal(expected, set);
         }
     }

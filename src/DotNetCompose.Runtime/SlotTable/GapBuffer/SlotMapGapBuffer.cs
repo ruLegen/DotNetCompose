@@ -92,12 +92,14 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         private void ValidateExistingIndex(int index)
         {
-            if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException(nameof(index));
+            if (index < 0 || index >= Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
         }
 
         private void ValidateInsertionIndex(int index)
         {
-            if (index < 0 || index > Count) throw new ArgumentOutOfRangeException(nameof(index));
+            if (index < 0 || index > Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
         }
     }
 }

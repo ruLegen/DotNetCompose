@@ -7,9 +7,9 @@ namespace DotNetCompose.SourceGenerators.Extensions
 {
     internal static class IndentedTextWriterExtensions
     {
-        public static void AppendLine(this IndentedTextWriter writer, string text) 
+        public static void AppendLine(this IndentedTextWriter writer, string text)
         {
-            if(text != null)
+            if (text != null)
                 writer.Write(text);
             writer.WriteLine();
         }
@@ -21,7 +21,7 @@ namespace DotNetCompose.SourceGenerators.Extensions
             if (text != null)
                 writer.Write(text);
             writer.WriteLine();
-            writer.Indent = lastIndent; 
+            writer.Indent = lastIndent;
         }
         public static void AppendLine(this IndentedTextWriter writer)
         {

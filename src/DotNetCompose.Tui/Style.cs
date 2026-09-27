@@ -1,3 +1,4 @@
+
 namespace DotNetCompose.Tui;
 
 public enum TuiColor
@@ -22,7 +23,13 @@ public enum TuiColor
 }
 
 [Flags]
-public enum TuiAttributes { None = 0, Bold = 1, Underline = 2, Reverse = 4 }
+public enum TuiAttributes
+{
+    None = 0,
+    Bold = 1,
+    Underline = 2,
+    Reverse = 4
+}
 
 public readonly record struct TuiStyle(
     TuiColor Foreground = TuiColor.Default,

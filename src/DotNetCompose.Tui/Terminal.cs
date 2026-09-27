@@ -28,8 +28,14 @@ public sealed class AnsiTerminalDriver : ITerminalDriver
     {
         get
         {
-            try { return new TuiSize(Math.Max(1, Console.WindowWidth), Math.Max(1, Console.WindowHeight)); }
-            catch { return new TuiSize(80, 25); }
+            try
+            {
+                return new TuiSize(Math.Max(1, Console.WindowWidth), Math.Max(1, Console.WindowHeight));
+            }
+            catch
+            {
+                return new TuiSize(80, 25);
+            }
         }
     }
 
@@ -39,7 +45,8 @@ public sealed class AnsiTerminalDriver : ITerminalDriver
     {
         if (!IsInteractive)
             throw new InvalidOperationException("TUI requires an interactive terminal. Use FakeTerminalDriver for redirected or automated runs.");
-        if (_entered) return;
+        if (_entered)
+            return;
         Console.OutputEncoding = Encoding.UTF8;
         Console.TreatControlCAsInput = true;
         Console.Write("\u001b[?1049h\u001b[?25l\u001b[0m");
@@ -48,14 +55,19 @@ public sealed class AnsiTerminalDriver : ITerminalDriver
 
     public void Exit()
     {
-        if (!_entered) return;
+        if (!_entered)
+            return;
         Console.Write("\u001b[0m\u001b[?25h\u001b[?1049l");
         _entered = false;
     }
 
     public bool TryReadKey(out TuiKeyEvent key)
     {
-        if (!Console.KeyAvailable) { key = default; return false; }
+        if (!Console.KeyAvailable)
+        {
+            key = default;
+            return false;
+        }
         ConsoleKeyInfo info = Console.ReadKey(intercept: true);
         key = new TuiKeyEvent(info.Key, info.KeyChar, info.Modifiers);
         return true;
@@ -79,7 +91,11 @@ public sealed class FakeTerminalDriver : ITerminalDriver
 
     public void Enqueue(TuiKeyEvent key) => _keys.Enqueue(key);
     public void Enter() => Entered = true;
-    public void Exit() { Exited = true; Entered = false; }
+    public void Exit()
+    {
+        Exited = true;
+        Entered = false;
+    }
     public bool TryReadKey(out TuiKeyEvent key) => _keys.TryDequeue(out key);
     public void Write(string value) => _output.Append(value);
     public void ClearOutput() => _output.Clear();
@@ -102,17 +118,31 @@ internal sealed class TerminalSynchronizationContext : SynchronizationContext
     public override void Send(SendOrPostCallback d, object? state)
     {
         ArgumentNullException.ThrowIfNull(d);
-        if (Environment.CurrentManagedThreadId == _ownerThread) { d(state); return; }
+        if (Environment.CurrentManagedThreadId == _ownerThread)
+        {
+            d(state);
+            return;
+        }
         using ManualResetEventSlim completed = new();
         Exception? error = null;
         Post(value =>
         {
-            try { d(value); }
-            catch (Exception exception) { error = exception; }
-            finally { completed.Set(); }
+            try
+            {
+                d(value);
+            }
+            catch (Exception exception)
+            {
+                error = exception;
+            }
+            finally
+            {
+                completed.Set();
+            }
         }, state);
         completed.Wait();
-        if (error != null) throw new AggregateException(error);
+        if (error != null)
+            throw new AggregateException(error);
     }
 
     internal bool Drain()

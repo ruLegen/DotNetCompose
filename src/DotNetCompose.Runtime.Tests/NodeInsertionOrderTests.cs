@@ -46,13 +46,15 @@ public class NodeInsertionOrderTests
         public void InsertTopDown(int index, Node instance)
         {
             Events.Add($"top:{instance.Value}@{index}");
-            if (!_buildBottomUp) Current.Children.Insert(index, instance);
+            if (!_buildBottomUp)
+                Current.Children.Insert(index, instance);
         }
 
         public void InsertBottomUp(int index, Node instance)
         {
             Events.Add($"bottom:{instance.Value}@{index}");
-            if (_buildBottomUp) Current.Children.Insert(index, instance);
+            if (_buildBottomUp)
+                Current.Children.Insert(index, instance);
         }
 
         public void Remove(int index, int count)
@@ -92,7 +94,8 @@ public class NodeInsertionOrderTests
                 events.Add($"factory:{value}");
                 return new Node(value);
             });
-        else composer.UseNode();
+        else
+            composer.UseNode();
         composer.ApplyNode<Node, int>(value, (node, updated) => node.Value = updated);
         children?.Invoke(composer);
         composer.EndNode();
@@ -186,7 +189,8 @@ public class NodeInsertionOrderTests
             EmitNode(composer, parentKey, parentValue, applier.Events, parent =>
             {
                 EmitNode(parent, 11, 101, applier.Events);
-                if (secondChild) EmitNode(parent, 12, 102, applier.Events);
+                if (secondChild)
+                    EmitNode(parent, 12, 102, applier.Events);
             });
             foreach (int siblingKey in siblingKeys)
             {

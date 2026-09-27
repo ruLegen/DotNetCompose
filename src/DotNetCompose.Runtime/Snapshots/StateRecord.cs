@@ -5,7 +5,9 @@ namespace DotNetCompose.Runtime.Snapshots
         internal long SnapshotId { get; set; } = Snapshots.SnapshotId.Invalid;
         internal StateRecord? Next { get; set; }
 
-        protected StateRecord() { }
+        protected StateRecord()
+        {
+        }
 
         protected StateRecord(long snapshotId)
         {

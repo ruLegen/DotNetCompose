@@ -32,5 +32,6 @@ public static partial class TestClass
         WithDefault(default);
     }
 
-    private static void Use(int v) { }
+    private static void Use(int v) {
+    }
 }

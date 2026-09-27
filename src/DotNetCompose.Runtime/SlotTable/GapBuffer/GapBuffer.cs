@@ -32,8 +32,10 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
             set
             {
                 BoundsCheck(index);
-                if (index >= _gapStartPos) _buffer[index + GapSize] = value;
-                else _buffer[index] = value;
+                if (index >= _gapStartPos)
+                    _buffer[index + GapSize] = value;
+                else
+                    _buffer[index] = value;
             }
         }
 
@@ -53,7 +55,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public int Insert(int index, T item)
         {
-            if (index < 0 || index > Count) return -1;
+            if (index < 0 || index > Count)
+                return -1;
 
             MoveGap(index);
             ResizeGap(1);
@@ -67,11 +70,13 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         public void AddRange(IEnumerable<T> items) => InsertRange(Count, items);
         public void InsertRange(int index, IEnumerable<T> items)
         {
-            if (index < 0 || index > Count) return;
+            if (index < 0 || index > Count)
+                return;
 
             ICollection<T> collection = items as ICollection<T> ?? new List<T>(items);
             int insertCount = collection.Count;
-            if (insertCount == 0) return;
+            if (insertCount == 0)
+                return;
 
             MoveGap(index);
             ResizeGap(insertCount);
@@ -95,8 +100,10 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         }
         public void Reserve(int index, int count)
         {
-            if (index < 0 || index > Count) return;
-            if (count <= 0) return;
+            if (index < 0 || index > Count)
+                return;
+            if (count <= 0)
+                return;
 
             MoveGap(index);
             ResizeGap(count);
@@ -104,7 +111,8 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         }
         public void RemoveAt(int index)
         {
-            if (index < 0 || index >= Count) return;
+            if (index < 0 || index >= Count)
+                return;
 
             MoveGap(index);
             _buffer[_gapEndPos] = default!;
@@ -112,9 +120,11 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         }
         public void RemoveRange(int index, int length)
         {
-            if (length < 1) return;
+            if (length < 1)
+                return;
             int idx = index + length - 1;
-            for (int i = 0; i < length; i++) RemoveAt(idx--);
+            for (int i = 0; i < length; i++)
+                RemoveAt(idx--);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -127,13 +137,15 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         internal void SetAtAddress(int address, T item) => _buffer[address] = item;
         internal void RemoveAtAddress(int address)
         {
-            if (address < 0 || address >= _buffer.Length) return;
+            if (address < 0 || address >= _buffer.Length)
+                return;
 
             int logicalIndex = address < _gapStartPos
                 ? address
                 : address - GapSize;
 
-            if (logicalIndex < 0 || logicalIndex >= Count) return;
+            if (logicalIndex < 0 || logicalIndex >= Count)
+                return;
 
             MoveGap(logicalIndex);
             _buffer[_gapEndPos] = default!;
@@ -156,8 +168,10 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         public void SetCapacity(int requestedCapacity)
         {
-            if (requestedCapacity == _buffer.Length) return;
-            if (requestedCapacity < Count) throw new BufferCapacityException(requestedCapacity, Count);
+            if (requestedCapacity == _buffer.Length)
+                return;
+            if (requestedCapacity < Count)
+                throw new BufferCapacityException(requestedCapacity, Count);
             if (requestedCapacity > 0)
             {
                 T[] newBuffer = new T[requestedCapacity];
@@ -184,24 +198,27 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
         public int IndexOf(T item)
         {
             int foundAt = Array.IndexOf(_buffer, item, 0, _gapStartPos);
-            if (foundAt > -1) return foundAt;
+            if (foundAt > -1)
+                return foundAt;
 
             foundAt = Array.IndexOf(_buffer, item, _gapEndPos, _buffer.Length - _gapEndPos);
-            if (foundAt > -1) return foundAt - GapSize;
+            if (foundAt > -1)
+                return foundAt - GapSize;
 
             return -1;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int AddressOf(int index)
         {
-            return index >= _gapStartPos 
-                ? index + GapSize 
+            return index >= _gapStartPos
+                ? index + GapSize
                 : index;
         }
         private void MoveGap(int index)
         {
-            if (index == _gapStartPos) return;
+            if (index == _gapStartPos)
+                return;
             if (GapSize == 0)
             {
                 _gapStartPos = _gapEndPos = index;
@@ -232,17 +249,20 @@ namespace DotNetCompose.Runtime.SlotTable.GapBuffer
 
         private void ResizeGap(int requiredGapSize)
         {
-            if (requiredGapSize <= GapSize) return;
+            if (requiredGapSize <= GapSize)
+                return;
 
             int newCapacity = (Count + requiredGapSize) * 2;
-            if (newCapacity < DefaultCapacity) newCapacity = DefaultCapacity;
+            if (newCapacity < DefaultCapacity)
+                newCapacity = DefaultCapacity;
             SetCapacity(newCapacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void BoundsCheck(int index)
         {
-            if (index < 0 || index >= Count) throw new BufferAccessException(index, Count);
+            if (index < 0 || index >= Count)
+                throw new BufferAccessException(index, Count);
         }
 
     }

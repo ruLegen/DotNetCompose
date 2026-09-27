@@ -14,8 +14,10 @@ public sealed class CellBuffer
 
     public CellBuffer(int width, int height)
     {
-        if (width < 0) throw new ArgumentOutOfRangeException(nameof(width));
-        if (height < 0) throw new ArgumentOutOfRangeException(nameof(height));
+        if (width < 0)
+            throw new ArgumentOutOfRangeException(nameof(width));
+        if (height < 0)
+            throw new ArgumentOutOfRangeException(nameof(height));
         Width = width;
         Height = height;
         _cells = new TuiCell[width * height];
@@ -33,7 +35,8 @@ public sealed class CellBuffer
 
     public void Set(int x, int y, string grapheme, int width, TuiStyle style)
     {
-        if ((uint)x >= (uint)Width || (uint)y >= (uint)Height || width <= 0) return;
+        if ((uint)x >= (uint)Width || (uint)y >= (uint)Height || width <= 0)
+            return;
         _cells[y * Width + x] = new TuiCell(grapheme, width, style, false);
         for (int offset = 1; offset < width && x + offset < Width; offset++)
             _cells[y * Width + x + offset] = new TuiCell(string.Empty, 0, style, true);
@@ -56,7 +59,8 @@ public sealed class CellBuffer
                 }
                 continue;
             }
-            if (cursor >= clip.Right) break;
+            if (cursor >= clip.Right)
+                break;
             if (cursor >= clip.X && y >= clip.Y && y < clip.Bottom && cursor + width <= clip.Right)
                 Set(cursor, y, grapheme, width, style);
             cursor += width;
@@ -69,10 +73,13 @@ public sealed class CellBuffer
         for (int y = 0; y < Height; y++)
         {
             int last = Width - 1;
-            while (last >= 0 && (this[last, y].Continuation || this[last, y].Grapheme == " ")) last--;
+            while (last >= 0 && (this[last, y].Continuation || this[last, y].Grapheme == " "))
+                last--;
             for (int x = 0; x <= last; x++)
-                if (!this[x, y].Continuation) result.Append(this[x, y].Grapheme);
-            if (y + 1 < Height) result.AppendLine();
+                if (!this[x, y].Continuation)
+                    result.Append(this[x, y].Grapheme);
+            if (y + 1 < Height)
+                result.AppendLine();
         }
         return result.ToString();
     }
@@ -84,13 +91,15 @@ internal static class UnicodeWidth
     {
         int width = 0;
         TextElementEnumerator elements = StringInfo.GetTextElementEnumerator(text ?? string.Empty);
-        while (elements.MoveNext()) width += GetWidth(elements.GetTextElement());
+        while (elements.MoveNext())
+            width += GetWidth(elements.GetTextElement());
         return width;
     }
 
     internal static int GetWidth(string grapheme)
     {
-        if (string.IsNullOrEmpty(grapheme)) return 0;
+        if (string.IsNullOrEmpty(grapheme))
+            return 0;
         Rune rune = Rune.GetRuneAt(grapheme, 0);
         UnicodeCategory category = Rune.GetUnicodeCategory(rune);
         if (category is UnicodeCategory.NonSpacingMark or UnicodeCategory.EnclosingMark or UnicodeCategory.Format)

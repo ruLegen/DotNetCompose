@@ -77,7 +77,10 @@ namespace DotNetCompose.Runtime.Tests
             Snapshot.Observe(
                 readObserver: obj => readObjects.Add(obj!),
                 writeObserver: null,
-                block: () => { var _ = state.Value; }
+                block: () =>
+                {
+                    var _ = state.Value;
+                }
             );
 
             Assert.Contains(state, readObjects);
@@ -92,7 +95,10 @@ namespace DotNetCompose.Runtime.Tests
             Snapshot.Observe(
                 readObserver: null,
                 writeObserver: obj => writeObjects.Add(obj!),
-                block: () => { state.Value = 2; }
+                block: () =>
+                {
+                    state.Value = 2;
+                }
             );
 
             Assert.Contains(state, writeObjects);
@@ -138,16 +144,20 @@ namespace DotNetCompose.Runtime.Tests
             {
                 for (int index = 0; index < 1_000; index++)
                 {
-                    using ObserverHandle transient = Snapshot.RegisterGlobalWriteObserver(_ => { });
+                    using ObserverHandle transient = Snapshot.RegisterGlobalWriteObserver(_ =>
+                    {
+                    });
                     state.Value = worker * 1_000 + index;
-                    if ((index & 15) == 0) transient.Dispose();
+                    if ((index & 15) == 0)
+                        transient.Dispose();
                 }
             });
 
             Snapshot.SendApplyNotifications();
             Assert.True(notifications > 0);
             int records = 0;
-            for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next) records++;
+            for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next)
+                records++;
             Assert.InRange(records, 1, 16);
         }
     }

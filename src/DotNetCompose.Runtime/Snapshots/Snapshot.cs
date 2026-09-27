@@ -23,7 +23,11 @@ namespace DotNetCompose.Runtime.Snapshots
         internal readonly struct LockStruct : IDisposable
         {
             private readonly object _toRelease;
-            internal LockStruct(object lockObj) { _toRelease = lockObj; Monitor.Enter(lockObj); }
+            internal LockStruct(object lockObj)
+            {
+                _toRelease = lockObj;
+                Monitor.Enter(lockObj);
+            }
             public void Dispose() => Monitor.Exit(_toRelease);
         }
 
@@ -60,22 +64,35 @@ namespace DotNetCompose.Runtime.Snapshots
             if (id != SnapshotId.Invalid)
             {
                 long pinned = invalid.IsEmpty ? id : invalid.Lowest(id);
-                using (Lock()) _pinningTrackingHandle = PinningTable.Add(pinned);
+                using (Lock())
+                    _pinningTrackingHandle = PinningTable.Add(pinned);
             }
         }
 
         public T Enter<T>(Func<T> block)
         {
             Snapshot? previous = Push();
-            try { return block(); }
-            finally { Pop(previous); }
+            try
+            {
+                return block();
+            }
+            finally
+            {
+                Pop(previous);
+            }
         }
 
         public void Enter(Action block)
         {
             Snapshot? previous = Push();
-            try { block(); }
-            finally { Pop(previous); }
+            try
+            {
+                block();
+            }
+            finally
+            {
+                Pop(previous);
+            }
         }
 
         internal virtual Snapshot? Push()
@@ -159,8 +176,12 @@ namespace DotNetCompose.Runtime.Snapshots
         public static void SendApplyNotifications()
         {
             bool hasPending;
-            lock (_lock) { hasPending = GlobalSnapshot.HasPendingChanges(); }
-            if (hasPending) AdvanceGlobalSnapshot();
+            lock (_lock)
+            {
+                hasPending = GlobalSnapshot.HasPendingChanges();
+            }
+            if (hasPending)
+                AdvanceGlobalSnapshot();
         }
 
         internal static void AdvanceGlobalSnapshot()
@@ -187,11 +208,17 @@ namespace DotNetCompose.Runtime.Snapshots
                 try
                 {
                     Action<HashSet<IStateObject>, Snapshot>[] observers;
-                    lock (_lock) observers = ApplyObservers.ToArray();
+                    lock (_lock)
+                        observers = ApplyObservers.ToArray();
                     foreach (Action<HashSet<IStateObject>, Snapshot> obs in observers)
                     {
-                        try { obs(modified, previousGlobal); }
-                        catch { }
+                        try
+                        {
+                            obs(modified, previousGlobal);
+                        }
+                        catch
+                        {
+                        }
                     }
                 }
                 finally
@@ -213,10 +240,16 @@ namespace DotNetCompose.Runtime.Snapshots
             Action<HashSet<IStateObject>, Snapshot> observer)
         {
             AdvanceGlobalSnapshot();
-            lock (_lock) { ApplyObservers.Add(observer); }
+            lock (_lock)
+            {
+                ApplyObservers.Add(observer);
+            }
             return new ObserverHandle(() =>
             {
-                lock (_lock) { ApplyObservers.Remove(observer); }
+                lock (_lock)
+                {
+                    ApplyObservers.Remove(observer);
+                }
             });
         }
 
@@ -231,10 +264,16 @@ namespace DotNetCompose.Runtime.Snapshots
             });
 
             AdvanceGlobalSnapshot();
-            lock (_lock) { ApplyObservers.Add(observer); }
+            lock (_lock)
+            {
+                ApplyObservers.Add(observer);
+            }
             return new ObserverHandle(() =>
             {
-                lock (_lock) { ApplyObservers.Remove(observer); }
+                lock (_lock)
+                {
+                    ApplyObservers.Remove(observer);
+                }
             });
         }
 
@@ -310,8 +349,14 @@ namespace DotNetCompose.Runtime.Snapshots
                     return;
                 }
 
-                try { snapshot!.Enter(block); }
-                finally { snapshot!.Dispose(); }
+                try
+                {
+                    snapshot!.Enter(block);
+                }
+                finally
+                {
+                    snapshot!.Dispose();
+                }
             }
         }
 
@@ -320,7 +365,11 @@ namespace DotNetCompose.Runtime.Snapshots
             Action<object>? writeObserver,
             Action block)
         {
-            Observe(() => { block(); return 0; }, readObserver, writeObserver);
+            Observe(() =>
+            {
+                block();
+                return 0;
+            }, readObserver, writeObserver);
         }
 
         public static T Observe<T>(
@@ -382,8 +431,14 @@ namespace DotNetCompose.Runtime.Snapshots
                     return previous.TakeNestedSnapshot(readObserver, writeObserver).Enter(block);
                 }
 
-                try { return snapshot!.Enter(block); }
-                finally { snapshot!.Dispose(); }
+                try
+                {
+                    return snapshot!.Enter(block);
+                }
+                finally
+                {
+                    snapshot!.Dispose();
+                }
             }
         }
 
@@ -416,8 +471,10 @@ namespace DotNetCompose.Runtime.Snapshots
 
         internal static void ProcessForUnusedRecordsLocked(IStateObject state)
         {
-            if (OverwriteUnusedRecordsLocked(state)) ExtraStateObjects.Add(state);
-            else ExtraStateObjects.Remove(state);
+            if (OverwriteUnusedRecordsLocked(state))
+                ExtraStateObjects.Add(state);
+            else
+                ExtraStateObjects.Remove(state);
         }
 
         // A record below the lowest pinned snapshot can only be selected when it is the newest
@@ -481,8 +538,10 @@ namespace DotNetCompose.Runtime.Snapshots
             StateRecord youngest = first;
             while (current != null)
             {
-                if (predicate(current)) return current;
-                if (youngest.SnapshotId < current.SnapshotId) youngest = current;
+                if (predicate(current))
+                    return current;
+                if (youngest.SnapshotId < current.SnapshotId)
+                    youngest = current;
                 current = current.Next;
             }
             return youngest;
@@ -540,8 +599,10 @@ namespace DotNetCompose.Runtime.Snapshots
                     return current;
                 if (currentId <= reuseLimit)
                 {
-                    if (validRecord == null) validRecord = current;
-                    else return currentId < validRecord.SnapshotId ? current : validRecord;
+                    if (validRecord == null)
+                        validRecord = current;
+                    else
+                        return currentId < validRecord.SnapshotId ? current : validRecord;
                 }
                 current = current.Next;
             }
@@ -551,21 +612,30 @@ namespace DotNetCompose.Runtime.Snapshots
         internal static void NotifyWrite(Snapshot snapshot, IStateObject state)
         {
             snapshot.WriteObserver?.Invoke(state);
-            if (ReferenceEquals(snapshot.Root, GlobalSnapshot)) NotifyGlobalWrite(state);
+            if (ReferenceEquals(snapshot.Root, GlobalSnapshot))
+                NotifyGlobalWrite(state);
         }
 
         public static ObserverHandle RegisterGlobalWriteObserver(Action<object> observer)
         {
-            if (observer == null) throw new ArgumentNullException(nameof(observer));
-            lock (_lock) GlobalWriteObservers.Add(observer);
-            return new ObserverHandle(() => { lock (_lock) GlobalWriteObservers.Remove(observer); });
+            if (observer == null)
+                throw new ArgumentNullException(nameof(observer));
+            lock (_lock)
+                GlobalWriteObservers.Add(observer);
+            return new ObserverHandle(() =>
+            {
+                lock (_lock)
+                    GlobalWriteObservers.Remove(observer);
+            });
         }
 
         internal static void NotifyGlobalWrite(object state)
         {
             Action<object>[] observers;
-            lock (_lock) observers = GlobalWriteObservers.ToArray();
-            foreach (Action<object> observer in observers) observer(state);
+            lock (_lock)
+                observers = GlobalWriteObservers.ToArray();
+            foreach (Action<object> observer in observers)
+                observer(state);
         }
 
         internal static void MakeCurrentNonObservable(
@@ -615,8 +685,14 @@ namespace DotNetCompose.Runtime.Snapshots
             Snapshot previous = CurrentThreadSnapshot;
             Action<object>? observer = previous.ReadObserver;
             MakeCurrentNonObservable(previous, out Snapshot? nonObservable);
-            try { block(); }
-            finally { RestoreNonObservable(previous, nonObservable!, observer); }
+            try
+            {
+                block();
+            }
+            finally
+            {
+                RestoreNonObservable(previous, nonObservable!, observer);
+            }
         }
 
         public static Snapshot CurrentThreadSnapshot
@@ -635,7 +711,11 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             Action<object>? parent = merge ? parentReadObserver : null;
             if (readObserver != null && parent != null && readObserver != parent)
-                return state => { readObserver(state); parent(state); };
+                return state =>
+                {
+                    readObserver(state);
+                    parent(state);
+                };
             return readObserver ?? parent;
         }
 
@@ -644,7 +724,11 @@ namespace DotNetCompose.Runtime.Snapshots
             Action<object>? parentWriteObserver)
         {
             if (writeObserver != null && parentWriteObserver != null && writeObserver != parentWriteObserver)
-                return state => { writeObserver(state); parentWriteObserver(state); };
+                return state =>
+                {
+                    writeObserver(state);
+                    parentWriteObserver(state);
+                };
             return writeObserver ?? parentWriteObserver;
         }
 

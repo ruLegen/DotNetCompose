@@ -13,7 +13,10 @@ public class SlotEditingTests
         var anchors = new Dictionary<int, GapBufferItemAnchor>();
         for (int i = 0; i < 100; i++)
         {
-            if (i % 2 == 0) anchors.Add(i, map.InsertTrackedAt(0, i)); else map.InsertAt(0, i);
+            if (i % 2 == 0)
+                anchors.Add(i, map.InsertTrackedAt(0, i));
+            else
+                map.InsertAt(0, i);
             expected.Insert(0, i);
         }
         var random = new Random(25);
@@ -22,14 +25,19 @@ public class SlotEditingTests
             int from = random.Next(expected.Count);
             int count = random.Next(1, expected.Count - from + 1);
             int to = random.Next(expected.Count + 1);
-            if (to > from && to < from + count) continue;
+            if (to > from && to < from + count)
+                continue;
             var moved = expected.GetRange(from, count);
             expected.RemoveRange(from, count);
             expected.InsertRange(to > from ? to - count : to, moved);
             map.MoveRange(from, to, count);
-            for (int i = 0; i < expected.Count; i++) Assert.Equal(expected[i], map.GetAt(i));
+            for (int i = 0; i < expected.Count; i++)
+                Assert.Equal(expected[i], map.GetAt(i));
             foreach (var (value, anchor) in anchors)
-            { Assert.Equal(value, map.Get(anchor)); Assert.Equal(expected.IndexOf(value), map.IndexOf(anchor)); }
+            {
+                Assert.Equal(value, map.Get(anchor));
+                Assert.Equal(expected.IndexOf(value), map.IndexOf(anchor));
+            }
         }
     }
 
@@ -40,14 +48,25 @@ public class SlotEditingTests
         using (var writer = table.OpenWriter())
         {
             writer.StartGroup(1);
-            writer.StartGroup(2, "key", "aux"); writer.AppendSlot("value"); writer.EndGroup();
-            writer.StartGroup(3); writer.EndGroup();
-            writer.StartNode(4, "node"); writer.StartNode(5, "nested"); writer.EndGroup(); writer.EndGroup();
+            writer.StartGroup(2, "key", "aux");
+            writer.AppendSlot("value");
+            writer.EndGroup();
+            writer.StartGroup(3);
+            writer.EndGroup();
+            writer.StartNode(4, "node");
+            writer.StartNode(5, "nested");
+            writer.EndGroup();
+            writer.EndGroup();
             writer.EndGroup();
         }
         GroupAnchor root, data, empty, node;
         using (var reader = table.OpenReader())
-        { root = reader.Anchor(0); data = reader.Anchor(1); empty = reader.Anchor(2); node = reader.Anchor(3); }
+        {
+            root = reader.Anchor(0);
+            data = reader.Anchor(1);
+            empty = reader.Anchor(2);
+            node = reader.Anchor(3);
+        }
         using (var writer = table.OpenWriter())
         {
             writer.MoveGroup(node, 1);
@@ -72,9 +91,15 @@ public class SlotEditingTests
         }
         var source = new ComposerSlotTable();
         using (var writer = source.OpenWriter())
-        { writer.StartGroup(6); writer.StartNode(7, "imported"); writer.EndGroup(); writer.EndGroup(); }
+        {
+            writer.StartGroup(6);
+            writer.StartNode(7, "imported");
+            writer.EndGroup();
+            writer.EndGroup();
+        }
         GroupAnchor imported;
-        using (var reader = source.OpenReader()) imported = reader.Anchor(0);
+        using (var reader = source.OpenReader())
+            imported = reader.Anchor(0);
         using (var writer = table.OpenWriter())
         {
             writer.RemoveGroup(data);
@@ -100,14 +125,22 @@ public class SlotEditingTests
         ComposerSlotTable first = new ComposerSlotTable();
         ComposerSlotTable second = new ComposerSlotTable();
         using (ComposerSlotTable.Writer writer = first.OpenWriter())
-        { writer.StartGroup(11); writer.EndGroup(); }
+        {
+            writer.StartGroup(11);
+            writer.EndGroup();
+        }
         using (ComposerSlotTable.Writer writer = second.OpenWriter())
-        { writer.StartGroup(22); writer.EndGroup(); }
+        {
+            writer.StartGroup(22);
+            writer.EndGroup();
+        }
 
         GroupAnchor firstAnchor;
         GroupAnchor secondAnchor;
-        using (ComposerSlotTable.Reader reader = first.OpenReader()) firstAnchor = reader.Anchor(0);
-        using (ComposerSlotTable.Reader reader = second.OpenReader()) secondAnchor = reader.Anchor(0);
+        using (ComposerSlotTable.Reader reader = first.OpenReader())
+            firstAnchor = reader.Anchor(0);
+        using (ComposerSlotTable.Reader reader = second.OpenReader())
+            secondAnchor = reader.Anchor(0);
         Assert.Equal(firstAnchor.Item, secondAnchor.Item);
         Assert.NotEqual(firstAnchor, secondAnchor);
 

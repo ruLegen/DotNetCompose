@@ -95,7 +95,8 @@ public class SlotMapAnchorTests
             int index = random.Next(expected.Count);
             int value = expected[index];
             buffer.RemoveAt(index);
-            if (anchors.Remove(value, out var anchor)) Assert.False(buffer.IsValidAnchor(anchor));
+            if (anchors.Remove(value, out var anchor))
+                Assert.False(buffer.IsValidAnchor(anchor));
             expected.RemoveAt(index);
         }
         for (int i = 0; i < expected.Count; i++)

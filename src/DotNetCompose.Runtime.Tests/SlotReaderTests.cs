@@ -17,7 +17,9 @@ public class SlotReaderTests
     [Fact]
     public void EmptyTable_HasNoGroupsOrSlots()
     {
-        var table = Build(_ => { });
+        var table = Build(_ =>
+        {
+        });
         Assert.Equal(0, Buffer<object?>(table, "_slots").Count);
         using var reader = table.OpenReader();
         Assert.Equal(0, reader.Size);
@@ -160,12 +162,16 @@ public class SlotReaderTests
             w.StartGroup(0);
             w.AppendSlot("parent");
             w.StartNode(1, "outer");
-            w.StartNode(2, "inner-a"); w.EndGroup();
-            w.StartNode(3, "inner-b"); w.EndGroup();
+            w.StartNode(2, "inner-a");
+            w.EndGroup();
+            w.StartNode(3, "inner-b");
+            w.EndGroup();
             w.EndGroup();
             w.StartGroup(4, "key");
-            w.StartNode(5, "sibling-a"); w.EndGroup();
-            w.StartNode(6, "sibling-b"); w.EndGroup();
+            w.StartNode(5, "sibling-a");
+            w.EndGroup();
+            w.StartNode(6, "sibling-b");
+            w.EndGroup();
             w.EndGroup();
             w.EndGroup();
         });
@@ -192,7 +198,12 @@ public class SlotReaderTests
     [Fact]
     public void EmptyMode_IsNested_AndOnlyNextPretendsSlotsAreAbsent()
     {
-        var table = Build(w => { w.StartGroup(1); w.AppendSlot("value"); w.EndGroup(); });
+        var table = Build(w =>
+        {
+            w.StartGroup(1);
+            w.AppendSlot("value");
+            w.EndGroup();
+        });
         using var r = table.OpenReader();
         r.StartGroup();
         r.BeginEmpty();
@@ -226,11 +237,16 @@ public class SlotReaderTests
     {
         var table = Build(w =>
         {
-            w.StartGroup(0); w.AppendSlot("root");
-            w.StartGroup(1); w.AppendSlot("child");
-            w.StartGroup(2); w.AppendSlot("leaf"); w.EndGroup();
+            w.StartGroup(0);
+            w.AppendSlot("root");
+            w.StartGroup(1);
+            w.AppendSlot("child");
+            w.StartGroup(2);
+            w.AppendSlot("leaf");
             w.EndGroup();
-            w.StartGroup(3); w.EndGroup();
+            w.EndGroup();
+            w.StartGroup(3);
+            w.EndGroup();
             w.EndGroup();
         });
         using var r = table.OpenReader();
@@ -266,8 +282,12 @@ public class SlotReaderTests
     {
         var table = Build(w =>
         {
-            w.StartGroup(0); w.StartGroup(1); w.EndGroup(); w.EndGroup();
-            w.StartGroup(2); w.EndGroup();
+            w.StartGroup(0);
+            w.StartGroup(1);
+            w.EndGroup();
+            w.EndGroup();
+            w.StartGroup(2);
+            w.EndGroup();
         });
         using var r = table.OpenReader();
         Assert.Throws<InvalidOperationException>(r.EndGroup);
@@ -291,7 +311,12 @@ public class SlotReaderTests
     [Fact]
     public void Readers_AreIndependent_AndCloseExactlyOnce()
     {
-        var table = Build(w => { w.StartGroup(1); w.AppendSlot("value"); w.EndGroup(); });
+        var table = Build(w =>
+        {
+            w.StartGroup(1);
+            w.AppendSlot("value");
+            w.EndGroup();
+        });
         var first = table.OpenReader();
         var second = table.OpenReader();
         first.StartGroup();
@@ -321,7 +346,11 @@ public class SlotReaderTests
     {
         var table = Build(w =>
         {
-            for (int i = 0; i < 40; i++) { w.StartGroup(i + 10); w.EndGroup(); }
+            for (int i = 0; i < 40; i++)
+            {
+                w.StartGroup(i + 10);
+                w.EndGroup();
+            }
         });
         var groups = Buffer<GroupRecord>(table, "_groups");
         var originalAnchors = Enumerable.Range(0, groups.Count).Select(i => table.Wrap(groups.AnchorAt(i))).ToArray();
@@ -351,7 +380,11 @@ public class SlotReaderTests
         Assert.Equal(before, Enumerable.Range(0, groups.Count).Select(groups.GetAt));
         using (var w = table.OpenWriter())
         {
-            for (int i = 0; i < 80; i++) { w.StartGroup(100 + i); w.EndGroup(); }
+            for (int i = 0; i < 80; i++)
+            {
+                w.StartGroup(100 + i);
+                w.EndGroup();
+            }
         }
         using var again = table.OpenReader();
         Assert.Equal(120, again.Size);
@@ -365,15 +398,22 @@ public class SlotReaderTests
         var table = Build(w =>
         {
             w.StartGroup(0);
-            w.StartGroup(1); w.EndGroup();
+            w.StartGroup(1);
+            w.EndGroup();
             w.StartGroup(2);
-            w.StartGroup(3); w.EndGroup();
-            w.StartGroup(4); w.AppendSlot("child"); w.EndGroup();
-            w.StartGroup(5); w.EndGroup();
+            w.StartGroup(3);
+            w.EndGroup();
+            w.StartGroup(4);
+            w.AppendSlot("child");
+            w.EndGroup();
+            w.StartGroup(5);
+            w.EndGroup();
             w.AppendSlot("middle");
             w.EndGroup();
-            w.StartGroup(6); w.EndGroup();
-            w.AppendSlot("root-old"); w.UpdateSlot("root");
+            w.StartGroup(6);
+            w.EndGroup();
+            w.AppendSlot("root-old");
+            w.UpdateSlot("root");
             w.EndGroup();
         });
         using var r = table.OpenReader();
@@ -419,7 +459,8 @@ public class SlotReaderTests
         {
             var group = new ModelGroup { Key = nextKey++, IsNode = random.Next(3) == 0 };
             int childCount = depth == 0 ? 0 : random.Next(1, 4);
-            for (int i = 0; i < childCount; i++) group.Children.Add(Create(depth - 1));
+            for (int i = 0; i < childCount; i++)
+                group.Children.Add(Create(depth - 1));
             int slotCount = random.Next(4);
             for (int i = 0; i < slotCount; i++)
                 group.Slots.Add(i == 1 ? null : $"slot:{group.Key}:{i}");
@@ -428,15 +469,24 @@ public class SlotReaderTests
         var roots = Enumerable.Range(0, 4).Select(_ => Create(4)).ToList();
         void Write(ComposerSlotTable.Writer w, ModelGroup group)
         {
-            if (group.IsNode) w.StartNode(group.Key, group);
-            else w.StartGroup(group.Key, group);
+            if (group.IsNode)
+                w.StartNode(group.Key, group);
+            else
+                w.StartGroup(group.Key, group);
             int beforeChildren = random.Next(group.Slots.Count + 1);
-            foreach (var slot in group.Slots.Take(beforeChildren)) w.AppendSlot(slot);
-            foreach (var child in group.Children) Write(w, child);
-            foreach (var slot in group.Slots.Skip(beforeChildren)) w.AppendSlot(slot);
+            foreach (var slot in group.Slots.Take(beforeChildren))
+                w.AppendSlot(slot);
+            foreach (var child in group.Children)
+                Write(w, child);
+            foreach (var slot in group.Slots.Skip(beforeChildren))
+                w.AppendSlot(slot);
             w.EndGroup();
         }
-        var table = Build(w => { foreach (var root in roots) Write(w, root); });
+        var table = Build(w =>
+        {
+            foreach (var root in roots)
+                Write(w, root);
+        });
         using var r = table.OpenReader();
         Assert.Equal(roots.Sum(root => root.Size), r.Size);
         Assert.True(Buffer<GroupRecord>(table, "_groups").Capacity > 16);
@@ -455,17 +505,21 @@ public class SlotReaderTests
                 Assert.Equal(expected.Slots[i], r.GroupGet(i));
             r.StartGroup();
             int beforeChildren = expected.Slots.Count / 2;
-            for (int i = 0; i < beforeChildren; i++) Assert.Equal(expected.Slots[i], r.Next());
-            foreach (var child in expected.Children) Read(child, index);
+            for (int i = 0; i < beforeChildren; i++)
+                Assert.Equal(expected.Slots[i], r.Next());
+            foreach (var child in expected.Children)
+                Read(child, index);
             Assert.Equal(beforeChildren, r.Slot);
-            for (int i = beforeChildren; i < expected.Slots.Count; i++) Assert.Equal(expected.Slots[i], r.Next());
+            for (int i = beforeChildren; i < expected.Slots.Count; i++)
+                Assert.Equal(expected.Slots[i], r.Next());
             Assert.Same(ComposerSlotTable.Empty, r.Next());
             Assert.Equal(expected.Slots.Count, r.Slot);
             Assert.True(r.IsGroupEnd);
             r.EndGroup();
             Assert.Equal(expected.Key, r.GetGroupKey(anchor));
         }
-        foreach (var root in roots) Read(root, -1);
+        foreach (var root in roots)
+            Read(root, -1);
         Assert.True(r.IsGroupEnd);
     }
 

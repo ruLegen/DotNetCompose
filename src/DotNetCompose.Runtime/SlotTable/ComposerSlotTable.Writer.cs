@@ -46,9 +46,12 @@ namespace DotNetCompose.Runtime.SlotTable
                 };
 
                 // New groups are appended in preorder. Their data initially goes at the end.
-                if (group.IsNode) AppendMetadata(ref group, node);
-                if (group.HasObjectKey) AppendMetadata(ref group, objectKey);
-                if (group.HasAux) AppendMetadata(ref group, aux);
+                if (group.IsNode)
+                    AppendMetadata(ref group, node);
+                if (group.HasObjectKey)
+                    AppendMetadata(ref group, objectKey);
+                if (group.HasAux)
+                    AppendMetadata(ref group, aux);
                 _groupStack.Push(_groups.InsertTrackedAt(_groups.Count, group));
             }
 
@@ -81,14 +84,16 @@ namespace DotNetCompose.Runtime.SlotTable
             public void SkipGroup()
             {
                 EnsureOpen();
-                if (CurrentGroup >= _groups.Count) throw new InvalidOperationException("No group to skip.");
+                if (CurrentGroup >= _groups.Count)
+                    throw new InvalidOperationException("No group to skip.");
                 CurrentGroup += RecordAt(CurrentGroup).Size;
             }
 
             public void RemoveGroup()
             {
                 EnsureOpen();
-                if (CurrentGroup >= _groups.Count) throw new InvalidOperationException("No group to remove.");
+                if (CurrentGroup >= _groups.Count)
+                    throw new InvalidOperationException("No group to remove.");
                 RemoveGroup(Table.Wrap(_groups.AnchorAt(CurrentGroup)));
             }
 
@@ -134,7 +139,8 @@ namespace DotNetCompose.Runtime.SlotTable
 
             public void Close()
             {
-                if (Closed) return;
+                if (Closed)
+                    return;
                 if (_groupStack.Count != 0)
                     throw new InvalidOperationException("Cannot close a writer with unclosed groups.");
                 Table.CloseWriter(this);
@@ -145,7 +151,8 @@ namespace DotNetCompose.Runtime.SlotTable
 
             private void EnsureOpen()
             {
-                if (Closed) throw new ObjectDisposedException(nameof(Writer));
+                if (Closed)
+                    throw new ObjectDisposedException(nameof(Writer));
             }
 
             private void EnsureGroup()

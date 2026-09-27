@@ -305,7 +305,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
             for (int i = 0; i < methodSymbol.Parameters.Length; i++)
             {
                 MethodParameterInfo paramInfo = parameterInfos[i];
-                if (paramInfo.DefaultProviderType == null) continue;
+                if (paramInfo.DefaultProviderType == null)
+                    continue;
 
                 int argIdx = ArgumentResolver.FindArgumentIndex(invocationExpression.ArgumentList.Arguments, i, paramInfo.Name);
 

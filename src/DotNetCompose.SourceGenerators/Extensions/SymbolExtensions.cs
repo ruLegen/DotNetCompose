@@ -10,7 +10,8 @@ namespace DotNetCompose.SourceGenerators.Extensions
     {
         public static bool IsComposableAction(this ISymbol? symbol)
         {
-            if (symbol == null) return false;
+            if (symbol == null)
+                return false;
 
             //if(symbol is ITypeSymbol typeSymbol) 
             //    return typeSymbol.GetFullMetadataName() == Consts.ComposableActionFullTypeName;
@@ -19,7 +20,8 @@ namespace DotNetCompose.SourceGenerators.Extensions
         }
         public static bool IsStableType(this ITypeSymbol? type)
         {
-            if (type == null) return false;
+            if (type == null)
+                return false;
 
             switch (type.SpecialType)
             {

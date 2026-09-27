@@ -7,7 +7,9 @@ namespace DotNetCompose.Runtime
 {
     public abstract class CompositionLocal
     {
-        private protected CompositionLocal() { }
+        private protected CompositionLocal()
+        {
+        }
 
         internal abstract CompositionLocalValueHolder DefaultValueHolder { get; }
 
@@ -23,7 +25,8 @@ namespace DotNetCompose.Runtime
 
         private protected CompositionLocal(Func<T> defaultFactory)
         {
-            if (defaultFactory == null) throw new ArgumentNullException(nameof(defaultFactory));
+            if (defaultFactory == null)
+                throw new ArgumentNullException(nameof(defaultFactory));
             _defaultValueHolder = new LazyValueHolder<T>(defaultFactory);
         }
 
@@ -40,15 +43,19 @@ namespace DotNetCompose.Runtime
         internal T Read(CompositionLocalScope scope)
         {
             CompositionLocalValueHolder holder;
-            if (!scope.TryGet(this, out CompositionLocalValueHolder? provided)) holder = _defaultValueHolder;
-            else holder = provided!;
+            if (!scope.TryGet(this, out CompositionLocalValueHolder? provided))
+                holder = _defaultValueHolder;
+            else
+                holder = provided!;
             return ((CompositionLocalValueHolder<T>)holder).ReadValue();
         }
     }
 
     public abstract class ProvidableCompositionLocal<T> : CompositionLocal<T>
     {
-        private protected ProvidableCompositionLocal(Func<T> defaultFactory) : base(defaultFactory) { }
+        private protected ProvidableCompositionLocal(Func<T> defaultFactory) : base(defaultFactory)
+        {
+        }
 
         public ProvidedValue<T> Provides(T value) => new ProvidedValue<T>(this, value, true);
 
@@ -109,7 +116,9 @@ namespace DotNetCompose.Runtime
 
     internal sealed class StaticProvidableCompositionLocal<T> : ProvidableCompositionLocal<T>
     {
-        internal StaticProvidableCompositionLocal(Func<T> defaultFactory) : base(defaultFactory) { }
+        internal StaticProvidableCompositionLocal(Func<T> defaultFactory) : base(defaultFactory)
+        {
+        }
 
         internal override CompositionLocalValueHolder UpdatedValueHolder(
             ProvidedValue value,
@@ -148,10 +157,12 @@ namespace DotNetCompose.Runtime
 
         internal override T ReadValue()
         {
-            if (_valueFactory == null) return _value;
+            if (_valueFactory == null)
+                return _value;
             lock (_gate)
             {
-                if (_valueFactory == null) return _value;
+                if (_valueFactory == null)
+                    return _value;
                 T value = _valueFactory();
                 _value = value;
                 _valueFactory = null;
@@ -163,7 +174,10 @@ namespace DotNetCompose.Runtime
 
     internal sealed class StaticValueHolder<T> : CompositionLocalValueHolder<T>
     {
-        internal StaticValueHolder(T value) { Value = value; }
+        internal StaticValueHolder(T value)
+        {
+            Value = value;
+        }
         internal T Value { get; }
         internal override T ReadValue() => Value;
         internal override bool IsEquivalentTo(CompositionLocalValueHolder other)
@@ -172,7 +186,10 @@ namespace DotNetCompose.Runtime
 
     internal sealed class DynamicValueHolder<T> : CompositionLocalValueHolder<T>
     {
-        internal DynamicValueHolder(SnapshotMutableState<T> state) { State = state; }
+        internal DynamicValueHolder(SnapshotMutableState<T> state)
+        {
+            State = state;
+        }
         internal SnapshotMutableState<T> State { get; }
         internal override T ReadValue() => State.Value;
         internal override bool IsEquivalentTo(CompositionLocalValueHolder other)
@@ -213,14 +230,17 @@ namespace DotNetCompose.Runtime
             foreach (KeyValuePair<CompositionLocal, CompositionLocalValueHolder> item in values)
                 result[item.Key] = item.Value;
 
-            if (previous != null && previous.HasSameEntries(result)) return previous;
-            if (result.Count == 0) return Empty;
+            if (previous != null && previous.HasSameEntries(result))
+                return previous;
+            if (result.Count == 0)
+                return Empty;
             return new CompositionLocalScope(result);
         }
 
         private bool HasSameEntries(Dictionary<CompositionLocal, CompositionLocalValueHolder> other)
         {
-            if (_values.Count != other.Count) return false;
+            if (_values.Count != other.Count)
+                return false;
             foreach (KeyValuePair<CompositionLocal, CompositionLocalValueHolder> item in _values)
                 if (!other.TryGetValue(item.Key, out CompositionLocalValueHolder? value) ||
                     !item.Value.IsEquivalentTo(value))

@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 
 namespace DotNetCompose.SourceGenerators.Pipeline
 {
-    internal sealed class ComposePipelineBuilder 
+    internal sealed class ComposePipelineBuilder
     {
         private StrategyContainer _strategies = StrategyContainer.Default;
         private readonly List<Func<IMethodCallHandler>> _handlerFactories = new();
@@ -57,7 +57,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             return builder.Build();
         }
 
-        
+
         private sealed class PipelineInstance : IComposePipeline
         {
             private readonly ImmutableArray<IOutputHandler> _outputHandlers;

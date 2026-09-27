@@ -13,7 +13,8 @@ namespace DotNetCompose.Runtime.Diagnostics
             CompositionDiagnosticsOptions? options = null)
             where TNode : class
         {
-            if (composition == null) throw new ArgumentNullException(nameof(composition));
+            if (composition == null)
+                throw new ArgumentNullException(nameof(composition));
             return CompositionDiagnosticsRuntime.StartSession(composition, options);
         }
     }
@@ -42,7 +43,8 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         public IDisposable Subscribe(ICompositionObserver observer)
         {
-            if (observer == null) throw new ArgumentNullException(nameof(observer));
+            if (observer == null)
+                throw new ArgumentNullException(nameof(observer));
             ThrowIfDisposed();
             return _dispatcher.Subscribe(this, observer);
         }
@@ -67,7 +69,8 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+                return;
             _dispatcher.UnregisterSession(this);
             _flagsRegistration.Dispose();
         }
@@ -95,14 +98,19 @@ namespace DotNetCompose.Runtime.Diagnostics
 
         internal CompositionDiagnosticsFlags EnabledFlags
         {
-            get { lock (_gate) return _enabledFlags; }
+            get
+            {
+                lock (_gate)
+                    return _enabledFlags;
+            }
         }
 
         internal void RegisterSession(CompositionDiagnosticsSession session)
         {
             lock (_gate)
             {
-                if (_disposed) throw new ObjectDisposedException(nameof(CompositionDiagnosticsDispatcher));
+                if (_disposed)
+                    throw new ObjectDisposedException(nameof(CompositionDiagnosticsDispatcher));
                 _sessions.Add(session);
                 RecomputeEnabledFlags();
             }
@@ -122,7 +130,8 @@ namespace DotNetCompose.Runtime.Diagnostics
         {
             CompositionDiagnosticsFlags flags = CompositionDiagnosticsFlags.None;
             foreach (CompositionDiagnosticsSession session in _sessions)
-                if (!session.IsDisposed) flags |= session.Options.Flags;
+                if (!session.IsDisposed)
+                    flags |= session.Options.Flags;
             _enabledFlags = flags;
         }
 
@@ -131,7 +140,8 @@ namespace DotNetCompose.Runtime.Diagnostics
             ObserverRegistration registration = new ObserverRegistration(this, session, observer);
             lock (_gate)
             {
-                if (_disposed) throw new ObjectDisposedException(nameof(CompositionDiagnosticsDispatcher));
+                if (_disposed)
+                    throw new ObjectDisposedException(nameof(CompositionDiagnosticsDispatcher));
                 _observers.Add(registration);
             }
             return registration;
@@ -142,14 +152,19 @@ namespace DotNetCompose.Runtime.Diagnostics
             ObserverRegistration[] observers;
             lock (_gate)
             {
-                if (_disposed || _observers.Count == 0) return;
+                if (_disposed || _observers.Count == 0)
+                    return;
                 observers = _observers.ToArray();
             }
 
             foreach (ObserverRegistration registration in observers)
             {
-                if (registration.IsDisposed || !registration.Session.Accepts(diagnosticEvent.Category)) continue;
-                try { registration.Observer.OnEvent(diagnosticEvent); }
+                if (registration.IsDisposed || !registration.Session.Accepts(diagnosticEvent.Category))
+                    continue;
+                try
+                {
+                    registration.Observer.OnEvent(diagnosticEvent);
+                }
                 catch (Exception error)
                 {
                     registration.Dispose();
@@ -161,12 +176,14 @@ namespace DotNetCompose.Runtime.Diagnostics
         internal void ReplaceSnapshot(CompositionDiagnosticsSnapshot snapshot)
         {
             lock (_gate)
-                if (!_disposed) _snapshot = snapshot;
+                if (!_disposed)
+                    _snapshot = snapshot;
         }
 
         internal CompositionDiagnosticsSnapshot CaptureSnapshot()
         {
-            lock (_gate) return _snapshot;
+            lock (_gate)
+                return _snapshot;
         }
 
         internal void Dispose()
@@ -174,7 +191,8 @@ namespace DotNetCompose.Runtime.Diagnostics
             CompositionDiagnosticsSession[] sessions;
             lock (_gate)
             {
-                if (_disposed) return;
+                if (_disposed)
+                    return;
                 _disposed = true;
                 sessions = _sessions.ToArray();
                 _sessions.Clear();
@@ -182,12 +200,14 @@ namespace DotNetCompose.Runtime.Diagnostics
                 _enabledFlags = CompositionDiagnosticsFlags.None;
                 _snapshot = CompositionDiagnosticsSnapshot.Unavailable("The composition has been disposed.");
             }
-            foreach (CompositionDiagnosticsSession session in sessions) session.Dispose();
+            foreach (CompositionDiagnosticsSession session in sessions)
+                session.Dispose();
         }
 
         private void Remove(ObserverRegistration registration)
         {
-            lock (_gate) _observers.Remove(registration);
+            lock (_gate)
+                _observers.Remove(registration);
         }
 
         private sealed class ObserverRegistration : IDisposable
@@ -211,7 +231,8 @@ namespace DotNetCompose.Runtime.Diagnostics
 
             public void Dispose()
             {
-                if (Interlocked.Exchange(ref _disposed, 1) == 0) _owner.Remove(this);
+                if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                    _owner.Remove(this);
             }
         }
     }

@@ -1,3 +1,4 @@
+
 using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Helpers;
 using Microsoft.CodeAnalysis;
@@ -46,7 +47,8 @@ namespace DotNetCompose.SourceGenerators
         {
             bool wasFirst = _conditionalDepth == 0;
             _conditionalDepth++;
-            if (wasFirst) WasInConditional = false;
+            if (wasFirst)
+                WasInConditional = false;
             return new ActionDisposable(() => ExitConditional());
         }
 

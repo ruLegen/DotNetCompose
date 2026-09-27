@@ -24,11 +24,27 @@ public class CompositionTests
         public Node Current => _path.Count == 0 ? Root : _path.Peek();
         public void OnBeginChanges() => Events.Add("Begin");
         public void OnEndChanges() => Events.Add("End");
-        public void Down(Node node) { Events.Add("Down"); _path.Push(node); }
-        public void Up() { Events.Add("Up"); _path.Pop(); }
-        public void InsertTopDown(int index, Node instance) { Events.Add($"Insert:{index}"); Current.Children.Insert(index, instance); }
+        public void Down(Node node)
+        {
+            Events.Add("Down");
+            _path.Push(node);
+        }
+        public void Up()
+        {
+            Events.Add("Up");
+            _path.Pop();
+        }
+        public void InsertTopDown(int index, Node instance)
+        {
+            Events.Add($"Insert:{index}");
+            Current.Children.Insert(index, instance);
+        }
         public void InsertBottomUp(int index, Node instance) => Events.Add($"Bottom:{index}");
-        public void Remove(int index, int count) { Events.Add($"Remove:{index}:{count}"); Current.Children.RemoveRange(index, count); }
+        public void Remove(int index, int count)
+        {
+            Events.Add($"Remove:{index}:{count}");
+            Current.Children.RemoveRange(index, count);
+        }
         public void Move(int from, int to, int count)
         {
             Events.Add($"Move:{from}:{to}:{count}");
@@ -36,26 +52,48 @@ public class CompositionTests
             Current.Children.RemoveRange(from, count);
             Current.Children.InsertRange(to > from ? to - count : to, moved);
         }
-        public void Clear() { _path.Clear(); Root.Children.Clear(); }
+        public void Clear()
+        {
+            _path.Clear();
+            Root.Children.Clear();
+        }
         public void Apply(Action<Node, object?> block, object? value)
         {
-            if (ThrowOnUpdate) throw new InvalidOperationException("Applier failed");
-            Events.Add("Update"); block(Current, value);
+            if (ThrowOnUpdate)
+                throw new InvalidOperationException("Applier failed");
+            Events.Add("Update");
+            block(Current, value);
         }
     }
 
     private sealed class Context : SynchronizationContext
     {
         private readonly Queue<Action> _queue = new();
-        public override void Post(SendOrPostCallback d, object? state) { lock (_queue) _queue.Enqueue(() => d(state)); }
-        public int Count { get { lock (_queue) return _queue.Count; } }
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+            lock (_queue)
+                _queue.Enqueue(() => d(state));
+        }
+        public int Count
+        {
+            get
+            {
+                lock (_queue)
+                    return _queue.Count;
+            }
+        }
         public void Drain()
         {
             int limit = 100;
             while (true)
             {
                 Action next;
-                lock (_queue) { if (_queue.Count == 0) return; next = _queue.Dequeue(); }
+                lock (_queue)
+                {
+                    if (_queue.Count == 0)
+                        return;
+                    next = _queue.Dequeue();
+                }
                 Assert.True(limit-- > 0, "The scheduler failed to become idle.");
                 next();
             }
@@ -65,7 +103,14 @@ public class CompositionTests
     internal static void Emit(IComposerContext c, int value, Action? created = null, Action<IComposerContext>? content = null)
     {
         c.StartNode(10);
-        if (c.Inserting) c.CreateNode(() => { created?.Invoke(); return new Node(); }); else c.UseNode();
+        if (c.Inserting)
+            c.CreateNode(() =>
+            {
+                created?.Invoke();
+                return new Node();
+            });
+        else
+            c.UseNode();
         c.ApplyNode<Node, int>(value, (node, item) => node.Value = item);
         content?.Invoke(c);
         c.EndNode();
@@ -169,7 +214,11 @@ public class CompositionTests
             {
                 c.StartMovableGroup(50, key);
                 seen[key] = Composables.Builders.Remember("item", () => new object(), c);
-                Emit(c, key, content: child => { if (key % 3 == 0) Emit(child, -key); });
+                Emit(c, key, content: child =>
+                {
+                    if (key % 3 == 0)
+                        Emit(child, -key);
+                });
                 c.EndMovableGroup(50);
             }
         };
@@ -184,7 +233,10 @@ public class CompositionTests
                 int key = keys[i];
                 Node node = applier.Root.Children[i];
                 if (identities.TryGetValue(key, out var previous))
-                { Assert.Same(previous.node, node); Assert.Same(previous.remembered, seen[key]); }
+                {
+                    Assert.Same(previous.node, node);
+                    Assert.Same(previous.remembered, seen[key]);
+                }
                 Assert.Equal(key % 3 == 0 ? 1 : 0, node.Children.Count);
             }
             identities = keys.Select((key, i) => (key, i)).ToDictionary(x => x.key, x => (applier.Root.Children[x.i], seen[x.key]));
@@ -196,7 +248,8 @@ public class CompositionTests
             {
                 int key = (int)reader.GetGroupObjectKey(location)!;
                 var anchor = reader.Anchor(location);
-                if (groupAnchors.TryGetValue(key, out var prior)) Assert.Equal(prior, anchor);
+                if (groupAnchors.TryGetValue(key, out var prior))
+                    Assert.Equal(prior, anchor);
                 nextAnchors.Add(key, anchor);
             }
             foreach (var removed in groupAnchors.Where(item => !nextAnchors.ContainsKey(item.Key)))
@@ -216,7 +269,11 @@ public class CompositionTests
             foreach (int key in keys)
             {
                 c.StartMovableGroup(9, key);
-                if (key != 3) { Emit(c, key); Emit(c, -key); }
+                if (key != 3)
+                {
+                    Emit(c, key);
+                    Emit(c, -key);
+                }
                 c.EndMovableGroup(9);
             }
         };
@@ -238,7 +295,8 @@ public class CompositionTests
         {
             c.StartGroup(1);
             Emit(c, 1);
-            if (extra) remembered = Composables.Builders.Remember("after", () => new object(), c);
+            if (extra)
+                remembered = Composables.Builders.Remember("after", () => new object(), c);
             c.EndGroup();
         };
         composition.SetContent(content);
@@ -254,7 +312,10 @@ public class CompositionTests
     private static void Restart(IComposerContext c, int key, Action<IComposerContext> body)
     {
         c.StartRestartableGroup(key);
-        if (c.Skipping) c.SkipToGroupEnd(); else body(c);
+        if (c.Skipping)
+            c.SkipToGroupEnd();
+        else
+            body(c);
         c.EndRestartableGroup(key)?.UpdateScope(next => Restart(next, key, body));
     }
 
@@ -271,9 +332,17 @@ public class CompositionTests
             Restart(c, 1, parent =>
             {
                 parents++;
-                Emit(parent, 0, content: nested => Restart(nested, 2, child => { children++; Emit(child, state.Value); }));
+                Emit(parent, 0, content: nested => Restart(nested, 2, child =>
+                {
+                    children++;
+                    Emit(child, state.Value);
+                }));
             });
-            Restart(c, 3, sibling => { siblings++; Emit(sibling, 100); });
+            Restart(c, 3, sibling =>
+            {
+                siblings++;
+                Emit(sibling, 100);
+            });
         });
         state.Value = 2;
         Assert.True(composition.Recompose());
@@ -291,11 +360,13 @@ public class CompositionTests
         using var composition = new Composition<Node>(new Applier());
         composition.SetContent((c, _, _) => Restart(c, 1, next => Emit(next, flag.Value ? a.Value : b.Value)));
         flag.Value = false;
-        Assert.True(composition.Recompose()); composition.ApplyChanges();
+        Assert.True(composition.Recompose());
+        composition.ApplyChanges();
         a.Value = 20;
         Assert.False(composition.Recompose());
         b.Value = 30;
-        Assert.True(composition.Recompose()); composition.ApplyChanges();
+        Assert.True(composition.Recompose());
+        composition.ApplyChanges();
     }
 
     [Fact]
@@ -308,7 +379,8 @@ public class CompositionTests
         var state = Composables.CreateMutableState(0);
         composition.SetContent((c, _, _) => Emit(c, state.Value));
         context.Drain();
-        state.Value = 1; state.Value = 2;
+        state.Value = 1;
+        state.Value = 2;
         Assert.Equal(1, context.Count);
         context.Drain();
         Assert.Equal(2, applier.Root.Children[0].Value);
@@ -329,9 +401,12 @@ public class CompositionTests
         var applier = new Applier();
         using var composition = new Composition<Node>(applier, recomposer);
         var state = Composables.CreateMutableState(0);
-        composition.SetContent((c, _, _) => Emit(c, state.Value)); context.Drain();
-        using (var discarded = Snapshot.TakeMutableSnapshot()) discarded.Enter(() => state.Value = 8);
-        context.Drain(); Assert.Equal(0, applier.Root.Children[0].Value);
+        composition.SetContent((c, _, _) => Emit(c, state.Value));
+        context.Drain();
+        using (var discarded = Snapshot.TakeMutableSnapshot())
+            discarded.Enter(() => state.Value = 8);
+        context.Drain();
+        Assert.Equal(0, applier.Root.Children[0].Value);
         using var parent = Snapshot.TakeMutableSnapshot();
         parent.Enter(() =>
         {
@@ -339,9 +414,11 @@ public class CompositionTests
             child.Enter(() => state.Value = 9);
             Assert.True(child.Apply().Succeeded);
         });
-        context.Drain(); Assert.Equal(0, applier.Root.Children[0].Value);
+        context.Drain();
+        Assert.Equal(0, applier.Root.Children[0].Value);
         Assert.True(parent.Apply().Succeeded);
-        context.Drain(); Assert.Equal(9, applier.Root.Children[0].Value);
+        context.Drain();
+        Assert.Equal(9, applier.Root.Children[0].Value);
     }
 
     private sealed class RememberObserver : IRememberObserver
@@ -365,7 +442,9 @@ public class CompositionTests
         composition.DiscardChanges();
         Assert.Equal(new[] { "remembered" }, first.Events);
         Assert.Equal(new[] { "abandoned" }, second.Events);
-        composition.SetContent((c, _, _) => { });
+        composition.SetContent((c, _, _) =>
+        {
+        });
         Assert.Equal(new[] { "remembered", "forgotten" }, first.Events);
     }
 
@@ -376,14 +455,18 @@ public class CompositionTests
         var composition = new Composition<Node>(applier);
         composition.SetContent((c, _, _) => Emit(c, 1));
         Assert.Throws<InvalidOperationException>(() => composition.ComposeContent((c, _, _) =>
-        { Emit(c, 2); throw new InvalidOperationException(); }));
+        {
+            Emit(c, 2);
+            throw new InvalidOperationException();
+        }));
         Assert.Equal(1, applier.Root.Children[0].Value);
         composition.ComposeContent((c, _, _) => Emit(c, 3));
         applier.ThrowOnUpdate = true;
         Assert.Throws<InvalidOperationException>(() => composition.ApplyChanges());
         Assert.True(composition.IsFaulted);
         Assert.Throws<InvalidOperationException>(() => composition.Recompose());
-        composition.Dispose(); composition.Dispose();
+        composition.Dispose();
+        composition.Dispose();
         Assert.Empty(applier.Root.Children);
         Assert.Throws<ObjectDisposedException>(() => composition.Recompose());
     }
@@ -400,8 +483,12 @@ public class CompositionTests
             return default;
         }, c));
         Assert.Equal(0, started);
-        composition.ApplyChanges(); Assert.Equal(1, started);
-        composition.SetContent((c, _, _) => { }); Assert.Equal(1, cancelled);
+        composition.ApplyChanges();
+        Assert.Equal(1, started);
+        composition.SetContent((c, _, _) =>
+        {
+        });
+        Assert.Equal(1, cancelled);
     }
 
     [Fact]
@@ -467,7 +554,8 @@ public class CompositionTests
         }
 
         int records = 0;
-        for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next) records++;
+        for (StateRecord? record = state.FirstStateRecord; record != null; record = record.Next)
+            records++;
         Assert.Equal(iterations, applier.Root.Children[0].Value);
         Assert.InRange(records, 1, 4);
     }
@@ -477,15 +565,23 @@ public class CompositionTests
     {
         var context = new Context();
         using var recomposer = new Recomposer(context);
-        var a = new Applier(); var b = new Applier();
+        var a = new Applier();
+        var b = new Applier();
         using var first = new Composition<Node>(a, recomposer);
         using var second = new Composition<Node>(b, recomposer);
         var state = Composables.CreateMutableState(1);
         int ownerThread = Environment.CurrentManagedThreadId;
-        ComposableAction content = (c, _, _) => { Assert.Equal(ownerThread, Environment.CurrentManagedThreadId); Emit(c, state.Value); };
-        first.SetContent(content); second.SetContent(content); context.Drain();
+        ComposableAction content = (c, _, _) =>
+        {
+            Assert.Equal(ownerThread, Environment.CurrentManagedThreadId);
+            Emit(c, state.Value);
+        };
+        first.SetContent(content);
+        second.SetContent(content);
+        context.Drain();
         var thread = new Thread(() => state.Value = 2);
-        thread.Start(); thread.Join();
+        thread.Start();
+        thread.Join();
         Assert.Equal(1, a.Root.Children[0].Value);
         context.Drain();
         Assert.Equal(2, a.Root.Children[0].Value);
@@ -502,11 +598,21 @@ public class CompositionTests
         var state = Composables.CreateMutableState(0);
         composition.SetContent((c, _, _) =>
         {
-            c.StartNode(); if (c.Inserting) c.CreateNode(() => new Node()); else c.UseNode();
-            c.ApplyNode<Node, int>(state.Value, (node, value) => { node.Value = value; if (value == 1) state.Value = 2; });
+            c.StartNode();
+            if (c.Inserting)
+                c.CreateNode(() => new Node());
+            else
+                c.UseNode();
+            c.ApplyNode<Node, int>(state.Value, (node, value) =>
+            {
+                node.Value = value;
+                if (value == 1)
+                    state.Value = 2;
+            });
             c.EndNode();
         });
-        state.Value = 1; context.Drain();
+        state.Value = 1;
+        context.Drain();
         Assert.Equal(2, applier.Root.Children[0].Value);
     }
 
@@ -518,12 +624,23 @@ public class CompositionTests
         using var composition = new Composition<Node>(new Applier(), recomposer);
         var state = Composables.CreateMutableState(0);
         int errors = 0;
-        recomposer.Error += (_, e) => { Assert.Same(composition, e.Composition); errors++; };
-        composition.SetContent((c, _, _) => { if (state.Value == 1) throw new InvalidOperationException("User code"); Emit(c, 0); });
-        state.Value = 1; context.Drain();
+        recomposer.Error += (_, e) =>
+        {
+            Assert.Same(composition, e.Composition);
+            errors++;
+        };
+        composition.SetContent((c, _, _) =>
+        {
+            if (state.Value == 1)
+                throw new InvalidOperationException("User code");
+            Emit(c, 0);
+        });
+        state.Value = 1;
+        context.Drain();
         Assert.Equal(1, errors);
         Assert.False(composition.IsFaulted);
-        state.Value = 2; context.Drain();
+        state.Value = 2;
+        context.Drain();
         Assert.False(composition.HasInvalidations);
     }
 
@@ -534,7 +651,11 @@ public class CompositionTests
         var applier = new Applier();
         using var composition = new Composition<Node>(applier);
         composition.SetContent((c, _, _) => Emit(c, 0));
-        composition.ComposeContent((c, _, _) => { state.Value = 1; Emit(c, 1); });
+        composition.ComposeContent((c, _, _) =>
+        {
+            state.Value = 1;
+            Emit(c, 1);
+        });
         state.Value = 2;
         Assert.Throws<InvalidOperationException>(() => composition.ApplyChanges());
         Assert.False(composition.HasPendingChanges);
@@ -558,12 +679,21 @@ public class CompositionTests
     {
         using var composition = new Composition<Node>(new Applier());
         int creations = 0;
-        ComposableAction content = (c, _, _) => Assert.Null(Composables.Builders.Remember<object?>(1, () => { creations++; return null; }, c));
-        composition.SetContent(content); composition.SetContent(content);
+        ComposableAction content = (c, _, _) => Assert.Null(Composables.Builders.Remember<object?>(1, () =>
+        {
+            creations++;
+            return null;
+        }, c));
+        composition.SetContent(content);
+        composition.SetContent(content);
         Assert.Equal(1, creations);
         Assert.Throws<InvalidOperationException>(() => composition.ComposeContent((c, _, _) => c.EndGroup()));
         Assert.Throws<InvalidOperationException>(() => composition.ComposeContent((c, _, _) => c.StartGroup(1)));
-        Assert.Throws<InvalidOperationException>(() => composition.ComposeContent((c, _, _) => { c.StartNode(); c.EndNode(); }));
+        Assert.Throws<InvalidOperationException>(() => composition.ComposeContent((c, _, _) =>
+        {
+            c.StartNode();
+            c.EndNode();
+        }));
         composition.SetContent(content);
         Assert.Equal(1, creations);
     }
@@ -599,7 +729,10 @@ public class CompositionTests
         composition.ApplyChanges();
 
         Assert.True(changes.IsConsumed);
-        Assert.Throws<InvalidOperationException>(() => { _ = changes.InsertTable; });
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            _ = changes.InsertTable;
+        });
         Assert.Equal(before.Length, changes.Count);
         Assert.Equal(7, Assert.Single(applier.Root.Children).Value);
         for (int index = 0; index < before.Length; index++)
@@ -641,7 +774,10 @@ public class CompositionTests
         composition.DiscardChanges();
 
         Assert.True(changes.IsConsumed);
-        Assert.Throws<InvalidOperationException>(() => { _ = changes.InsertTable; });
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            _ = changes.InsertTable;
+        });
         Assert.Null(Assert.Single(changes, operation => operation.Kind == CompositionOperationKind.UpdateSlot).Value);
         Assert.Null(changes.ExecutableAt(0).Group);
         using ComposerSlotTable.Reader reader = composition.SlotTable.OpenReader();
@@ -661,7 +797,10 @@ public class CompositionTests
         composition.DiscardChanges();
 
         Assert.True(changes.IsConsumed);
-        Assert.Throws<InvalidOperationException>(() => { _ = changes.InsertTable; });
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            _ = changes.InsertTable;
+        });
         Assert.Equal(before.Select(operation => operation.ToString()), changes.Select(operation => operation.ToString()));
         Assert.Empty(applier.Root.Children);
         Assert.Equal(0, composition.SlotTable.Size);
@@ -678,7 +817,8 @@ public class CompositionTests
         ComposableAction content = (composer, _, _) =>
         {
             composer.StartGroup(5);
-            if (includeSlot) composer.Changed<object?>(null);
+            if (includeSlot)
+                composer.Changed<object?>(null);
             composer.EndGroup();
         };
         composition.SetContent(content);
@@ -722,4 +862,6 @@ public class CompositionTests
 }
 
 [CollectionDefinition("Snapshots", DisableParallelization = true)]
-public class SnapshotCollection { }
+public class SnapshotCollection
+{
+}

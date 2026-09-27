@@ -10,7 +10,10 @@ public sealed class RenderingGoldenTests
         StackNode row = new(StackOrientation.Horizontal) { Gap = 1, Layout = TuiLayout.Fill };
         TextNode left = new() { Text = "界", Style = new TuiStyle(TuiColor.Yellow) };
         TextNode right = new() { Text = "value", Layout = new TuiLayout(TuiLength.Fill(), TuiLength.Auto) };
-        row.Insert(0, left); row.Insert(1, right); border.Insert(0, row); root.Insert(0, border);
+        row.Insert(0, left);
+        row.Insert(1, right);
+        border.Insert(0, row);
+        root.Insert(0, border);
         FakeTerminalDriver terminal = new(14, 4);
         TuiRenderer renderer = new(terminal);
         FocusManager focus = new();

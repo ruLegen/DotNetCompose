@@ -8,7 +8,10 @@ namespace DotNetCompose.Runtime.Composer
     public sealed class RecompositionErrorEventArgs : EventArgs
     {
         internal RecompositionErrorEventArgs(IControlledComposition composition, Exception exception)
-        { Composition = composition; Exception = exception; }
+        {
+            Composition = composition;
+            Exception = exception;
+        }
         public IControlledComposition Composition { get; }
         public Exception Exception { get; }
     }
@@ -33,24 +36,32 @@ namespace DotNetCompose.Runtime.Composer
                 throw new ArgumentException("Supply a context with a sequential application dispatcher.", nameof(context));
             _writeObserver = Snapshot.RegisterGlobalWriteObserver(state =>
             {
-                lock (_gate) _globalDirty = true;
+                lock (_gate)
+                    _globalDirty = true;
                 RequestWork();
             });
         }
 
         internal void VerifyAccess()
         {
-            if (_disposed) throw new ObjectDisposedException(nameof(Recomposer));
-            if (_thread != Environment.CurrentManagedThreadId) throw new InvalidOperationException("Use the owning application context.");
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(Recomposer));
+            if (_thread != Environment.CurrentManagedThreadId)
+                throw new InvalidOperationException("Use the owning application context.");
         }
 
-        internal void Register(IControlledComposition composition) { VerifyAccess(); _compositions.Add(composition); }
+        internal void Register(IControlledComposition composition)
+        {
+            VerifyAccess();
+            _compositions.Add(composition);
+        }
         internal void Unregister(IControlledComposition composition) => _compositions.Remove(composition);
         internal void RequestWork()
         {
             lock (_gate)
             {
-                if (_disposed || _scheduled) return;
+                if (_disposed || _scheduled)
+                    return;
                 _scheduled = true;
             }
             _context.Post(ignored => Run(), null);
@@ -65,15 +76,22 @@ namespace DotNetCompose.Runtime.Composer
             Exception reported = exception;
             _context.Post(_ =>
             {
-                if (_disposed || composition.IsDisposed) return;
-                if (Error == null) throw reported;
+                if (_disposed || composition.IsDisposed)
+                    return;
+                if (Error == null)
+                    throw reported;
                 Error(this, new RecompositionErrorEventArgs(composition, reported));
             }, null);
         }
 
         private void Run()
         {
-            lock (_gate) { if (_disposed) return; _globalDirty = false; }
+            lock (_gate)
+            {
+                if (_disposed)
+                    return;
+                _globalDirty = false;
+            }
             VerifyAccess();
             HashSet<IControlledComposition> failed = new HashSet<IControlledComposition>();
             try
@@ -83,31 +101,48 @@ namespace DotNetCompose.Runtime.Composer
                 _compositions.CopyTo(compositions);
                 foreach (IControlledComposition composition in compositions)
                 {
-                    if (composition.IsDisposed || composition.HasPendingChanges || !composition.HasInvalidations) continue;
-                    try { if (composition.Recompose()) composition.ApplyChanges(); }
+                    if (composition.IsDisposed || composition.HasPendingChanges || !composition.HasInvalidations)
+                        continue;
+                    try
+                    {
+                        if (composition.Recompose())
+                            composition.ApplyChanges();
+                    }
                     catch (Exception error)
                     {
                         failed.Add(composition);
-                        if (Error == null) throw;
+                        if (Error == null)
+                            throw;
                         Error(this, new RecompositionErrorEventArgs(composition, error));
                     }
                 }
             }
-            finally { lock (_gate) _scheduled = false; }
+            finally
+            {
+                lock (_gate)
+                    _scheduled = false;
+            }
             bool dirty;
-            lock (_gate) dirty = _globalDirty;
-            if (dirty) RequestWork();
+            lock (_gate)
+                dirty = _globalDirty;
+            if (dirty)
+                RequestWork();
             // Requests arriving during this pass are retained by each composition.
             foreach (IControlledComposition composition in _compositions)
                 if (!failed.Contains(composition) && !composition.IsDisposed && !composition.HasPendingChanges && composition.HasInvalidations)
-                { RequestWork(); break; }
+                {
+                    RequestWork();
+                    break;
+                }
         }
 
         public void Dispose()
         {
-            if (_disposed) return;
+            if (_disposed)
+                return;
             VerifyAccess();
-            lock (_gate) _disposed = true;
+            lock (_gate)
+                _disposed = true;
             _writeObserver.Dispose();
             _compositions.Clear();
         }

@@ -20,8 +20,10 @@ public class CompositionLocalTests
     private static void Restart(IComposerContext context, int key, Action<IComposerContext> content)
     {
         context.StartRestartableGroup(key);
-        if (context.Skipping) context.SkipToGroupEnd();
-        else content(context);
+        if (context.Skipping)
+            context.SkipToGroupEnd();
+        else
+            content(context);
         context.EndRestartableGroup(key)?.UpdateScope(next => Restart(next, key, content));
     }
 
@@ -71,7 +73,8 @@ public class CompositionLocalTests
         int attempts = 0;
         ProvidableCompositionLocal<int> local = Composables.CompositionLocalOf(() =>
         {
-            if (++attempts == 1) throw new InvalidOperationException("Not ready");
+            if (++attempts == 1)
+                throw new InvalidOperationException("Not ready");
             return 8;
         });
         using Composition<CompositionTests.Node> composition =
@@ -139,7 +142,11 @@ public class CompositionLocalTests
             int value = source.Value;
             Composables.Builders.CompositionLocalProvider(local.Provides(value), (provided, _, _) =>
             {
-                Restart(provided, 2, child => { readers++; seen = child.Consume(local); });
+                Restart(provided, 2, child =>
+                {
+                    readers++;
+                    seen = child.Consume(local);
+                });
                 Restart(provided, 3, child => nonReaders++);
             }, owner);
         }));
@@ -166,7 +173,11 @@ public class CompositionLocalTests
         {
             int value = source.Value;
             Composables.Builders.CompositionLocalProvider(local.Provides(value), (provided, _, _) =>
-                Restart(provided, 2, child => { readers++; seen = child.Consume(local); }), owner);
+                Restart(provided, 2, child =>
+                {
+                    readers++;
+                    seen = child.Consume(local);
+                }), owner);
         });
 
         composition.SetContent(content);
@@ -200,7 +211,11 @@ public class CompositionLocalTests
                 int value = source.Value;
                 Composables.Builders.CompositionLocalProvider(local.Provides(value), (provided, _, _) =>
                 {
-                    Restart(provided, 2, child => { readers++; seen = child.Consume(local); });
+                    Restart(provided, 2, child =>
+                    {
+                        readers++;
+                        seen = child.Consume(local);
+                    });
                     Restart(provided, 3, child => nonReaders++);
                 }, owner);
             });
@@ -233,7 +248,11 @@ public class CompositionLocalTests
             int value = source.Value;
             Composables.Builders.CompositionLocalProvider(local.Provides(value), (outer, _, _) =>
                 Composables.Builders.CompositionLocalProvider(local.Provides(10), (inner, _, _) =>
-                    Restart(inner, 2, child => { readers++; seen = child.Consume(local); }), outer), owner);
+                    Restart(inner, 2, child =>
+                    {
+                        readers++;
+                        seen = child.Consume(local);
+                    }), outer), owner);
         }));
 
         source.Value = 2;

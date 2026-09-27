@@ -78,7 +78,9 @@ public sealed class CompositionDiagnosticsTests
             $"ProviderFound={listener.ProviderFound}; Flags={CompositionDiagnosticsRuntime.EnabledFlags}; " +
             $"Events={string.Join(",", listener.EventNames)}; Messages={string.Join(" | ", listener.Messages)}");
 
-        providerOwner.SetContent((_, _, _) => { });
+        providerOwner.SetContent((_, _, _) =>
+        {
+        });
 
         Assert.Contains("CompositionPassStarted", listener.EventNames);
         Assert.Contains("CompositionPassEnded", listener.EventNames);
@@ -91,7 +93,9 @@ public sealed class CompositionDiagnosticsTests
         int eventCount = listener.EventNames.Count;
 
         using (Composition<object> composition = new Composition<object>(new NoOpApplier()))
-            composition.SetContent((_, _, _) => { });
+            composition.SetContent((_, _, _) =>
+            {
+            });
 
         Assert.Equal(eventCount, listener.EventNames.Count);
     }
@@ -331,39 +335,62 @@ public sealed class CompositionDiagnosticsTests
 
         protected override void OnEventSourceCreated(EventSource eventSource)
         {
-            if (eventSource.Name != "DotNetCompose-Composition") return;
+            if (eventSource.Name != "DotNetCompose-Composition")
+                return;
             _source = eventSource;
             EnableEvents(eventSource, EventLevel.Verbose, (EventKeywords)0x7f);
         }
 
         protected override void OnEventWritten(EventWrittenEventArgs eventData)
         {
-            if (eventData.EventName != null) EventNames.Enqueue(eventData.EventName);
+            if (eventData.EventName != null)
+                EventNames.Enqueue(eventData.EventName);
             if (eventData.EventName == "ComposableEnded" && eventData.Payload?.Count > 3)
                 ComposableEndOutcomes.Enqueue(Convert.ToInt32(eventData.Payload[3]));
-            if (eventData.Message != null) Messages.Enqueue(eventData.Message);
+            if (eventData.Message != null)
+                Messages.Enqueue(eventData.Message);
             if (eventData.EventName == "EventSourceMessage" && eventData.Payload != null)
-                foreach (object? value in eventData.Payload) Messages.Enqueue(value?.ToString() ?? "<null>");
+                foreach (object? value in eventData.Payload)
+                    Messages.Enqueue(value?.ToString() ?? "<null>");
         }
 
         internal void Stop()
         {
-            if (_source != null) DisableEvents(_source);
+            if (_source != null)
+                DisableEvents(_source);
         }
     }
 
     private sealed class NoOpApplier : IApplier<object>
     {
         public object Current { get; } = new object();
-        public void OnBeginChanges() { }
-        public void OnEndChanges() { }
-        public void Down(object node) { }
-        public void Up() { }
-        public void InsertTopDown(int index, object instance) { }
-        public void InsertBottomUp(int index, object instance) { }
-        public void Remove(int index, int count) { }
-        public void Move(int from, int to, int count) { }
-        public void Clear() { }
+        public void OnBeginChanges()
+        {
+        }
+        public void OnEndChanges()
+        {
+        }
+        public void Down(object node)
+        {
+        }
+        public void Up()
+        {
+        }
+        public void InsertTopDown(int index, object instance)
+        {
+        }
+        public void InsertBottomUp(int index, object instance)
+        {
+        }
+        public void Remove(int index, int count)
+        {
+        }
+        public void Move(int from, int to, int count)
+        {
+        }
+        public void Clear()
+        {
+        }
         public void Apply(Action<object, object?> block, object? value) => block(Current, value);
     }
 }

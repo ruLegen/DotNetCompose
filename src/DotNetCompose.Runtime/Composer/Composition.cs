@@ -48,13 +48,21 @@ namespace DotNetCompose.Runtime.Composer
         public bool IsFaulted => _faulted;
         public bool HasPendingChanges => PendingChanges != null;
         public CompositionChangeSet? PendingChanges { get; private set; }
-        public bool HasInvalidations { get { lock (_gate) return _changed.Overlaps(_observed); } }
+        public bool HasInvalidations
+        {
+            get
+            {
+                lock (_gate)
+                    return _changed.Overlaps(_observed);
+            }
+        }
 
         private void OnStateChanged(HashSet<IStateObject> states, Snapshot snapshot)
         {
             lock (_gate)
             {
-                if (_disposed) return;
+                if (_disposed)
+                    return;
                 foreach (IStateObject state in states)
                     if (!(ReferenceEquals(snapshot, _snapshot) && _handledWrites.Contains(state)) &&
                         (_busy || HasPendingChanges || _observed.Contains(state)))
@@ -63,10 +71,15 @@ namespace DotNetCompose.Runtime.Composer
             _recomposer?.RequestWork();
         }
 
-        public void SetContent(ComposableAction content) { ComposeContent(content); ApplyChanges(); }
+        public void SetContent(ComposableAction content)
+        {
+            ComposeContent(content);
+            ApplyChanges();
+        }
         public void ComposeContent(ComposableAction content)
         {
-            if (content == null) throw new ArgumentNullException(nameof(content));
+            if (content == null)
+                throw new ArgumentNullException(nameof(content));
             Compute(content, false);
         }
 
@@ -74,7 +87,8 @@ namespace DotNetCompose.Runtime.Composer
         {
             VerifyReady();
             Snapshot.SendApplyNotifications();
-            if (_content == null || !HasInvalidations) return false;
+            if (_content == null || !HasInvalidations)
+                return false;
             Compute(_content, true);
             return true;
         }
@@ -98,7 +112,9 @@ namespace DotNetCompose.Runtime.Composer
                     error => _recomposer?.ReportEffectError(this, error));
                 _created = composer.CreatedValues;
                 _handledWrites = composer.HandledWrites;
-                _snapshot = Snapshot.TakeMutableSnapshot(composer.RecordRead, state => { });
+                _snapshot = Snapshot.TakeMutableSnapshot(composer.RecordRead, state =>
+                {
+                });
                 _pendingRoot = _snapshot.Enter(() => composer.Compute(_root, content, recompose));
                 CompositionChangeBuilder builder = new CompositionChangeBuilder(_root, _pendingRoot);
                 _pendingContent = content;
@@ -114,7 +130,10 @@ namespace DotNetCompose.Runtime.Composer
                 CancelPending();
                 throw;
             }
-            finally { _busy = false; }
+            finally
+            {
+                _busy = false;
+            }
         }
 
         public void ApplyChanges()
@@ -128,9 +147,11 @@ namespace DotNetCompose.Runtime.Composer
             VerifyAccess();
             if (!ReferenceEquals(changes.Owner, this) || !ReferenceEquals(changes, PendingChanges) || changes.IsConsumed)
                 throw new InvalidOperationException("This batch is not the pending batch of this composition.");
-            if (changes.Version != SlotTable.Version) throw new InvalidOperationException("The slot table changed after composition.");
+            if (changes.Version != SlotTable.Version)
+                throw new InvalidOperationException("The slot table changed after composition.");
             changes.Validate();
-            if (changes.Count > 0) SlotTable.EnsureCanWrite();
+            if (changes.Count > 0)
+                SlotTable.EnsureCanWrite();
             _busy = true;
             bool applying = false;
             if (CompositionDiagnosticsRuntime.IsSupported)
@@ -138,7 +159,8 @@ namespace DotNetCompose.Runtime.Composer
             try
             {
                 SnapshotApplyResult result = _snapshot!.Apply();
-                if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+                if (!result.Succeeded)
+                    throw new InvalidOperationException(result.Message);
                 _snapshot.Dispose();
                 _snapshot = null;
                 if (changes.Count > 0)
@@ -157,7 +179,8 @@ namespace DotNetCompose.Runtime.Composer
                 CommitGroups(_root!);
                 HashSet<object> observed = new HashSet<object>(ReferenceComparer.Instance);
                 CollectReads(_root!, observed);
-                lock (_gate) _observed = observed;
+                lock (_gate)
+                    _observed = observed;
                 changes.Consume();
                 ClearPending();
                 applying = true;
@@ -171,12 +194,17 @@ namespace DotNetCompose.Runtime.Composer
             {
                 if (CompositionDiagnosticsRuntime.IsSupported)
                     CompositionDiagnosticsRuntime.ReportApplyChangesException(this, error);
-                if (applying) _faulted = true;
+                if (applying)
+                    _faulted = true;
                 CancelPending();
                 throw;
             }
-            finally { _busy = false; }
-            if (HasInvalidations) _recomposer?.RequestWork();
+            finally
+            {
+                _busy = false;
+            }
+            if (HasInvalidations)
+                _recomposer?.RequestWork();
         }
 
         public void DiscardChanges()
@@ -190,8 +218,12 @@ namespace DotNetCompose.Runtime.Composer
                 if (CompositionDiagnosticsRuntime.IsSupported)
                     CompositionDiagnosticsRuntime.ReportChangesDiscarded(this, operationCount);
             }
-            finally { _busy = false; }
-            if (HasInvalidations) _recomposer?.RequestWork();
+            finally
+            {
+                _busy = false;
+            }
+            if (HasInvalidations)
+                _recomposer?.RequestWork();
         }
 
         private void CancelPending()
@@ -199,10 +231,17 @@ namespace DotNetCompose.Runtime.Composer
             _snapshot?.Dispose();
             _snapshot = null;
             PendingChanges?.Consume();
-            lock (_gate) _changed.UnionWith(_initialComputingInvalid);
+            lock (_gate)
+                _changed.UnionWith(_initialComputingInvalid);
             ClearPending();
-            try { AbandonCreated(Observers(_root)); }
-            finally { _created.Clear(); }
+            try
+            {
+                AbandonCreated(Observers(_root));
+            }
+            finally
+            {
+                _created.Clear();
+            }
         }
 
         private void ClearPending()
@@ -219,21 +258,27 @@ namespace DotNetCompose.Runtime.Composer
         {
             group.Previous = null;
             group.Updates.Clear();
-            foreach (CompositionGroup child in group.Children) CommitGroups(child);
+            foreach (CompositionGroup child in group.Children)
+                CommitGroups(child);
         }
 
         private static void CollectReads(CompositionGroup group, HashSet<object> reads)
         {
             reads.UnionWith(group.Reads);
-            foreach (CompositionGroup child in group.Children) CollectReads(child, reads);
+            foreach (CompositionGroup child in group.Children)
+                CollectReads(child, reads);
         }
 
         private static List<IRememberObserver> Observers(CompositionGroup? root)
         {
             List<IRememberObserver> result = new List<IRememberObserver>();
-            if (root == null) return result;
-            foreach (object? value in root.Slots) if (value is IRememberObserver observer) result.Add(observer);
-            foreach (CompositionGroup child in root.Children) result.AddRange(Observers(child));
+            if (root == null)
+                return result;
+            foreach (object? value in root.Slots)
+                if (value is IRememberObserver observer)
+                    result.Add(observer);
+            foreach (CompositionGroup child in root.Children)
+                result.AddRange(Observers(child));
             return result;
         }
 
@@ -244,10 +289,15 @@ namespace DotNetCompose.Runtime.Composer
             foreach (IRememberObserver observer in old)
             {
                 int index = added.FindIndex(item => ReferenceEquals(item, observer));
-                if (index >= 0) added.RemoveAt(index); else removed.Add(observer);
+                if (index >= 0)
+                    added.RemoveAt(index);
+                else
+                    removed.Add(observer);
             }
-            for (int i = removed.Count - 1; i >= 0; i--) removed[i].OnForgotten();
-            foreach (IRememberObserver observer in added) observer.OnRemembered();
+            for (int i = removed.Count - 1; i >= 0; i--)
+                removed[i].OnForgotten();
+            foreach (IRememberObserver observer in added)
+                observer.OnRemembered();
         }
 
         private void AbandonCreated(List<IRememberObserver> retained)
@@ -260,43 +310,67 @@ namespace DotNetCompose.Runtime.Composer
 
         private void VerifyAccess()
         {
-            if (_disposed) throw new ObjectDisposedException(nameof(Composition<TNode>));
-            if (_faulted) throw new InvalidOperationException("The composition failed during application and must be disposed.");
-            if (_busy) throw new InvalidOperationException("Composition operations cannot be reentered.");
-            if (_thread != Environment.CurrentManagedThreadId) throw new InvalidOperationException("Use the composition's owning context.");
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(Composition<TNode>));
+            if (_faulted)
+                throw new InvalidOperationException("The composition failed during application and must be disposed.");
+            if (_busy)
+                throw new InvalidOperationException("Composition operations cannot be reentered.");
+            if (_thread != Environment.CurrentManagedThreadId)
+                throw new InvalidOperationException("Use the composition's owning context.");
         }
 
         private void VerifyReady()
         {
             VerifyAccess();
-            if (HasPendingChanges) throw new InvalidOperationException("Apply or discard the pending changes first.");
+            if (HasPendingChanges)
+                throw new InvalidOperationException("Apply or discard the pending changes first.");
             if (_root != null && SlotTable.Version != _committedVersion)
                 throw new InvalidOperationException("The owned slot table was modified externally.");
         }
 
         public void Dispose()
         {
-            if (_disposed) return;
-            if (_thread != Environment.CurrentManagedThreadId || _busy) throw new InvalidOperationException("Dispose on the idle owning context.");
+            if (_disposed)
+                return;
+            if (_thread != Environment.CurrentManagedThreadId || _busy)
+                throw new InvalidOperationException("Dispose on the idle owning context.");
             _disposed = true;
             _observer.Dispose();
             _recomposer?.Unregister(this);
-            try { CancelPending(); }
+            try
+            {
+                CancelPending();
+            }
             finally
             {
-                try { DispatchRemember(Observers(_root), new List<IRememberObserver>()); }
+                try
+                {
+                    DispatchRemember(Observers(_root), new List<IRememberObserver>());
+                }
                 finally
                 {
                     _root = null;
                     _content = null;
                     if (CompositionDiagnosticsRuntime.IsSupported)
                         CompositionDiagnosticsRuntime.ReportCompositionDisposed(this);
-                    lock (_gate) { _changed.Clear(); _observed.Clear(); }
-                    try { _applier.Clear(); }
+                    lock (_gate)
+                    {
+                        _changed.Clear();
+                        _observed.Clear();
+                    }
+                    try
+                    {
+                        _applier.Clear();
+                    }
                     finally
                     {
                         using ComposerSlotTable.Writer writer = SlotTable.OpenWriter();
-                        while (SlotTable.Size > 0) { writer.Reposition(0); writer.RemoveGroup(); }
+                        while (SlotTable.Size > 0)
+                        {
+                            writer.Reposition(0);
+                            writer.RemoveGroup();
+                        }
                     }
                 }
             }

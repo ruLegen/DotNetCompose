@@ -1,3 +1,4 @@
+
 using DotNetCompose.Runtime;
 using DotNetCompose.Runtime.Composer;
 using DotNetCompose.Runtime.Snapshots;
@@ -17,7 +18,8 @@ public sealed class TuiReconciliationTests
         private readonly Queue<(SendOrPostCallback Callback, object? State)> _queue = new();
         public override void Post(SendOrPostCallback d, object? state)
         {
-            lock (_queue) _queue.Enqueue((d, state));
+            lock (_queue)
+                _queue.Enqueue((d, state));
         }
 
         public void Drain()
@@ -28,7 +30,8 @@ public sealed class TuiReconciliationTests
                 (SendOrPostCallback Callback, object? State) work;
                 lock (_queue)
                 {
-                    if (_queue.Count == 0) return;
+                    if (_queue.Count == 0)
+                        return;
                     work = _queue.Dequeue();
                 }
                 Assert.True(limit-- > 0, "Recomposer did not become idle.");
@@ -47,7 +50,9 @@ public sealed class TuiReconciliationTests
             Items.Value,
             item => item.Id,
             0,
-            _ => { },
+            _ =>
+            {
+            },
             TuiLayout.Fill,
             (item, itemComposer, __, ___) => Tui.Builders.Text(item.Label, default, null, itemComposer),
             composer));
@@ -80,7 +85,8 @@ public sealed class TuiReconciliationTests
             Dictionary<int, TuiNode> current = CurrentNodes(applier);
             Assert.Equal(next.Select(item => item.Id), current.Keys);
             foreach ((int id, TuiNode node) in current)
-                if (identities.TryGetValue(id, out TuiNode? old)) Assert.Same(old, node);
+                if (identities.TryGetValue(id, out TuiNode? old))
+                    Assert.Same(old, node);
             identities = current;
         }
     }

@@ -2,7 +2,7 @@ using System;
 
 namespace DotNetCompose.Runtime.Snapshots
 {
-    public readonly record struct SnapshotApplyResult 
+    public readonly record struct SnapshotApplyResult
     {
         public static SnapshotApplyResult Success => new(true, null);
         public static SnapshotApplyResult Failure(string message) => new(false, message);

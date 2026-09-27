@@ -4,11 +4,11 @@ using System;
 
 namespace DotNetCompose.SourceGenerators.Pipeline
 {
-    internal sealed class NodeTransformer 
+    internal sealed class NodeTransformer
     {
         public NodeTransformer(Func<SyntaxNode, SyntaxNode> transformer)
         {
-            _transformer = transformer; 
+            _transformer = transformer;
         }
         private Func<SyntaxNode, SyntaxNode>? _transformer;
 

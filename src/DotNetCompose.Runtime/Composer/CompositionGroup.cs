@@ -5,7 +5,16 @@ using DotNetCompose.Runtime.SlotTable;
 
 namespace DotNetCompose.Runtime.Composer
 {
-    internal enum CompositionGroupKind { Root, Group, Replaceable, Movable, Restart, Node, Provider }
+    internal enum CompositionGroupKind
+    {
+        Root,
+        Group,
+        Replaceable,
+        Movable,
+        Restart,
+        Node,
+        Provider
+    }
 
     internal sealed class ReferenceComparer : IEqualityComparer<object>
     {
@@ -34,11 +43,26 @@ namespace DotNetCompose.Runtime.Composer
         internal bool IsNode => Kind == CompositionGroupKind.Node;
         internal int Size
         {
-            get { int size = 1; foreach (CompositionGroup child in Children) size += child.Size; return size; }
+            get
+            {
+                int size = 1;
+                foreach (CompositionGroup child in Children)
+                    size += child.Size;
+                return size;
+            }
         }
         public void UpdateScope(Action<IComposerContext> scopeUpdater) => Restart = scopeUpdater ?? throw new ArgumentNullException(nameof(scopeUpdater));
         internal static CompositionGroup Draft(CompositionGroup old) => new CompositionGroup
-        { Key = old.Key, Kind = old.Kind, ObjectKey = old.ObjectKey, Previous = old, Anchor = old.Anchor, Node = old.Node, Restart = old.Restart, Locals = old.Locals };
+        {
+            Key = old.Key,
+            Kind = old.Kind,
+            ObjectKey = old.ObjectKey,
+            Previous = old,
+            Anchor = old.Anchor,
+            Node = old.Node,
+            Restart = old.Restart,
+            Locals = old.Locals
+        };
     }
 
     internal sealed class NodeReference
@@ -49,7 +73,11 @@ namespace DotNetCompose.Runtime.Composer
 
     internal sealed class NodeUpdate
     {
-        internal NodeUpdate(Action<object, object?> action, object? value) { Action = action; Value = value; }
+        internal NodeUpdate(Action<object, object?> action, object? value)
+        {
+            Action = action;
+            Value = value;
+        }
         internal readonly Action<object, object?> Action;
         internal readonly object? Value;
     }

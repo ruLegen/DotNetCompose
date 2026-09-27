@@ -7,8 +7,10 @@ namespace DotNetCompose.Runtime
     {
         public static ComposableLambdaWrapper GetLambda(IComposerContext ctx, int key, Func<Delegate> factory)
         {
-            if (ctx == null) throw new ArgumentNullException(nameof(ctx));
-            if (factory == null) throw new ArgumentNullException(nameof(factory));
+            if (ctx == null)
+                throw new ArgumentNullException(nameof(ctx));
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
             ctx.StartGroup(key);
             try
             {
@@ -29,8 +31,10 @@ namespace DotNetCompose.Runtime
 
         public static ComposableLambdaWrapper GetReadonlyLambda(IComposerContext context, int key, Func<Delegate> factory)
         {
-            if (context == null) throw new ArgumentNullException(nameof(context));
-            if (factory == null) throw new ArgumentNullException(nameof(factory));
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
             return new ComposableLambdaWrapper(factory());
         }
     }

@@ -23,14 +23,16 @@ namespace DotNetCompose.Runtime.Snapshots
         {
             Policy = policy;
             _next = new StateStateRecord(Snapshot.Current.Id, value);
-            if (!ReferenceEquals(Snapshot.Current.Root, Snapshot.GlobalSnapshot)) Snapshot.Current.RecordModified(this);
+            if (!ReferenceEquals(Snapshot.Current.Root, Snapshot.GlobalSnapshot))
+                Snapshot.Current.RecordModified(this);
         }
 
         internal bool SetValueAndReportChange(T value)
         {
             Snapshot snapshot = Snapshot.Current;
             StateStateRecord record = Snapshot.ReadCurrent(_next, snapshot);
-            if (Policy.Equivalent(record.Value, value)) return false;
+            if (Policy.Equivalent(record.Value, value))
+                return false;
             using (Snapshot.Lock())
             {
                 snapshot = Snapshot.Current;
@@ -83,7 +85,8 @@ namespace DotNetCompose.Runtime.Snapshots
                 Snapshot syncSnapshot = Snapshot.Current;
                 StateStateRecord? lockedResult = Snapshot.ReadableSilent<StateStateRecord>(
                     _next, syncSnapshot.Id, syncSnapshot.Invalid);
-                if (lockedResult != null) return lockedResult;
+                if (lockedResult != null)
+                    return lockedResult;
                 throw new InvalidOperationException("Readable snapshot record not found");
             }
         }
@@ -97,7 +100,8 @@ namespace DotNetCompose.Runtime.Snapshots
                 return candidate;
 
             StateStateRecord newData;
-            using (Snapshot.Lock()) newData = NewOverwritableRecordLocked();
+            using (Snapshot.Lock())
+                newData = NewOverwritableRecordLocked();
             newData.SnapshotId = id;
             return newData;
         }
@@ -119,11 +123,13 @@ namespace DotNetCompose.Runtime.Snapshots
             return rec;
         }
 
-            private class StateStateRecord : StateRecord
-            {
-                public T Value = default!;
+        private class StateStateRecord : StateRecord
+        {
+            public T Value = default!;
 
-                public StateStateRecord() : base() { }
+            public StateStateRecord() : base()
+            {
+            }
 
             public StateStateRecord(long snapshotId, T value) : base(snapshotId)
             {

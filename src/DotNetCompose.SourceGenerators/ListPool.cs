@@ -70,7 +70,7 @@ namespace DotNetCompose.SourceGenerators
 
         public void Add(T item)
         {
-           _list.Add(item);
+            _list.Add(item);
         }
 
         public void Clear()

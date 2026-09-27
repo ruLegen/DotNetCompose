@@ -77,14 +77,16 @@ namespace DotNetCompose.Runtime.Snapshots.Utils
                         Swap(right, current);
                         current = right;
                     }
-                    else return;
+                    else
+                        return;
                 }
                 else if (_values[left] < _values[current])
                 {
                     Swap(left, current);
                     current = left;
                 }
-                else return;
+                else
+                    return;
             }
         }
 
@@ -105,7 +107,8 @@ namespace DotNetCompose.Runtime.Snapshots.Utils
         private void Ensure(int atLeast)
         {
             int capacity = _values.Length;
-            if (atLeast <= capacity) return;
+            if (atLeast <= capacity)
+                return;
             int newCapacity = capacity * 2;
             Array.Resize(ref _values, newCapacity);
             Array.Resize(ref _index, newCapacity);

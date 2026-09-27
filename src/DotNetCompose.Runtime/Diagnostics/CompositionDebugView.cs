@@ -14,9 +14,9 @@ namespace DotNetCompose.Runtime.Diagnostics
 {
     internal sealed class CompositionDebugView<TNode> where TNode : class
     {
-        private readonly Composition<TNode> _composition;
-
         public CompositionDebugView(Composition<TNode> composition) => _composition = composition;
+
+        private readonly Composition<TNode> _composition;
 
         public string State => _composition.IsDisposed ? "Disposed" : _composition.IsFaulted ? "Faulted" : "Active";
         public bool IsDisposed => _composition.IsDisposed;
@@ -24,8 +24,7 @@ namespace DotNetCompose.Runtime.Diagnostics
         public bool HasInvalidations => _composition.HasInvalidations;
         public bool HasPendingChanges => _composition.HasPendingChanges;
         public CompositionChangeSet? PendingChanges => _composition.PendingChanges;
-        public CompositionDiagnosticsSnapshot Diagnostics =>
-            CompositionDiagnosticsRuntime.GetSnapshot(_composition);
+        public CompositionDiagnosticsSnapshot Diagnostics => CompositionDiagnosticsRuntime.GetSnapshot(_composition);
         public ComposerSlotTable SlotTable => _composition.SlotTable;
     }
 

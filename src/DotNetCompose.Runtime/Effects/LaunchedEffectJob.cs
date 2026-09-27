@@ -25,8 +25,15 @@ namespace DotNetCompose.Runtime.Effects
             var token = _cts.Token;
 
             Task task;
-            try { task = _taskFactory(token).AsTask(); }
-            catch (Exception error) { _errorSink(error); return; }
+            try
+            {
+                task = _taskFactory(token).AsTask();
+            }
+            catch (Exception error)
+            {
+                _errorSink(error);
+                return;
+            }
             task.ContinueWith(t =>
             {
                 if (t.IsFaulted && !token.IsCancellationRequested && t.Exception != null)

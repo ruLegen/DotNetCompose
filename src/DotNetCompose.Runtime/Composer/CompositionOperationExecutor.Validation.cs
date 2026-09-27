@@ -12,7 +12,8 @@ namespace DotNetCompose.Runtime.Composer
                     RequireGroup(in operation);
                     RequireIndex(operation.GroupIndex, in operation);
                     RequirePositiveCount(in operation);
-                    if (operation.Group!.TemporaryAnchor.IsEmpty) throw Incomplete(in operation);
+                    if (operation.Group!.TemporaryAnchor.IsEmpty)
+                        throw Incomplete(in operation);
                     return;
                 case CompositionOperationKind.RemoveGroup:
                     RequireGroup(in operation);
@@ -46,7 +47,8 @@ namespace DotNetCompose.Runtime.Composer
                 case CompositionOperationKind.UpdateNode:
                     RequireGroup(in operation);
                     RequireIndex(operation.NodeIndex, in operation);
-                    if (operation.Update == null) throw Incomplete(in operation);
+                    if (operation.Update == null)
+                        throw Incomplete(in operation);
                     return;
                 case CompositionOperationKind.Down:
                     RequireGroup(in operation);
@@ -58,7 +60,8 @@ namespace DotNetCompose.Runtime.Composer
                 case CompositionOperationKind.InsertBottomUp:
                     RequireGroup(in operation);
                     RequireIndex(operation.NodeIndex, in operation);
-                    if (operation.Count != 1) throw Incomplete(in operation);
+                    if (operation.Count != 1)
+                        throw Incomplete(in operation);
                     return;
                 case CompositionOperationKind.RemoveNode:
                     RequireIndex(operation.NodeIndex, in operation);
@@ -76,17 +79,20 @@ namespace DotNetCompose.Runtime.Composer
 
         private static void RequireGroup(in CompositionOperation operation)
         {
-            if (operation.Group == null) throw Incomplete(in operation);
+            if (operation.Group == null)
+                throw Incomplete(in operation);
         }
 
         private static void RequireIndex(int? index, in CompositionOperation operation)
         {
-            if (!index.HasValue || index.Value < 0) throw Incomplete(in operation);
+            if (!index.HasValue || index.Value < 0)
+                throw Incomplete(in operation);
         }
 
         private static void RequirePositiveCount(in CompositionOperation operation)
         {
-            if (operation.Count <= 0) throw Incomplete(in operation);
+            if (operation.Count <= 0)
+                throw Incomplete(in operation);
         }
 
         private static InvalidOperationException Incomplete(in CompositionOperation operation) =>

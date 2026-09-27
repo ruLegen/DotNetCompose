@@ -26,13 +26,39 @@ public static class GeneratorTestHelper
                 var asm = Assembly.Load(refName);
                 refPaths.Add(asm.Location);
             }
-            catch { }
+            catch
+            {
+            }
         }
 
-        try { refPaths.Add(typeof(object).Assembly.Location); } catch { }
-        try { refPaths.Add(Assembly.Load("System.Runtime").Location); } catch { }
-        try { refPaths.Add(typeof(System.Collections.Generic.List<>).Assembly.Location); } catch { }
-        try { refPaths.Add(typeof(System.Linq.Enumerable).Assembly.Location); } catch { }
+        try
+        {
+            refPaths.Add(typeof(object).Assembly.Location);
+        }
+        catch
+        {
+        }
+        try
+        {
+            refPaths.Add(Assembly.Load("System.Runtime").Location);
+        }
+        catch
+        {
+        }
+        try
+        {
+            refPaths.Add(typeof(System.Collections.Generic.List<>).Assembly.Location);
+        }
+        catch
+        {
+        }
+        try
+        {
+            refPaths.Add(typeof(System.Linq.Enumerable).Assembly.Location);
+        }
+        catch
+        {
+        }
 
         References = refPaths
             .Where(p => !string.IsNullOrEmpty(p))

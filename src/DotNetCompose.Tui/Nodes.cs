@@ -1,6 +1,10 @@
 namespace DotNetCompose.Tui;
 
-internal enum TuiInvalidationKind { Paint, Layout }
+internal enum TuiInvalidationKind
+{
+    Paint,
+    Layout
+}
 
 public abstract class TuiNode
 {
@@ -18,7 +22,8 @@ public abstract class TuiNode
     internal void Insert(int index, TuiNode child)
     {
         ArgumentNullException.ThrowIfNull(child);
-        if (child.Parent != null) throw new InvalidOperationException("A TUI node already has a parent.");
+        if (child.Parent != null)
+            throw new InvalidOperationException("A TUI node already has a parent.");
         child.Parent = this;
         _children.Insert(index, child);
         Invalidate(TuiInvalidationKind.Layout);
@@ -26,7 +31,8 @@ public abstract class TuiNode
 
     internal void Remove(int index, int count)
     {
-        for (int offset = 0; offset < count; offset++) _children[index + offset].Parent = null;
+        for (int offset = 0; offset < count; offset++)
+            _children[index + offset].Parent = null;
         _children.RemoveRange(index, count);
         Invalidate(TuiInvalidationKind.Layout);
     }
@@ -41,7 +47,8 @@ public abstract class TuiNode
 
     internal void ClearChildren()
     {
-        foreach (TuiNode child in _children) child.Parent = null;
+        foreach (TuiNode child in _children)
+            child.Parent = null;
         _children.Clear();
         Invalidate(TuiInvalidationKind.Layout);
     }
@@ -63,13 +70,15 @@ public abstract class TuiNode
     public virtual void Arrange(TuiRect bounds)
     {
         Bounds = bounds;
-        foreach (TuiNode child in _children) child.Arrange(bounds);
+        foreach (TuiNode child in _children)
+            child.Arrange(bounds);
     }
 
     public virtual void Render(CellBuffer buffer, TuiRect clip, FocusManager focus, TuiTheme theme)
     {
         TuiRect childClip = clip.Intersect(Bounds);
-        foreach (TuiNode child in _children) child.Render(buffer, childClip, focus, theme);
+        foreach (TuiNode child in _children)
+            child.Render(buffer, childClip, focus, theme);
     }
 
     public virtual bool HandleKey(TuiKeyEvent key) => false;
@@ -101,10 +110,17 @@ public abstract class TuiNode
 
 internal sealed class TuiRootNode : StackNode
 {
-    internal TuiRootNode() : base(StackOrientation.Vertical) { Layout = TuiLayout.Fill; }
+    internal TuiRootNode() : base(StackOrientation.Vertical)
+    {
+        Layout = TuiLayout.Fill;
+    }
 }
 
-public enum StackOrientation { Horizontal, Vertical }
+public enum StackOrientation
+{
+    Horizontal,
+    Vertical
+}
 
 public class StackNode : TuiNode
 {
@@ -122,7 +138,8 @@ public class StackNode : TuiNode
             main += Orientation == StackOrientation.Horizontal ? desired.Width : desired.Height;
             cross = Math.Max(cross, Orientation == StackOrientation.Horizontal ? desired.Height : desired.Width);
         }
-        if (Children.Count > 1) main += Gap * (Children.Count - 1);
+        if (Children.Count > 1)
+            main += Gap * (Children.Count - 1);
         TuiSize content = Orientation == StackOrientation.Horizontal ? new TuiSize(main, cross) : new TuiSize(cross, main);
         DesiredSize = constraints.Constrain(ResolveDesired(content, constraints));
         return DesiredSize;
@@ -131,15 +148,18 @@ public class StackNode : TuiNode
     public override void Arrange(TuiRect bounds)
     {
         SetBounds(bounds);
-        if (Children.Count == 0) return;
+        if (Children.Count == 0)
+            return;
         int availableMain = (Orientation == StackOrientation.Horizontal ? bounds.Width : bounds.Height) - Gap * (Children.Count - 1);
         int fixedMain = 0;
         int fillWeight = 0;
         foreach (TuiNode child in Children)
         {
             TuiLength length = Orientation == StackOrientation.Horizontal ? child.Layout.Width : child.Layout.Height;
-            if (length.Kind == TuiLengthKind.Fill) fillWeight += length.Value;
-            else fixedMain += length.Kind == TuiLengthKind.Cells
+            if (length.Kind == TuiLengthKind.Fill)
+                fillWeight += length.Value;
+            else
+                fixedMain += length.Kind == TuiLengthKind.Cells
                 ? length.Value
                 : Orientation == StackOrientation.Horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
         }
@@ -248,7 +268,8 @@ public sealed class BorderNode : TuiNode
             buffer.Write(Bounds.Right - 1, Bounds.Y, "┐", theme.Border, own);
             buffer.Write(Bounds.X, Bounds.Bottom - 1, "└", theme.Border, own);
             buffer.Write(Bounds.Right - 1, Bounds.Bottom - 1, "┘", theme.Border, own);
-            if (!string.IsNullOrEmpty(Title)) buffer.Write(Bounds.X + 2, Bounds.Y, $" {Title} ", theme.Border, own);
+            if (!string.IsNullOrEmpty(Title))
+                buffer.Write(Bounds.X + 2, Bounds.Y, $" {Title} ", theme.Border, own);
         }
         base.Render(buffer, own, focus, theme);
     }
@@ -275,7 +296,8 @@ public sealed class ButtonNode : TuiNode
 
     public override bool HandleKey(TuiKeyEvent key)
     {
-        if (!Enabled || key.Key is not (ConsoleKey.Enter or ConsoleKey.Spacebar)) return false;
+        if (!Enabled || key.Key is not (ConsoleKey.Enter or ConsoleKey.Spacebar))
+            return false;
         OnClick?.Invoke();
         return true;
     }
@@ -285,7 +307,15 @@ public sealed class TextFieldNode : TuiNode
 {
     private string _value = string.Empty;
     private int _cursor;
-    public string Value { get => _value; set { _value = value ?? string.Empty; _cursor = Math.Clamp(_cursor, 0, _value.Length); } }
+    public string Value
+    {
+        get => _value;
+        set
+        {
+            _value = value ?? string.Empty;
+            _cursor = Math.Clamp(_cursor, 0, _value.Length);
+        }
+    }
     public string Placeholder { get; set; } = string.Empty;
     public Action<string>? OnValueChanged { get; set; }
     public override bool Focusable => Enabled;
@@ -318,21 +348,36 @@ public sealed class TextFieldNode : TuiNode
 
     public override bool HandleKey(TuiKeyEvent key)
     {
-        if (!Enabled) return false;
+        if (!Enabled)
+            return false;
         string next = Value;
         switch (key.Key)
         {
-            case ConsoleKey.LeftArrow: _cursor = Math.Max(0, _cursor - 1); return true;
-            case ConsoleKey.RightArrow: _cursor = Math.Min(Value.Length, _cursor + 1); return true;
-            case ConsoleKey.Home: _cursor = 0; return true;
-            case ConsoleKey.End: _cursor = Value.Length; return true;
+            case ConsoleKey.LeftArrow:
+                _cursor = Math.Max(0, _cursor - 1);
+                return true;
+            case ConsoleKey.RightArrow:
+                _cursor = Math.Min(Value.Length, _cursor + 1);
+                return true;
+            case ConsoleKey.Home:
+                _cursor = 0;
+                return true;
+            case ConsoleKey.End:
+                _cursor = Value.Length;
+                return true;
             case ConsoleKey.Backspace when _cursor > 0:
-                next = Value.Remove(_cursor - 1, 1); _cursor--; break;
+                next = Value.Remove(_cursor - 1, 1);
+                _cursor--;
+                break;
             case ConsoleKey.Delete when _cursor < Value.Length:
-                next = Value.Remove(_cursor, 1); break;
+                next = Value.Remove(_cursor, 1);
+                break;
             default:
-                if (key.Character == '\0' || char.IsControl(key.Character)) return false;
-                next = Value.Insert(_cursor, key.Character.ToString()); _cursor++; break;
+                if (key.Character == '\0' || char.IsControl(key.Character))
+                    return false;
+                next = Value.Insert(_cursor, key.Character.ToString());
+                _cursor++;
+                break;
         }
         Value = next;
         OnValueChanged?.Invoke(next);
@@ -365,8 +410,10 @@ public sealed class ListNode : TuiNode
     {
         SetBounds(bounds);
         SelectedIndex = Children.Count == 0 ? 0 : Math.Clamp(SelectedIndex, 0, Children.Count - 1);
-        if (SelectedIndex < _scrollOffset) _scrollOffset = SelectedIndex;
-        if (SelectedIndex >= _scrollOffset + bounds.Height) _scrollOffset = SelectedIndex - bounds.Height + 1;
+        if (SelectedIndex < _scrollOffset)
+            _scrollOffset = SelectedIndex;
+        if (SelectedIndex >= _scrollOffset + bounds.Height)
+            _scrollOffset = SelectedIndex - bounds.Height + 1;
         for (int index = 0; index < Children.Count; index++)
             Children[index].Arrange(new TuiRect(bounds.X + 2, bounds.Y + index - _scrollOffset, Math.Max(0, bounds.Width - 2), 1));
     }
@@ -378,7 +425,8 @@ public sealed class ListNode : TuiNode
         for (int index = 0; index < Children.Count; index++)
         {
             TuiNode child = Children[index];
-            if (child.Bounds.Y < own.Y || child.Bounds.Y >= own.Bottom) continue;
+            if (child.Bounds.Y < own.Y || child.Bounds.Y >= own.Bottom)
+                continue;
             string marker = index == SelectedIndex ? "> " : "  ";
             TuiStyle markerStyle = focus.IsFocused(this) && index == SelectedIndex ? theme.Selection : theme.Text;
             buffer.Write(Bounds.X, child.Bounds.Y, marker, markerStyle, own);
@@ -388,17 +436,31 @@ public sealed class ListNode : TuiNode
 
     public override bool HandleKey(TuiKeyEvent key)
     {
-        if (!Enabled || Children.Count == 0) return false;
+        if (!Enabled || Children.Count == 0)
+            return false;
         int next = SelectedIndex;
         switch (key.Key)
         {
-            case ConsoleKey.UpArrow: next--; break;
-            case ConsoleKey.DownArrow: next++; break;
-            case ConsoleKey.PageUp: next -= Math.Max(1, Bounds.Height); break;
-            case ConsoleKey.PageDown: next += Math.Max(1, Bounds.Height); break;
-            case ConsoleKey.Home: next = 0; break;
-            case ConsoleKey.End: next = Children.Count - 1; break;
-            default: return false;
+            case ConsoleKey.UpArrow:
+                next--;
+                break;
+            case ConsoleKey.DownArrow:
+                next++;
+                break;
+            case ConsoleKey.PageUp:
+                next -= Math.Max(1, Bounds.Height);
+                break;
+            case ConsoleKey.PageDown:
+                next += Math.Max(1, Bounds.Height);
+                break;
+            case ConsoleKey.Home:
+                next = 0;
+                break;
+            case ConsoleKey.End:
+                next = Children.Count - 1;
+                break;
+            default:
+                return false;
         }
         next = Math.Clamp(next, 0, Children.Count - 1);
         if (next != SelectedIndex)
@@ -422,7 +484,8 @@ public sealed class FocusManager
     {
         _order.Clear();
         AddFocusable(root);
-        if (_focused == null || !_order.Contains(_focused)) _focused = _order.FirstOrDefault();
+        if (_focused == null || !_order.Contains(_focused))
+            _focused = _order.FirstOrDefault();
     }
 
     public bool HandleKey(TuiKeyEvent key)
@@ -437,14 +500,20 @@ public sealed class FocusManager
 
     public void Move(int delta)
     {
-        if (_order.Count == 0) { _focused = null; return; }
+        if (_order.Count == 0)
+        {
+            _focused = null;
+            return;
+        }
         int index = _focused == null ? 0 : _order.IndexOf(_focused);
         _focused = _order[(index + delta % _order.Count + _order.Count) % _order.Count];
     }
 
     private void AddFocusable(TuiNode node)
     {
-        if (node.Focusable && node.Enabled) _order.Add(node);
-        foreach (TuiNode child in node.Children) AddFocusable(child);
+        if (node.Focusable && node.Enabled)
+            _order.Add(node);
+        foreach (TuiNode child in node.Children)
+            AddFocusable(child);
     }
 }

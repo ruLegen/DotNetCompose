@@ -7,8 +7,20 @@ namespace DotNetCompose.Runtime.Composer
 {
     public enum CompositionOperationKind
     {
-        InsertGroup, RemoveGroup, MoveGroup, UpdateSlot, AppendSlot, TrimSlots,
-        CreateNode, UpdateNode, Down, Up, InsertTopDown, InsertBottomUp, RemoveNode, MoveNode
+        InsertGroup,
+        RemoveGroup,
+        MoveGroup,
+        UpdateSlot,
+        AppendSlot,
+        TrimSlots,
+        CreateNode,
+        UpdateNode,
+        Down,
+        Up,
+        InsertTopDown,
+        InsertBottomUp,
+        RemoveNode,
+        MoveNode
     }
 
     /// <summary>An immutable operation. Positions refer to the sequence at this operation's execution.</summary>
@@ -111,13 +123,20 @@ namespace DotNetCompose.Runtime.Composer
         public override string ToString()
         {
             List<string> parts = new List<string> { Kind.ToString() };
-            if (GroupIndex.HasValue) parts.Add($"group={GroupIndex.Value}");
-            if (SourceGroupIndex.HasValue) parts.Add($"sourceGroup={SourceGroupIndex.Value}");
-            if (NodeIndex.HasValue) parts.Add($"node={NodeIndex.Value}");
-            if (SourceNodeIndex.HasValue) parts.Add($"sourceNode={SourceNodeIndex.Value}");
-            if (SlotOffset.HasValue) parts.Add($"slot={SlotOffset.Value}");
-            if (Count != 0) parts.Add($"count={Count}");
-            if (Key != 0) parts.Add($"key={Key}");
+            if (GroupIndex.HasValue)
+                parts.Add($"group={GroupIndex.Value}");
+            if (SourceGroupIndex.HasValue)
+                parts.Add($"sourceGroup={SourceGroupIndex.Value}");
+            if (NodeIndex.HasValue)
+                parts.Add($"node={NodeIndex.Value}");
+            if (SourceNodeIndex.HasValue)
+                parts.Add($"sourceNode={SourceNodeIndex.Value}");
+            if (SlotOffset.HasValue)
+                parts.Add($"slot={SlotOffset.Value}");
+            if (Count != 0)
+                parts.Add($"count={Count}");
+            if (Key != 0)
+                parts.Add($"key={Key}");
             return string.Join(", ", parts);
         }
     }
@@ -155,7 +174,8 @@ namespace DotNetCompose.Runtime.Composer
 
         internal void Consume()
         {
-            if (IsConsumed) return;
+            if (IsConsumed)
+                return;
             for (int index = 0; index < _operations.Length; index++)
                 _operations[index] = _operations[index].PublicView();
             _insertTable = null;
@@ -164,7 +184,8 @@ namespace DotNetCompose.Runtime.Composer
 
         public IEnumerator<CompositionOperation> GetEnumerator()
         {
-            for (int index = 0; index < _operations.Length; index++) yield return this[index];
+            for (int index = 0; index < _operations.Length; index++)
+                yield return this[index];
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

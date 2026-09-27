@@ -1,3 +1,4 @@
+
 using DotNetCompose.Runtime;
 using DotNetCompose.Runtime.Snapshots;
 using DotNetCompose.Tui;
@@ -78,7 +79,8 @@ namespace DotNetCompose.Tui.Sample
 
         private static void Add()
         {
-            if (string.IsNullOrWhiteSpace(Input.Value)) return;
+            if (string.IsNullOrWhiteSpace(Input.Value))
+                return;
             Items.Value = Items.Value.Append(new TaskItem(_nextId++, Input.Value.Trim())).ToArray();
             Input.Value = string.Empty;
         }
@@ -87,7 +89,8 @@ namespace DotNetCompose.Tui.Sample
         {
             IReadOnlyList<TaskItem> visible = Items.Value
                 .Where(item => item.Title.Contains(Filter.Value, StringComparison.OrdinalIgnoreCase)).ToArray();
-            if (visible.Count == 0) return;
+            if (visible.Count == 0)
+                return;
             TaskItem selected = visible[Math.Clamp(Selected.Value, 0, visible.Count - 1)];
             Items.Value = Items.Value.Where(item => item.Id != selected.Id).ToArray();
             Selected.Value = Math.Max(0, Math.Min(Selected.Value, Items.Value.Count - 1));

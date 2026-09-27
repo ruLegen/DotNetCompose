@@ -35,15 +35,71 @@ namespace DotNetCompose.Runtime.SlotTable
             private bool _hadNext;
 
             public bool Closed { get; private set; }
-            public int Size { get { EnsureOpen(); return _size; } }
-            public int CurrentGroup { get { EnsureOpen(); return _currentGroup; } }
-            public int CurrentEnd { get { EnsureOpen(); return _currentEnd; } }
-            public int Parent { get { EnsureOpen(); return _parent; } }
+            public int Size
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _size;
+                }
+            }
+            public int CurrentGroup
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _currentGroup;
+                }
+            }
+            public int CurrentEnd
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _currentEnd;
+                }
+            }
+            public int Parent
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _parent;
+                }
+            }
             public int GroupEnd => CurrentEnd;
-            public bool InEmpty { get { EnsureOpen(); return _emptyCount > 0; } }
-            public bool IsGroupEnd { get { EnsureOpen(); return _emptyCount > 0 || _currentGroup == _currentEnd; } }
-            public bool HadNext { get { EnsureOpen(); return _hadNext; } }
-            public int RemainingSlots { get { EnsureOpen(); return _currentSlotEnd - _currentSlot; } }
+            public bool InEmpty
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _emptyCount > 0;
+                }
+            }
+            public bool IsGroupEnd
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _emptyCount > 0 || _currentGroup == _currentEnd;
+                }
+            }
+            public bool HadNext
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _hadNext;
+                }
+            }
+            public int RemainingSlots
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _currentSlotEnd - _currentSlot;
+                }
+            }
             public int Slot => GroupSlotIndex;
             public int GroupSlotIndex
             {
@@ -58,17 +114,53 @@ namespace DotNetCompose.Runtime.SlotTable
             public int NodeCount => GetNodeCount(CurrentGroup);
             public int GroupSize => GetGroupSize(CurrentGroup);
             public int GroupSlotCount => GetSlotSize(CurrentGroup);
-            public int ParentNodes { get { EnsureOpen(); return _parent < 0 ? 0 : GetNodeCount(_parent); } }
-            public int GroupKey { get { EnsureOpen(); return _currentGroup < _currentEnd ? GetGroupKey(_currentGroup) : 0; } }
-            public bool HasObjectKey { get { EnsureOpen(); return _currentGroup < _currentEnd && GetHasObjectKey(_currentGroup); } }
-            public object? GroupObjectKey { get { EnsureOpen(); return _currentGroup < _currentEnd ? GetGroupObjectKey(_currentGroup) : null; } }
-            public object? GroupAux { get { EnsureOpen(); return _currentGroup < _currentEnd ? GetGroupAux(_currentGroup) : 0; } }
+            public int ParentNodes
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _parent < 0 ? 0 : GetNodeCount(_parent);
+                }
+            }
+            public int GroupKey
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _currentGroup < _currentEnd ? GetGroupKey(_currentGroup) : 0;
+                }
+            }
+            public bool HasObjectKey
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _currentGroup < _currentEnd && GetHasObjectKey(_currentGroup);
+                }
+            }
+            public object? GroupObjectKey
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _currentGroup < _currentEnd ? GetGroupObjectKey(_currentGroup) : null;
+                }
+            }
+            public object? GroupAux
+            {
+                get
+                {
+                    EnsureOpen();
+                    return _currentGroup < _currentEnd ? GetGroupAux(_currentGroup) : 0;
+                }
+            }
             public object? GroupNode
             {
                 get
                 {
                     EnsureOpen();
-                    if (_currentGroup >= _currentEnd) return null;
+                    if (_currentGroup >= _currentEnd)
+                        return null;
                     GroupRecord group = ReadGroup(_currentGroup);
                     return group.IsNode ? DataAt(group, 0) : Empty;
                 }
@@ -120,7 +212,8 @@ namespace DotNetCompose.Runtime.SlotTable
             public int GetGroupKey(GroupAnchor anchor)
             {
                 EnsureOpen();
-                if (anchor.IsEmpty) return 0;
+                if (anchor.IsEmpty)
+                    return 0;
                 if (!ReferenceEquals(anchor.Owner, Table))
                     throw new ArgumentException("The group anchor belongs to another slot table.", nameof(anchor));
                 return _groups.IsValidAnchor(anchor.Item) ? _groups.Get(anchor.Item).Key : 0;
@@ -130,7 +223,8 @@ namespace DotNetCompose.Runtime.SlotTable
             public object? Get(int slotOffset)
             {
                 EnsureOpen();
-                if (slotOffset < 0) throw new ArgumentOutOfRangeException(nameof(slotOffset));
+                if (slotOffset < 0)
+                    throw new ArgumentOutOfRangeException(nameof(slotOffset));
                 return slotOffset < _currentSlotEnd - _currentSlot ? SlotAt(_currentSlot + slotOffset) : Empty;
             }
 
@@ -139,7 +233,8 @@ namespace DotNetCompose.Runtime.SlotTable
             public object? GroupGet(int groupIndex, int slotOffset)
             {
                 GroupRecord record = ReadGroup(groupIndex);
-                if (slotOffset < 0) throw new ArgumentOutOfRangeException(nameof(slotOffset));
+                if (slotOffset < 0)
+                    throw new ArgumentOutOfRangeException(nameof(slotOffset));
                 return slotOffset < record.SlotCount ? SlotAt(SlotStart(record) + slotOffset) : Empty;
             }
 
@@ -159,14 +254,16 @@ namespace DotNetCompose.Runtime.SlotTable
             public void EndEmpty()
             {
                 EnsureOpen();
-                if (_emptyCount == 0) throw new InvalidOperationException("Unbalanced begin/end empty.");
+                if (_emptyCount == 0)
+                    throw new InvalidOperationException("Unbalanced begin/end empty.");
                 _emptyCount--;
             }
 
             public void StartGroup()
             {
                 EnsureOpen();
-                if (_emptyCount > 0) return;
+                if (_emptyCount > 0)
+                    return;
                 GroupRecord group = ReadCurrentGroup();
                 if (_groups.IndexOf(group.ParentAnchor) != _parent)
                     throw new InvalidOperationException("The current group does not belong to the reader's parent.");
@@ -181,15 +278,18 @@ namespace DotNetCompose.Runtime.SlotTable
             public void StartNode()
             {
                 EnsureOpen();
-                if (_emptyCount > 0) return;
-                if (!ReadCurrentGroup().IsNode) throw new InvalidOperationException("Expected a node group.");
+                if (_emptyCount > 0)
+                    return;
+                if (!ReadCurrentGroup().IsNode)
+                    throw new InvalidOperationException("Expected a node group.");
                 StartGroup();
             }
 
             public void EndGroup()
             {
                 EnsureOpen();
-                if (_emptyCount > 0) return;
+                if (_emptyCount > 0)
+                    return;
                 if (_parent < 0 || _slotStack.Count == 0 || _currentGroup != _currentEnd)
                     throw new InvalidOperationException("EndGroup requires a started group at its end.");
                 _parent = GetParent(_parent);
@@ -216,7 +316,8 @@ namespace DotNetCompose.Runtime.SlotTable
             public void Reposition(int groupIndex)
             {
                 EnsureNotEmpty();
-                if (groupIndex < 0 || groupIndex > _size) throw new ArgumentOutOfRangeException(nameof(groupIndex));
+                if (groupIndex < 0 || groupIndex > _size)
+                    throw new ArgumentOutOfRangeException(nameof(groupIndex));
                 int parent = groupIndex < _size ? GetParent(groupIndex) : -1;
                 _currentGroup = groupIndex;
                 if (parent != _parent)
@@ -242,7 +343,8 @@ namespace DotNetCompose.Runtime.SlotTable
             {
                 EnsureOpen();
                 List<KeyInfo> result = new List<KeyInfo>();
-                if (_emptyCount > 0) return result;
+                if (_emptyCount > 0)
+                    return result;
                 for (int index = _currentGroup; index < _currentEnd;)
                 {
                     GroupRecord group = ReadGroup(index);
@@ -255,7 +357,8 @@ namespace DotNetCompose.Runtime.SlotTable
 
             public void Close()
             {
-                if (Closed) return;
+                if (Closed)
+                    return;
                 Table.CloseReader(this);
                 Closed = true;
             }
@@ -266,13 +369,15 @@ namespace DotNetCompose.Runtime.SlotTable
             private GroupRecord ReadGroup(int groupIndex)
             {
                 EnsureOpen();
-                if (groupIndex < 0 || groupIndex >= _size) throw new ArgumentOutOfRangeException(nameof(groupIndex));
+                if (groupIndex < 0 || groupIndex >= _size)
+                    throw new ArgumentOutOfRangeException(nameof(groupIndex));
                 return _groups.GetAt(groupIndex);
             }
 
             private GroupRecord ReadCurrentGroup()
             {
-                if (_currentGroup >= _currentEnd) throw new InvalidOperationException("There is no group left in the current parent.");
+                if (_currentGroup >= _currentEnd)
+                    throw new InvalidOperationException("There is no group left in the current parent.");
                 return ReadGroup(_currentGroup);
             }
 
@@ -283,13 +388,15 @@ namespace DotNetCompose.Runtime.SlotTable
 
             private void EnsureOpen()
             {
-                if (Closed) throw new ObjectDisposedException(nameof(Reader));
+                if (Closed)
+                    throw new ObjectDisposedException(nameof(Reader));
             }
 
             private void EnsureNotEmpty()
             {
                 EnsureOpen();
-                if (_emptyCount > 0) throw new InvalidOperationException("Cannot skip or reposition while in an empty region.");
+                if (_emptyCount > 0)
+                    throw new InvalidOperationException("Cannot skip or reposition while in an empty region.");
             }
         }
     }

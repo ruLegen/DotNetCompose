@@ -14,10 +14,14 @@ namespace DotNetCompose.SourceGenerators.Diagnostics
     {
         public static readonly NullDiagnosticReporter Instance = new();
 
-        private NullDiagnosticReporter() { }
+        private NullDiagnosticReporter()
+        {
+        }
 
         public bool HasErrors => false;
 
-        public void Report(DiagnosticInfo diagnostic) { }
+        public void Report(DiagnosticInfo diagnostic)
+        {
+        }
     }
 }

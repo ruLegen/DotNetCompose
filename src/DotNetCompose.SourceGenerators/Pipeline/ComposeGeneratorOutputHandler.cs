@@ -155,8 +155,10 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
         private static string MakeProjectRelativePath(string path, string projectDirectory)
         {
-            if (string.IsNullOrEmpty(path)) return string.Empty;
-            if (string.IsNullOrEmpty(projectDirectory)) return path;
+            if (string.IsNullOrEmpty(path))
+                return string.Empty;
+            if (string.IsNullOrEmpty(projectDirectory))
+                return path;
             try
             {
                 string fullPath = Path.GetFullPath(path);

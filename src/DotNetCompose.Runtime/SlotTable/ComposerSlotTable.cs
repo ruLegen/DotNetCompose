@@ -5,7 +5,9 @@ namespace DotNetCompose.Runtime.SlotTable
 {
     public partial class ComposerSlotTable
     {
-        public ComposerSlotTable() { }
+        public ComposerSlotTable()
+        {
+        }
 
         /// <summary>Distinguishes an absent slot from a slot containing null.</summary>
         public static readonly object Empty = Composables.Empty;
@@ -13,7 +15,7 @@ namespace DotNetCompose.Runtime.SlotTable
 
         private readonly SlotMapGapBuffer<GroupRecord> _groups = new SlotMapGapBuffer<GroupRecord>();
         private readonly SlotMapGapBuffer<object?> _slots = new SlotMapGapBuffer<object?>();
-        
+
         private int _readers = 0;
         private bool _writing = false;
         private int _version = 0;
@@ -27,7 +29,8 @@ namespace DotNetCompose.Runtime.SlotTable
         {
             if (anchor.IsEmpty)
             {
-                if (allowEmpty) return GapBufferItemAnchor.Empty;
+                if (allowEmpty)
+                    return GapBufferItemAnchor.Empty;
                 throw new InvalidOperationException("A group anchor is required.");
             }
             if (!ReferenceEquals(anchor.Owner, this))
@@ -50,7 +53,7 @@ namespace DotNetCompose.Runtime.SlotTable
         public Writer OpenWriter()
         {
             EnsureCanWrite();
-            _writing=true;
+            _writing = true;
             _version++;
             return new Writer(this);
         }

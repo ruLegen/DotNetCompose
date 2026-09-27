@@ -8,15 +8,33 @@ public class GeneratorRuntimeTests
     public sealed class Applier : IApplier<object>
     {
         public object Current { get; } = new object();
-        public void OnBeginChanges() { }
-        public void OnEndChanges() { }
-        public void Down(object node) { }
-        public void Up() { }
-        public void InsertTopDown(int index, object instance) { }
-        public void InsertBottomUp(int index, object instance) { }
-        public void Remove(int index, int count) { }
-        public void Move(int from, int to, int count) { }
-        public void Clear() { }
+        public void OnBeginChanges()
+        {
+        }
+        public void OnEndChanges()
+        {
+        }
+        public void Down(object node)
+        {
+        }
+        public void Up()
+        {
+        }
+        public void InsertTopDown(int index, object instance)
+        {
+        }
+        public void InsertBottomUp(int index, object instance)
+        {
+        }
+        public void Remove(int index, int count)
+        {
+        }
+        public void Move(int from, int to, int count)
+        {
+        }
+        public void Clear()
+        {
+        }
         public void Apply(Action<object, object?> block, object? value) => block(Current, value);
     }
 

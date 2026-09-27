@@ -36,13 +36,21 @@ namespace DotNetCompose.Runtime.Snapshots
         internal override HashSet<IStateObject>? Modified
         {
             get => _parentSnapshot?.Modified;
-            set { if (_parentSnapshot != null) _parentSnapshot.Modified = value; }
+            set
+            {
+                if (_parentSnapshot != null)
+                    _parentSnapshot.Modified = value;
+            }
         }
 
         internal override int WriteCountValue
         {
             get => _parentSnapshot?.WriteCountValue ?? 0;
-            set { if (_parentSnapshot != null) _parentSnapshot.WriteCountValue = value; }
+            set
+            {
+                if (_parentSnapshot != null)
+                    _parentSnapshot.WriteCountValue = value;
+            }
         }
 
         internal override void RecordModified(IStateObject state)
@@ -91,14 +99,18 @@ namespace DotNetCompose.Runtime.Snapshots
         internal long ThreadId { get; }
         internal override bool CanBeReused => ThreadId == Environment.CurrentManagedThreadId;
 
-        internal override void CloseLocked() { }
+        internal override void CloseLocked()
+        {
+        }
 
         internal override Action<object>? ReadObserver { get; set; }
         internal override Action<object>? WriteObserver { get; set; }
         internal override int WriteCountValue
         {
             get => 0;
-            set { }
+            set
+            {
+            }
         }
         internal override HashSet<IStateObject>? Modified { get; set; }
 
@@ -122,13 +134,18 @@ namespace DotNetCompose.Runtime.Snapshots
 
         public override Snapshot TakeNestedSnapshot(Action<object>? readObserver = null)
         {
-            if (readObserver == null) return this;
+            if (readObserver == null)
+                return this;
             return new TransparentObserverSnapshot(this, readObserver);
         }
 
         public override bool HasPendingChanges() => false;
-        internal override void RecordModified(IStateObject state) { }
-        internal override void NotifyObjectsInitialized() { }
+        internal override void RecordModified(IStateObject state)
+        {
+        }
+        internal override void NotifyObjectsInitialized()
+        {
+        }
 
         public override void Dispose()
         {

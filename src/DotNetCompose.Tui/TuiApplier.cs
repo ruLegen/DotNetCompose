@@ -17,18 +17,23 @@ public sealed class TuiApplier : IApplier<TuiNode>
     public TuiNode Root { get; }
     public TuiNode Current => _stack.Peek();
 
-    public void OnBeginChanges() { }
+    public void OnBeginChanges()
+    {
+    }
     public void OnEndChanges() => _onEndChanges?.Invoke();
     public void Down(TuiNode node) => _stack.Push(node);
 
     public void Up()
     {
-        if (_stack.Count == 1) throw new InvalidOperationException("Cannot move above the TUI root.");
+        if (_stack.Count == 1)
+            throw new InvalidOperationException("Cannot move above the TUI root.");
         _stack.Pop();
     }
 
     public void InsertTopDown(int index, TuiNode instance) => Current.Insert(index, instance);
-    public void InsertBottomUp(int index, TuiNode instance) { }
+    public void InsertBottomUp(int index, TuiNode instance)
+    {
+    }
     public void Remove(int index, int count) => Current.Remove(index, count);
     public void Move(int from, int to, int count) => Current.Move(from, to, count);
     public void Clear() => Current.ClearChildren();

@@ -31,7 +31,9 @@ public sealed class LayoutAndInputTests
         ListNode list = new();
         list.Insert(0, new TextNode { Text = "one" });
         list.Insert(1, new TextNode { Text = "two" });
-        root.Insert(0, button); root.Insert(1, field); root.Insert(2, list);
+        root.Insert(0, button);
+        root.Insert(1, field);
+        root.Insert(2, list);
         root.Measure(TuiConstraints.Tight(new TuiSize(30, 6)));
         root.Arrange(new TuiRect(0, 0, 30, 6));
         FocusManager focus = new();

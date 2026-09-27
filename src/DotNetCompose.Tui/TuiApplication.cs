@@ -34,8 +34,10 @@ public static class TuiApplication
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (context.Drain()) renderRequested = true;
-                if (pendingError != null) ExceptionDispatchInfo.Capture(pendingError).Throw();
+                if (context.Drain())
+                    renderRequested = true;
+                if (pendingError != null)
+                    ExceptionDispatchInfo.Capture(pendingError).Throw();
 
                 TuiSize size = terminal.Size;
                 if (size != lastSize)
@@ -56,7 +58,8 @@ public static class TuiApplication
                     if (key.Key == ConsoleKey.Escape ||
                         (key.Control && key.Key is ConsoleKey.C or ConsoleKey.Q))
                         break;
-                    if (focus.HandleKey(key)) renderRequested = true;
+                    if (focus.HandleKey(key))
+                        renderRequested = true;
                     continue;
                 }
 
@@ -65,11 +68,15 @@ public static class TuiApplication
         }
         finally
         {
-            try { terminal.Exit(); }
+            try
+            {
+                terminal.Exit();
+            }
             finally
             {
                 SynchronizationContext.SetSynchronizationContext(previousContext);
-                if (ownsTerminal) terminal.Dispose();
+                if (ownsTerminal)
+                    terminal.Dispose();
             }
         }
     }

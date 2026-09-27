@@ -52,8 +52,12 @@ namespace DotNetCompose.Runtime.Composer
         {
             get
             {
-                if (_closed) throw new ObjectDisposedException(nameof(Composer<TNode>));
-                if (_stack.Count == 0) throw new InvalidOperationException("No composition is active.");
+                if (_closed)
+                    throw new ObjectDisposedException(nameof(Composer<TNode>));
+
+                if (_stack.Count == 0)
+                    throw new InvalidOperationException("No composition is active.");
+
                 return _stack.Peek();
             }
         }
@@ -63,11 +67,18 @@ namespace DotNetCompose.Runtime.Composer
             CompositionGroup root = previous == null
                 ? new CompositionGroup { Kind = CompositionGroupKind.Root }
                 : CompositionGroup.Draft(previous);
+
             root.Locals = CompositionLocalScope.Empty;
             _stack.Push(new Frame(root, CompositionLocalScope.Empty, false));
-            if (recompose && previous != null && !previous.Reads.Overlaps(_invalid)) SkipToGroupEnd();
-            else content(this, ComposableArgumentsState.Empty, ComposableArgumentsDefaultState.Empty);
-            if (_stack.Count != 1) throw new InvalidOperationException("Unbalanced composition groups.");
+
+            if (recompose && previous != null && !previous.Reads.Overlaps(_invalid))
+                SkipToGroupEnd();
+            else
+                content(this, ComposableArgumentsState.Empty, ComposableArgumentsDefaultState.Empty);
+
+            if (_stack.Count != 1)
+                throw new InvalidOperationException("Unbalanced composition groups.");
+
             _stack.Pop();
             return root;
         }
@@ -92,7 +103,11 @@ namespace DotNetCompose.Runtime.Composer
             {
                 CompositionGroup candidate = frame.OldChildren[frame.ChildCursor];
                 if (candidate.Key == key && candidate.Kind == kind && Equals(candidate.ObjectKey, dataKey))
-                { frame.ChildCursor++; frame.Used.Add(candidate); return candidate; }
+                {
+                    frame.ChildCursor++;
+                    frame.Used.Add(candidate);
+                    return candidate;
+                }
             }
             if (frame.Pending == null)
             {
@@ -104,26 +119,40 @@ namespace DotNetCompose.Runtime.Composer
                     _reader.Reposition(_table.IndexOf(frame.OldChildren[frame.ChildCursor].Anchor));
                     keys = _reader.ExtractKeys();
                     foreach (CompositionGroup child in frame.OldChildren)
-                        if (!frame.Used.Contains(child)) childrenByLocation.Add(_table.IndexOf(child.Anchor), child);
+                    {
+                        if (!frame.Used.Contains(child))
+                            childrenByLocation.Add(_table.IndexOf(child.Anchor), child);
+                    }
                 }
                 foreach (KeyInfo info in keys)
                 {
-                    if (!childrenByLocation.TryGetValue(info.Location, out CompositionGroup? child)) continue;
+                    if (!childrenByLocation.TryGetValue(info.Location, out CompositionGroup? child))
+                        continue;
+
                     (int, CompositionGroupKind, object?) lookup = (info.Key, child.Kind, child.ObjectKey);
+
                     if (!frame.Pending.TryGetValue(lookup, out Queue<CompositionGroup>? queue))
-                    { queue = new Queue<CompositionGroup>(); frame.Pending.Add(lookup, queue); }
+                    {
+                        queue = new Queue<CompositionGroup>();
+                        frame.Pending.Add(lookup, queue);
+                    }
                     queue.Enqueue(child);
                 }
             }
             if (frame.Pending.TryGetValue((key, kind, dataKey), out Queue<CompositionGroup>? matches) && matches.Count > 0)
-            { CompositionGroup match = matches.Dequeue(); frame.Used.Add(match); return match; }
+            {
+                CompositionGroup match = matches.Dequeue();
+                frame.Used.Add(match);
+                return match;
+            }
             return null;
         }
 
         private void Start(int key, CompositionGroupKind kind, object? dataKey = null)
         {
             Frame parent = Current;
-            if (parent.Skipped) throw new InvalidOperationException("Cannot emit children after skipping a group.");
+            if (parent.Skipped)
+                throw new InvalidOperationException("Cannot emit children after skipping a group.");
             CompositionGroup? old = Match(parent, key, kind, dataKey);
             CompositionGroup group = old == null
                 ? new CompositionGroup { Key = key, Kind = kind, ObjectKey = dataKey }
@@ -138,13 +167,22 @@ namespace DotNetCompose.Runtime.Composer
             Frame frame = Current;
             if (_stack.Count <= 1 || frame.Group.Kind != kind || (key.HasValue && frame.Group.Key != key.Value))
                 throw new InvalidOperationException("Unbalanced group operation.");
-            if (frame.Group.IsNode && !frame.NodeChosen) throw new InvalidOperationException("CreateNode or UseNode was not called.");
+            if (frame.Group.IsNode && !frame.NodeChosen)
+                throw new InvalidOperationException("CreateNode or UseNode was not called.");
             _stack.Pop();
             return frame.Group;
         }
 
-        public void StartRoot() { if (Current.Group.Kind != CompositionGroupKind.Root) throw new InvalidOperationException("Root is already active."); }
-        public void EndRoot() { if (_stack.Count != 1) throw new InvalidOperationException("Unbalanced root."); }
+        public void StartRoot()
+        {
+            if (Current.Group.Kind != CompositionGroupKind.Root)
+                throw new InvalidOperationException("Root is already active.");
+        }
+        public void EndRoot()
+        {
+            if (_stack.Count != 1)
+                throw new InvalidOperationException("Unbalanced root.");
+        }
         public void StartGroup(int key) => Start(key, CompositionGroupKind.Group);
         public void EndGroup() => End(CompositionGroupKind.Group);
         public void StartRestartableGroup(int key) => Start(key, CompositionGroupKind.Restart);
@@ -179,7 +217,8 @@ namespace DotNetCompose.Runtime.Composer
         public void UpdateRememberedValue(object? value)
         {
             Frame frame = Current;
-            if (frame.LastSlot < 0) throw new InvalidOperationException("Read a slot before updating it.");
+            if (frame.LastSlot < 0)
+                throw new InvalidOperationException("Read a slot before updating it.");
             frame.Group.Slots[frame.LastSlot] = value;
             CreatedValues.Add(value);
         }
@@ -189,16 +228,20 @@ namespace DotNetCompose.Runtime.Composer
             object? old = RememberedValue();
             bool same = !ReferenceEquals(old, ComposerSlotTable.Empty)
                 && (old is T typed ? EqualityComparer<T>.Default.Equals(typed, value) : old == null && value is null);
-            if (!same) UpdateRememberedValue(value);
+            if (!same)
+                UpdateRememberedValue(value);
             return !same;
         }
 
         public void CreateNode<T>(Func<T> factory) where T : class
         {
             Frame frame = Current;
-            if (!frame.Group.IsNode || frame.NodeChosen || !Inserting) throw new InvalidOperationException("Unexpected CreateNode.");
-            if (factory == null) throw new ArgumentNullException(nameof(factory));
-            if (!typeof(TNode).IsAssignableFrom(typeof(T))) throw new InvalidOperationException("Node type is incompatible with the applier.");
+            if (!frame.Group.IsNode || frame.NodeChosen || !Inserting)
+                throw new InvalidOperationException("Unexpected CreateNode.");
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+            if (!typeof(TNode).IsAssignableFrom(typeof(T)))
+                throw new InvalidOperationException("Node type is incompatible with the applier.");
             frame.Group.Node.Factory = () => factory() ?? throw new InvalidOperationException("Node factory returned null.");
             frame.NodeChosen = true;
         }
@@ -206,26 +249,31 @@ namespace DotNetCompose.Runtime.Composer
         public void UseNode()
         {
             Frame frame = Current;
-            if (!frame.Group.IsNode || frame.NodeChosen || Inserting) throw new InvalidOperationException("Unexpected UseNode.");
+            if (!frame.Group.IsNode || frame.NodeChosen || Inserting)
+                throw new InvalidOperationException("Unexpected UseNode.");
             frame.NodeChosen = true;
         }
 
         public void ApplyNode<T>(Action<T> block, object? value)
         {
-            if (block == null) throw new ArgumentNullException(nameof(block));
+            if (block == null)
+                throw new ArgumentNullException(nameof(block));
             AddUpdate(new NodeUpdate((node, ignored) => block((T)node), value));
         }
 
         public void ApplyNode<T, TValue>(TValue value, Action<T, TValue> block)
         {
-            if (block == null) throw new ArgumentNullException(nameof(block));
-            if (Changed(value)) AddUpdate(new NodeUpdate((node, argument) => block((T)node, (TValue)argument!), value));
+            if (block == null)
+                throw new ArgumentNullException(nameof(block));
+            if (Changed(value))
+                AddUpdate(new NodeUpdate((node, argument) => block((T)node, (TValue)argument!), value));
         }
 
         private void AddUpdate(NodeUpdate update)
         {
             Frame frame = Current;
-            if (!frame.Group.IsNode || !frame.NodeChosen) throw new InvalidOperationException("Select a node before updating it.");
+            if (!frame.Group.IsNode || !frame.NodeChosen)
+                throw new InvalidOperationException("Select a node before updating it.");
             frame.Group.Updates.Add(update);
         }
 
@@ -233,7 +281,8 @@ namespace DotNetCompose.Runtime.Composer
 
         public void StartProvider(ProvidedValue value)
         {
-            if (value == null) throw new ArgumentNullException(nameof(value));
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
             StartProviderScope(new[] { value });
         }
 
@@ -241,7 +290,8 @@ namespace DotNetCompose.Runtime.Composer
 
         public void StartProviders(IReadOnlyList<ProvidedValue> values)
         {
-            if (values == null) throw new ArgumentNullException(nameof(values));
+            if (values == null)
+                throw new ArgumentNullException(nameof(values));
             StartProviderScope(values);
         }
 
@@ -249,7 +299,8 @@ namespace DotNetCompose.Runtime.Composer
 
         public T Consume<T>(CompositionLocal<T> key)
         {
-            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
             return key.Read(Current.Locals);
         }
 
@@ -272,7 +323,8 @@ namespace DotNetCompose.Runtime.Composer
                 ProvidedValue provided = values[index]
                     ?? throw new ArgumentException("A CompositionLocal provider value cannot be null.", nameof(values));
                 CompositionLocal local = provided.CompositionLocal;
-                if (!provided.CanOverride && parentScope.Contains(local)) continue;
+                if (!provided.CanOverride && parentScope.Contains(local))
+                    continue;
                 CompositionLocalValueHolder? oldHolder = null;
                 previous?.Values.TryGetValue(local, out oldHolder);
                 CompositionLocalValueHolder holder = local.UpdatedValueHolder(provided, oldHolder, out IStateObject? changedState);
@@ -291,7 +343,8 @@ namespace DotNetCompose.Runtime.Composer
             else
                 state = new CompositionLocalProviderState(ownValues, scope);
 
-            if (!ReferenceEquals(state, previous)) UpdateRememberedValue(state);
+            if (!ReferenceEquals(state, previous))
+                UpdateRememberedValue(state);
             frame.Locals = scope;
             frame.Group.Locals = scope;
             frame.ProvidersInvalid = !inserting && previous != null && !ReferenceEquals(previous.Scope, scope);
@@ -301,7 +354,8 @@ namespace DotNetCompose.Runtime.Composer
             Dictionary<CompositionLocal, CompositionLocalValueHolder> first,
             Dictionary<CompositionLocal, CompositionLocalValueHolder> second)
         {
-            if (first.Count != second.Count) return false;
+            if (first.Count != second.Count)
+                return false;
             foreach (KeyValuePair<CompositionLocal, CompositionLocalValueHolder> item in first)
                 if (!second.TryGetValue(item.Key, out CompositionLocalValueHolder? value) ||
                     !item.Value.IsEquivalentTo(value))
@@ -313,10 +367,13 @@ namespace DotNetCompose.Runtime.Composer
         {
             Frame frame = Current;
             CompositionGroup old = frame.Group.Previous ?? throw new InvalidOperationException("Cannot skip a new group.");
-            if (frame.Group.Children.Count != 0 || frame.Skipped) throw new InvalidOperationException("Skip must precede child traversal.");
-            for (int i = frame.SlotCursor; i < old.Slots.Count; i++) frame.Group.Slots.Add(_reader.GroupGet(_table.IndexOf(old.Anchor), i));
+            if (frame.Group.Children.Count != 0 || frame.Skipped)
+                throw new InvalidOperationException("Skip must precede child traversal.");
+            for (int i = frame.SlotCursor; i < old.Slots.Count; i++)
+                frame.Group.Slots.Add(_reader.GroupGet(_table.IndexOf(old.Anchor), i));
             frame.Group.Reads.UnionWith(old.Reads);
-            foreach (CompositionGroup child in old.Children) frame.Group.Children.Add(RecomposeChild(child));
+            foreach (CompositionGroup child in old.Children)
+                frame.Group.Children.Add(RecomposeChild(child));
             frame.Skipped = true;
         }
 
@@ -347,11 +404,18 @@ namespace DotNetCompose.Runtime.Composer
                     draft.Reads = new HashSet<object>(old.Reads, ReferenceComparer.Instance);
                     draft.Children = new List<CompositionGroup>(old.Children);
                 }
-                if (draft != null) draft.Children[i] = child;
+                if (draft != null)
+                    draft.Children[i] = child;
             }
             return draft ?? old;
         }
 
-        public void Dispose() { if (_closed) return; _closed = true; _reader.Dispose(); }
+        public void Dispose()
+        {
+            if (_closed)
+                return;
+            _closed = true;
+            _reader.Dispose();
+        }
     }
 }

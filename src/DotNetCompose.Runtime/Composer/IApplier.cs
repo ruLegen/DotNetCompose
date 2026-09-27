@@ -25,6 +25,8 @@ namespace DotNetCompose.Runtime.Composer
 
         void Apply(Action<TNode, object?> block, object? value);
 
-        void Reuse() { }
+        void Reuse()
+        {
+        }
     }
 }
