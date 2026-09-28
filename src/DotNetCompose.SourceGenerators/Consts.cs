@@ -29,7 +29,8 @@ namespace DotNetCompose.SourceGenerators
             public const string BuildersClassName = "Builders";
             public const string InstanceReceiverName = "__instance";
             public const string LambdaValueName = "a";
-            public static readonly Func<int, string> LambdaName = index => $"__Lambda_{(uint)index}";
+            public static readonly Func<int, int, string> LambdaName = (methodIndex, lambdaIndex) =>
+                $"__Lambda_{(uint)methodIndex}_{(uint)lambdaIndex}";
             public static readonly Func<string, string> ParameterStateName = name => $"__{name}_state";
         }
 

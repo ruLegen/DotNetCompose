@@ -52,7 +52,7 @@ namespace TestNs
             #line hidden
                         }
 #line hidden
-                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(LocalNumber.Provides(value), __StoredLambda.__Lambda_0, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
+                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(LocalNumber.Provides(value), __StoredLambda.__Lambda_0_0, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
 
                         }
                         #line hidden
@@ -62,7 +62,7 @@ namespace TestNs
             #line hidden
                         }
 #line hidden
-                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(new ProvidedValue[] { LocalNumber.Provides(value), LocalText.Provides("text") }, __StoredLambda.__Lambda_1, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
+                        global::DotNetCompose.Runtime.Composables.Builders.CompositionLocalProvider(new ProvidedValue[] { LocalNumber.Provides(value), LocalText.Provides("text") }, __StoredLambda.__Lambda_0_1, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Uncertain, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
 
                         }
                     }
@@ -124,11 +124,11 @@ namespace TestNs
             }
             static class __StoredLambda
             {
-                public static void __Lambda_0(DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+                public static void __Lambda_0_0(DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
                     global::TestNs.TestClass.Builders.Read(__ctx: __ctx, __changed: default, __defaultParamState: default);
                 }
-                public static void __Lambda_1(DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+                public static void __Lambda_0_1(DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
                     global::TestNs.TestClass.Builders.Read(__ctx: __ctx, __changed: default, __defaultParamState: default);
                 }

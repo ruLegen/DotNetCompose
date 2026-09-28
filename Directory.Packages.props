@@ -9,6 +9,8 @@
     <PackageVersion Include="FodyHelpers" Version="6.9.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.110" />
+    <PackageVersion Include="Microsoft.Maui.Essentials" Version="10.0.110" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageVersion Include="Verify.Xunit" Version="28.14.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />

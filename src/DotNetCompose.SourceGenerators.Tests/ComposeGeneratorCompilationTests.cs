@@ -1,7 +1,55 @@
+using System.Text.RegularExpressions;
+
 namespace DotNetCompose.SourceGenerators.Tests;
 
 public class ComposeGeneratorCompilationTests
 {
+    [Fact]
+    public void StoredLambdasInDifferentMethodsHaveUniqueNames()
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public static partial class Example
+            {
+                [Composable]
+                public static void Host([Composable] Action content)
+                {
+                    content();
+                }
+
+                [Composable]
+                public static void Leaf(int value)
+                {
+                }
+
+                [Composable]
+                public static void First()
+                {
+                    Host(() => Leaf(1));
+                    Host(() => Leaf(2));
+                }
+
+                [Composable]
+                public static void Second()
+                {
+                    Host(() => Leaf(3));
+                }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+        MatchCollection declarations = Regex.Matches(generated, @"public static void (__Lambda_\d+_\d+)\(");
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Equal(3, declarations.Count);
+        Assert.Equal(3, declarations.Select(match => match.Groups[1].Value).Distinct().Count());
+    }
+
     [Fact]
     public void GeneratedCodeCompilesWithoutErrors()
     {

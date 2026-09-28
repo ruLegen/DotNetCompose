@@ -11,15 +11,17 @@ namespace DotNetCompose.SourceGenerators
 {
     internal sealed class RewriterSession
     {
-        public RewriterSession(int initialGroupId, IDiagnosticReporter diagnostics, bool isReadOnly = false)
+        public RewriterSession(int initialGroupId, int methodIndex, IDiagnosticReporter diagnostics, bool isReadOnly = false)
         {
             _currentGroupId = initialGroupId;
+            _methodIndex = methodIndex;
             InitialGroupId = initialGroupId;
             Diagnostics = diagnostics;
             _readOnlyScopes.Push(isReadOnly);
         }
 
         private int _currentGroupId;
+        private readonly int _methodIndex;
         private int _nextLambdaKey;
         private int _conditionalDepth;
         private bool _hasErrors;
@@ -34,7 +36,7 @@ namespace DotNetCompose.SourceGenerators
 
         public int NextGroupId() => ++_currentGroupId;
         public int NextLambdaKey() => _nextLambdaKey++;
-        public string NextLambdaName() => Consts.Rewriter.LambdaName(NextLambdaKey());
+        public string NextLambdaName() => Consts.Rewriter.LambdaName(_methodIndex, NextLambdaKey());
 
         public void Report(DiagnosticInfo diagnostic)
         {

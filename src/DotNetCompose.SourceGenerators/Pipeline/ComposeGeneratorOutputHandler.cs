@@ -65,7 +65,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 .ToImmutableArray();
 
             var rewrittenMethods = typeMethods.Select(m => m.Declaration!)
-                .Select(m =>
+                .Select((m, methodIndex) =>
                 {
                     SemanticModel semanticModel = compilation.GetSemanticModel(m.SyntaxTree);
                     IMethodSymbol symbol = semanticModel.GetDeclaredSymbol(m)!;
@@ -101,7 +101,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         sourceSpan.StartLinePosition.Line + 1);
 
                     int initialGroupId = RewriterSession.DeterministicHash(methodIdentity);
-                    RewriterSession session = new RewriterSession(initialGroupId, diagnostics, methodCtx.IsReadOnly);
+                    RewriterSession session = new RewriterSession(
+                        initialGroupId, methodIndex, diagnostics, methodCtx.IsReadOnly);
 
                     return (
                         Options: options,

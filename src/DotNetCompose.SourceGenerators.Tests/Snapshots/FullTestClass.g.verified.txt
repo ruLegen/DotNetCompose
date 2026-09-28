@@ -260,7 +260,7 @@ namespace DotNetCompose.Playground
             #line hidden
                         }
 #line hidden
-                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __StoredLambda.__Lambda_0, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
+                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __StoredLambda.__Lambda_4_0, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
 
                         }
                         #line hidden
@@ -270,7 +270,7 @@ namespace DotNetCompose.Playground
             #line hidden
                         }
 #line hidden
-                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __StoredLambda.__Lambda_2, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
+                        global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(3, __StoredLambda.__Lambda_4_2, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
 
                         }
                         #line hidden
@@ -505,7 +505,7 @@ namespace DotNetCompose.Playground
             }
             static class __StoredLambda
             {
-                public static void __Lambda_0(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+                public static void __Lambda_4_0(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
                 #line (58, 13) - (58, 32) 20 ""
                     int nonCaptured = i;
@@ -514,13 +514,13 @@ namespace DotNetCompose.Playground
                     global::DotNetCompose.Playground.TestClass.Builders.ComposableTest(123, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
                 #line hidden
                 }
-                public static void __Lambda_1(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+                public static void __Lambda_4_1(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
                 #line (67, 17) - (67, 34) 20 ""
                     int someLocal = i;
                 #line hidden
                 }
-                public static void __Lambda_2(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
+                public static void __Lambda_4_2(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {
                 #line (63, 13) - (63, 32) 20 ""
                     int nonCaptured = i;
@@ -532,7 +532,7 @@ namespace DotNetCompose.Playground
                 #line hidden
                     }
 #line hidden
-                    global::DotNetCompose.Playground.TestClass.Builders.ComposableTest2(123, __StoredLambda.__Lambda_1, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
+                    global::DotNetCompose.Playground.TestClass.Builders.ComposableTest2(123, __StoredLambda.__Lambda_4_1, __ctx: __ctx, __changed: new DotNetCompose.Runtime.ComposableArgumentsState(stackalloc byte[] { DotNetCompose.Runtime.ComposableArgumentsState.Static, DotNetCompose.Runtime.ComposableArgumentsState.Static }), __defaultParamState: default);
 
                     }
                 }
