@@ -343,3 +343,6 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+
+# Verify (snapshot testing) received files
+*.received.*

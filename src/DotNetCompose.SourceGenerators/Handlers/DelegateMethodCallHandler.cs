@@ -1,0 +1,190 @@
+
+using DotNetCompose.SourceGenerators.Diagnostics;
+using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Helpers;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
+using System.Collections.Immutable;
+using System.Linq;
+using static DotNetCompose.SourceGenerators.Consts;
+using static DotNetCompose.SourceGenerators.Extensions.MethodDeclarationSyntaxExtensions;
+
+namespace DotNetCompose.SourceGenerators.Handlers
+{
+    internal record DelegateMethodCallInfo(string RecieverObjectName, bool IsSimpleMemberAccessCall, bool IsDirectCall, bool IsNullSafeCall);
+
+    internal class DelegateMethodCallHandler : IMethodCallHandler
+    {
+        public bool TryHandle(
+            ExpressionSyntax expression,
+            IMethodSymbol methodSymbol,
+            MethodCallHandlerContext context,
+            out SyntaxNode? replacement)
+        {
+            replacement = null;
+
+            if (methodSymbol.MethodKind != MethodKind.DelegateInvoke)
+                return false;
+
+            DelegateMethodCallInfo? delegateMethodCallInfo = GetDelegateMethodCallInfo(expression, methodSymbol);
+            if (delegateMethodCallInfo == null)
+                return false;
+
+            MethodParameterInfo? parameter = context.MethodCtx.Parameters
+                .FirstOrDefault(p => p.Name == delegateMethodCallInfo.RecieverObjectName);
+            bool isComposableArgumentCall = parameter?.IsComposable ?? false;
+            if (!isComposableArgumentCall)
+                return false;
+
+            if (context.IsReadOnly && parameter?.IsReadOnly != true)
+            {
+                context.Diagnostics.Report(DiagnosticInfo.Create(
+                    DiagnosticDescriptors.DNC016_NonReadOnlyCall,
+                    expression.GetLocation(),
+                    delegateMethodCallInfo.RecieverObjectName));
+            }
+
+            replacement = ProcessDelegateCall(expression, delegateMethodCallInfo, parameter?.IsReadOnly == true, context);
+            return true;
+        }
+
+        private ExpressionSyntax ProcessDelegateCall(
+            ExpressionSyntax expression,
+            DelegateMethodCallInfo delegateMethodCallInfo,
+            bool isReadOnly,
+            MethodCallHandlerContext context)
+        {
+            RewriterOptions options = context.Options;
+            MethodGenerationContext methodCtx = context.MethodCtx;
+            RewriterSession session = context.Session;
+            SemanticModel semanticModel = context.SemanticModel;
+
+            InvocationExpressionSyntax? invocation = null;
+            if (delegateMethodCallInfo.IsSimpleMemberAccessCall || delegateMethodCallInfo.IsDirectCall)
+            {
+                invocation = expression as InvocationExpressionSyntax;
+            }
+            else if (delegateMethodCallInfo.IsNullSafeCall)
+            {
+                ConditionalAccessExpressionSyntax conditionalAccess = expression as ConditionalAccessExpressionSyntax;
+                invocation = conditionalAccess?.WhenNotNull as InvocationExpressionSyntax;
+            }
+
+            if (invocation == null)
+                return expression;
+
+            IMethodSymbol? delegateMethod = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+            ImmutableArray<MethodParameterInfo> delegateParams = ImmutableArray<MethodParameterInfo>.Empty;
+            if (delegateMethod != null)
+                delegateParams = delegateMethod.GetParametersInfos(semanticModel);
+
+            ExpressionSyntax changedArg = ArgumentResolver.BuildChangedArg(
+                delegateParams,
+                invocation.ArgumentList.Arguments,
+                delegateMethod == null
+                    ? System.Array.Empty<int>()
+                    : ArgumentResolver.BindArgumentIndices(invocation, delegateMethod, semanticModel),
+                methodCtx,
+                semanticModel);
+
+            ExpressionSyntax result = null;
+            if (delegateMethodCallInfo.IsSimpleMemberAccessCall)
+            {
+                var invocationSyntax = expression as InvocationExpressionSyntax;
+                ArgumentListSyntax newArguments = invocationSyntax.ArgumentList.AddArguments(
+                   new ArgumentSyntax[]
+                   {
+                             SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
+                             SyntaxFactory.Argument(changedArg),
+                             SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
+                   }
+                );
+                result = invocationSyntax.WithArgumentList(newArguments);
+            }
+            else if (delegateMethodCallInfo.IsDirectCall)
+            {
+                InvocationExpressionSyntax inv = expression as InvocationExpressionSyntax;
+                result = inv.WithArgumentList(inv.ArgumentList.AddArguments(
+                    new ArgumentSyntax[]{
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
+                        SyntaxFactory.Argument(changedArg),
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
+                    }
+                ));
+            }
+            else if (delegateMethodCallInfo.IsNullSafeCall)
+            {
+                ConditionalAccessExpressionSyntax conditionalAccessExpression = expression as ConditionalAccessExpressionSyntax;
+                InvocationExpressionSyntax inv = conditionalAccessExpression.WhenNotNull as InvocationExpressionSyntax;
+                if (inv == null)
+                {
+                    context.Diagnostics.Report(DiagnosticInfo.Create(
+                        DiagnosticDescriptors.DNC009_ConditionalAccessFailed,
+                        conditionalAccessExpression.GetLocation()));
+                    return expression;
+                }
+
+                ArgumentListSyntax newArguments = inv.ArgumentList.AddArguments(
+                      new ArgumentSyntax[]{
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(options.ContextVarName)),
+                        SyntaxFactory.Argument(changedArg),
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
+                    });
+
+                result = conditionalAccessExpression.WithWhenNotNull(
+                    inv.WithArgumentList(newArguments));
+            }
+            if (result != null)
+            {
+                if (!isReadOnly)
+                    session.MarkComposableProcessed();
+                return result;
+            }
+            else
+                return expression;
+        }
+
+        private static DelegateMethodCallInfo? GetDelegateMethodCallInfo(ExpressionSyntax expression, IMethodSymbol methodSymbol)
+        {
+            bool isSimpleMemberAccess = false;
+            bool isDirectCall = false;
+            bool isNullSafeCall = false;
+            string recieverObjectName = string.Empty;
+
+            if (expression is InvocationExpressionSyntax invocationExpression)
+            {
+                switch (invocationExpression.Expression)
+                {
+                    case IdentifierNameSyntax identifierNameSyntax:
+                        recieverObjectName = identifierNameSyntax.Identifier.Text;
+                        isDirectCall = true;
+                        break;
+                    case MemberAccessExpressionSyntax memberAccessExpressionSyntax:
+                        recieverObjectName = (memberAccessExpressionSyntax.Expression as IdentifierNameSyntax)?.Identifier.Text;
+                        isSimpleMemberAccess = true;
+                        break;
+                    default:
+                        return null;
+                }
+            }
+            else if (expression is ConditionalAccessExpressionSyntax conditionalAccessExpression)
+            {
+                switch (conditionalAccessExpression.Expression)
+                {
+                    case IdentifierNameSyntax identifierNameSyntax:
+                        recieverObjectName = identifierNameSyntax.Identifier.Text;
+                        isNullSafeCall = true;
+                        break;
+                    default:
+                        return null;
+                }
+            }
+            else
+                return null;
+
+            return new DelegateMethodCallInfo(recieverObjectName, isSimpleMemberAccess, isDirectCall, isNullSafeCall);
+        }
+    }
+}

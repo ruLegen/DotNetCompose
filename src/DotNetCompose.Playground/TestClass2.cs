@@ -12,7 +12,7 @@ namespace DotNetCompose.Playground
         [Composable]
         public static void ComeComposableInAnotherClass()
         {
-    
+
         }
     }
 }

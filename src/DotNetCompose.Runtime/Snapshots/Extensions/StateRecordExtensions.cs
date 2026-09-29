@@ -1,0 +1,63 @@
+using System;
+
+namespace DotNetCompose.Runtime.Snapshots
+{
+    internal static class StateRecordExtensions
+    {
+        public static R WithCurrent<T, R>(this T record, Func<T, R> block)
+            where T : StateRecord
+        {
+            return block(Snapshot.ReadCurrent(record));
+        }
+
+        public static T Readable<T>(this T record, IStateObject state)
+            where T : StateRecord
+        {
+            var snapshot = Snapshot.Current;
+            snapshot.ReadObserver?.Invoke(state);
+            return Snapshot.ReadableSilent(record, snapshot.Id, snapshot.Invalid)
+                ?? SyncReadableFallback(state);
+
+            T SyncReadableFallback(IStateObject s)
+            {
+                using (Snapshot.Lock())
+                {
+                    var syncSnapshot = Snapshot.Current;
+                    return Snapshot.ReadableSilent<T>(
+                        (T)s.FirstStateRecord,
+                        syncSnapshot.Id,
+                        syncSnapshot.Invalid)
+                    ?? throw new InvalidOperationException("Readable snapshot record not found");
+                }
+            }
+        }
+
+        public static T Readable<T>(this T record, IStateObject state, Snapshot snapshot)
+            where T : StateRecord
+        {
+            snapshot.ReadObserver?.Invoke(state);
+            return Snapshot.ReadableSilent(record, snapshot.Id, snapshot.Invalid)
+                ?? throw new InvalidOperationException("Readable snapshot record not found");
+        }
+
+        internal static StateRecord FindYoungestOr(this StateRecord record,
+            Func<StateRecord, bool> predicate)
+        {
+            var current = record;
+            StateRecord youngest = record;
+
+            while (current != null)
+            {
+                if (predicate(current))
+                    return current;
+
+                if (youngest.SnapshotId < current.SnapshotId)
+                    youngest = current;
+
+                current = current.Next;
+            }
+
+            return youngest;
+        }
+    }
+}

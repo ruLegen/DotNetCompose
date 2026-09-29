@@ -10,6 +10,43 @@ composability and state-driven rendering to the .NET ecosystem.
 - **Declarative approach** — UI is described as a function of state; the library decides what and when to redraw.
 - **Incremental Roslyn Generator** — efficient code generation that re-runs only on changed syntax tree nodes.
 
+## Default parameters
+
+Use `[Default<Provider>] T value = default` when an omitted argument needs a
+computed value. The provider implements `IDefaultValueProvider` and exposes an
+accessible static parameterless `T Create()` method. `Create()` can be a regular
+method or an inline composable method (the provider class must then be `partial`).
+
+```csharp
+public sealed partial class TitleProvider : IDefaultValueProvider
+{
+    [Composable(ComposableMode.Inline)]
+    public static string Create() { return App.LocalTitle.Current(); }
+}
+
+public static partial class App
+{
+    public static readonly ProvidableCompositionLocal<string> LocalTitle =
+        Composables.CompositionLocalOf(() => "Untitled");
+
+    [Composable]
+    public static void Header([Default<TitleProvider>] string title = default)
+    {
+        Console.WriteLine(title);
+    }
+}
+```
+
+`Header()` calls `Create()`; `Header(default)` passes `null` and does not call
+the provider. Default values do not receive preceding arguments. During
+recomposition, an unchanged default can be reused without calling `Create()`;
+provider code should therefore not depend on being called for side effects.
+The independent cache belongs to restartable and non-skippable methods. Inline
+and non-restartable methods evaluate omitted defaults whenever their caller runs.
+Read-only methods support only a regular `Create()` and do not create default
+groups or a cache. `[Default<Provider>]` is not supported in `ExplicitGroups`
+methods (diagnostic `DNC025`).
+
 ## Example (one composable calling another)
 
 ```csharp
@@ -185,7 +222,9 @@ src/
 ├── DotNetCompose.Fody/             # Alternative Fody weaver
 ├── DotNetCompose.Playground/       # Demo project
 ├── DotNetCompose.Runtime.Tests/    # Runtime tests
-└── DotNetCompose.SourceGenerators.Tests/ # Generator tests
+├── DotNetCompose.SourceGenerators.Tests/ # Generator tests
+├── DotNetCompose.Runtime.Tests/    # Runtime tests
+└── ... in progress
 ```
 
 ---

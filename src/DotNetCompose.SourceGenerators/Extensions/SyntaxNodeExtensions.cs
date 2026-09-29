@@ -39,11 +39,14 @@ namespace DotNetCompose.SourceGenerators.Extensions
             if (oldLocation != Location.None)
             {
                 var lineSpanned = oldLocation.GetMappedLineSpan();
-                string lineDirectiveLocation = string.Format("{0} {1} {2} {3} {4}", lineSpanned.StartLinePosition.Line,
-                    lineSpanned.StartLinePosition.Character,
-                    lineSpanned.EndLinePosition.Line,
-                    lineSpanned.EndLinePosition.Character,
-                    lineSpanned.Path);
+                string encodedPath = Convert.ToBase64String(Encoding.UTF8.GetBytes(lineSpanned.Path ?? string.Empty));
+                string lineDirectiveLocation = string.Format(
+                    "{0}|{1}|{2}|{3}|{4}",
+                    lineSpanned.StartLinePosition.Line + 1,
+                    lineSpanned.StartLinePosition.Character + 1,
+                    lineSpanned.EndLinePosition.Line + 1,
+                    lineSpanned.EndLinePosition.Character + 1,
+                    encodedPath);
                 return new SyntaxAnnotation("location", lineDirectiveLocation);
             }
             return null;

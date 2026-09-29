@@ -1,108 +1,120 @@
-﻿using DotNetCompose.Runtime;
-using System.Diagnostics;
-namespace DotNetCompose.Playground
+using DotNetCompose.Runtime;
+using DotNetCompose.Runtime.Composer;
+using DotNetCompose.Runtime.Snapshots;
+
+namespace DotNetCompose.Playground;
+
+internal static class Program
 {
-    internal class Program
+    private static void Main()
     {
-        static void Main(string[] args)
+        // COmposition Locals => Context retrieving
+        // Lambda handling GetLambda (start group and so on)
+
+
+        // A UI application supplies its own SynchronizationContext.
+        DemoContext context = new DemoContext();
+        using Recomposer recomposer = new Recomposer(context);
+        TreeApplier applier = new TreeApplier();
+        using Composition<TextNode> composition = new Composition<TextNode>(applier, recomposer);
+        SnapshotMutableState<int> count = Composables.CreateMutableState(0);
+        composition.ComposeContent((composer, changed, defaults) =>
         {
-            ComposeContext context1 = new ComposeContext();
+            composer.StartNode(10);
+            if (composer.Inserting)
+                composer.CreateNode(() => new TextNode());
+            else
+                composer.UseNode();
+            composer.ApplyNode<TextNode, string>($"Count: {count.Value}", (node, text) => node.Text = text);
+            composer.EndNode();
+        });
+        PrintChanges(composition);
+        Console.WriteLine($"Nodes before ApplyChanges: {applier.Root.Children.Count}");
+        composition.ApplyChanges();
+        TextNode originalNode = applier.Root.Children[0];
+        Console.WriteLine(originalNode.Text);
 
-            for (int i = 0; i < 2; i++)
-            {
-                //Composables.CurrentContext?.StartGroup(3);
-                using (var r = ComposeScope.CreateScope(context1))
-                {
-                    //TestClass.Builders.EmptyComposable(0, context1, 3);
-                    //TestClass23.Builders.DD2
-                    //TestClass.Builders.dd(context1, 0);
-                }
-                context1.Tree();
-            }
-        }
-
-        public static void Test(Span<int> changed)
+        count.Value = 1;
+        if (composition.Recompose())
         {
-            Span<int> parameters = stackalloc int[4];
-            R<int>(parameters, () =>
-            {
-                Span<int> localParams = stackalloc int[2];
-                R<long>(localParams, null);
-            });
+            PrintChanges(composition);
+            Console.WriteLine($"Before ApplyChanges: {originalNode.Text}");
+            composition.ApplyChanges();
         }
-
-        public static void R<T>(Span<int> ints, Action action) { }
+        count.Value = 2;
+        count.Value = 3;
+        context.Drain();
+        Console.WriteLine($"After automatic recomposition: {originalNode.Text}");
+        Console.WriteLine($"Same node: {ReferenceEquals(originalNode, applier.Root.Children[0])}");
     }
 
-
-    class ComposeContext : IComposeContext
+    private static void PrintChanges(IControlledComposition composition)
     {
-        private const int ROOT_KEY = -1000;
+        Console.WriteLine("Pending operations:");
+        foreach (CompositionOperation operation in composition.PendingChanges!)
+            Console.WriteLine($"  {operation}");
+    }
 
-        record Group(int ID, Group? Parent, bool Restartable);
-        private List<Group> Groups { get; } = new List<Group>();
-        private Stack<int> GroupStackIndecies { get; } = new Stack<int>();
+    private sealed class TextNode
+    {
+        public string Text { get; set; } = string.Empty;
+        public List<TextNode> Children { get; } = new List<TextNode>();
+    }
 
-        public void StartRoot()
+    private sealed class TreeApplier : IApplier<TextNode>
+    {
+        private readonly Stack<TextNode> _path = new Stack<TextNode>();
+        public TextNode Root { get; } = new TextNode();
+        public TextNode Current => _path.Count == 0 ? Root : _path.Peek();
+        public void OnBeginChanges()
         {
-            Groups.Clear();
-            Start(ROOT_KEY);
         }
-        public void EndRoot()
+        public void OnEndChanges()
         {
-            EndGroup(ROOT_KEY);
         }
-        public void StartReplaceableGroup(int groupId)
+        public void Down(TextNode node) => _path.Push(node);
+        public void Up() => _path.Pop();
+        public void InsertTopDown(int index, TextNode instance) => Current.Children.Insert(index, instance);
+        // This backend inserts top-down. A bottom-up backend would insert here instead.
+        public void InsertBottomUp(int index, TextNode instance)
         {
-            Start(groupId, false);
         }
+        public void Remove(int index, int count) => Current.Children.RemoveRange(index, count);
+        public void Move(int from, int to, int count)
+        {
+            List<TextNode> moved = Current.Children.GetRange(from, count);
+            Current.Children.RemoveRange(from, count);
+            Current.Children.InsertRange(to > from ? to - count : to, moved);
+        }
+        public void Apply(Action<TextNode, object?> block, object? value) => block(Current, value);
+        public void Clear()
+        {
+            _path.Clear();
+            Root.Children.Clear();
+        }
+    }
 
-        public void EndReplaceableGroup(int groupId)
+    private sealed class DemoContext : SynchronizationContext
+    {
+        private readonly Queue<Action> _queue = new Queue<Action>();
+        public override void Post(SendOrPostCallback callback, object? state)
         {
-            EndGroup(groupId);
+            lock (_queue)
+                _queue.Enqueue(() => callback(state));
         }
-
-        public void StartMoveableGroup(int groupId)
+        public void Drain()
         {
-            Start(groupId, false);
-        }
-
-        public void EndMoveableGroup(int groupId)
-        {
-            EndGroup(groupId);
-        }
-        public void StartRestartableGroup(int groupId)
-        {
-            Start(groupId, true);
-        }
-
-        public void EndGroup(int v)
-        {
-            GroupStackIndecies.Pop();
-        }
-
-        public void EndRestartableGroup(int groupId)
-        {
-            EndGroup(groupId);
-        }
-
-        private void Start(int id, bool restartable = false)
-        {
-            Group parent = null;
-            if (GroupStackIndecies.TryPeek(out int index))
+            while (true)
             {
-                parent = Groups[index];
+                Action action;
+                lock (_queue)
+                {
+                    if (_queue.Count == 0)
+                        return;
+                    action = _queue.Dequeue();
+                }
+                action();
             }
-            Groups.Add(new Group(id, parent, restartable));
-            GroupStackIndecies.Push(Groups.Count - 1);
         }
-
-
-        public void Tree()
-        {
-            var g = Groups.GroupBy(g => g.Parent);
-        }
-
-      
     }
 }

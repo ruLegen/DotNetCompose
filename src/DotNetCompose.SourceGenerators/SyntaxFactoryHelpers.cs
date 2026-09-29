@@ -64,7 +64,7 @@ namespace DotNetCompose.SourceGenerators
                                       SyntaxFactory.MemberAccessExpression(
                                           SyntaxKind.SimpleMemberAccessExpression,
                                           SyntaxFactory.IdentifierName("System.ComponentModel.EditorBrowsableState"),
-                                          SyntaxFactory.IdentifierName("Never")
+                                          SyntaxFactory.IdentifierName(Consts.EditorBrowsable.NeverField)
                                      ))
                               }
                        )));
@@ -82,7 +82,7 @@ namespace DotNetCompose.SourceGenerators
 
         public static InvocationExpressionSyntax CreateMethodCallSyntaxWithArgs(string variableName, string methodName, params ExpressionSyntax[] arguments)
         {
-            return CreateMethodCallSyntaxWithArgs(variableName,methodName, CreateArgumentList(arguments));
+            return CreateMethodCallSyntaxWithArgs(variableName, methodName, CreateArgumentList(arguments));
         }
 
         public static InvocationExpressionSyntax CreateMethodCallSyntaxWithArgs(string variableName, string methodName, ArgumentListSyntax arguments)
@@ -126,7 +126,8 @@ namespace DotNetCompose.SourceGenerators
             var args = new List<SyntaxNodeOrToken>();
             for (int i = 0; i < arguments.Length; i++)
             {
-                if (i > 0) args.Add(SyntaxFactory.Token(SyntaxKind.CommaToken));
+                if (i > 0)
+                    args.Add(SyntaxFactory.Token(SyntaxKind.CommaToken));
                 args.Add(SyntaxFactory.Argument(arguments[i]));
             }
 

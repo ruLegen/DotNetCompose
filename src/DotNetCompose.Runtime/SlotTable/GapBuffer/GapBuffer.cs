@@ -1,0 +1,269 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+
+namespace DotNetCompose.Runtime.SlotTable.GapBuffer
+{
+    /// <summary>
+    /// Modified version of https://github.com/kcartlidge/GapBuffer/blob/main/GapBuffer/GapBuffer.cs
+    /// </summary>
+    /// <remarks>
+    /// Index - is a logical position of an object without counting a gap
+    /// Address - is a raw index in buffer. It includes a gap
+    /// </remarks>
+    /// <typeparam name="T"></typeparam>
+    public sealed class GapBuffer<T>
+    {
+        private const int DefaultCapacity = 16;
+
+        public GapBuffer(int capacity = DefaultCapacity)
+        {
+            _buffer = new T[capacity];
+            _gapEndPos = _buffer.Length;
+        }
+
+        public T this[int index]
+        {
+            get
+            {
+                BoundsCheck(index);
+                return index >= _gapStartPos ? _buffer[index + GapSize] : _buffer[index];
+            }
+            set
+            {
+                BoundsCheck(index);
+                if (index >= _gapStartPos)
+                    _buffer[index + GapSize] = value;
+                else
+                    _buffer[index] = value;
+            }
+        }
+
+        internal Action<int, int, int>? OnElementsMoved { get; set; }
+
+        public int Capacity => _buffer.Length;
+
+        public int Count => _buffer.Length - GapSize;
+
+        private int GapSize => _gapEndPos - _gapStartPos;
+
+        public int Length => Count;
+
+        private T[] _buffer;
+        private int _gapEndPos;
+        private int _gapStartPos;
+
+        public int Insert(int index, T item)
+        {
+            if (index < 0 || index > Count)
+                return -1;
+
+            MoveGap(index);
+            ResizeGap(1);
+
+            _buffer[index] = item;
+            _gapStartPos++;
+            return index;
+        }
+
+        public int Add(T item) => Insert(Count, item);
+        public void AddRange(IEnumerable<T> items) => InsertRange(Count, items);
+        public void InsertRange(int index, IEnumerable<T> items)
+        {
+            if (index < 0 || index > Count)
+                return;
+
+            ICollection<T> collection = items as ICollection<T> ?? new List<T>(items);
+            int insertCount = collection.Count;
+            if (insertCount == 0)
+                return;
+
+            MoveGap(index);
+            ResizeGap(insertCount);
+
+            if (collection is List<T> list)
+            {
+                list.CopyTo(_buffer, index);
+            }
+            else if (collection is T[] array)
+            {
+                Array.Copy(array, 0, _buffer, index, insertCount);
+            }
+            else
+            {
+                int i = index;
+                foreach (T item in collection)
+                    _buffer[i++] = item;
+            }
+
+            _gapStartPos += insertCount;
+        }
+        public void Reserve(int index, int count)
+        {
+            if (index < 0 || index > Count)
+                return;
+            if (count <= 0)
+                return;
+
+            MoveGap(index);
+            ResizeGap(count);
+            _gapStartPos += count;
+        }
+        public void RemoveAt(int index)
+        {
+            if (index < 0 || index >= Count)
+                return;
+
+            MoveGap(index);
+            _buffer[_gapEndPos] = default!;
+            _gapEndPos++;
+        }
+        public void RemoveRange(int index, int length)
+        {
+            if (length < 1)
+                return;
+            int idx = index + length - 1;
+            for (int i = 0; i < length; i++)
+                RemoveAt(idx--);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal T GetAtAddress(int address) => _buffer[address];
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ref T GetAtAddressRef(int address) => ref _buffer[address];
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void SetAtAddress(int address, T item) => _buffer[address] = item;
+        internal void RemoveAtAddress(int address)
+        {
+            if (address < 0 || address >= _buffer.Length)
+                return;
+
+            int logicalIndex = address < _gapStartPos
+                ? address
+                : address - GapSize;
+
+            if (logicalIndex < 0 || logicalIndex >= Count)
+                return;
+
+            MoveGap(logicalIndex);
+            _buffer[_gapEndPos] = default!;
+            _gapEndPos++;
+        }
+        internal int AddressToIndex(int address)
+        {
+            int logicalIndex = address < _gapStartPos
+              ? address
+              : address - GapSize;
+            return logicalIndex;
+        }
+
+        public void Clear()
+        {
+            Array.Clear(_buffer, 0, _buffer.Length);
+            _gapStartPos = 0;
+            _gapEndPos = _buffer.Length;
+        }
+
+        public void SetCapacity(int requestedCapacity)
+        {
+            if (requestedCapacity == _buffer.Length)
+                return;
+            if (requestedCapacity < Count)
+                throw new BufferCapacityException(requestedCapacity, Count);
+            if (requestedCapacity > 0)
+            {
+                T[] newBuffer = new T[requestedCapacity];
+                int newGapEnd = newBuffer.Length - (_buffer.Length - _gapEndPos);
+
+                Array.Copy(_buffer, 0, newBuffer, 0, _gapStartPos);
+                Array.Copy(_buffer, _gapEndPos, newBuffer, newGapEnd, newBuffer.Length - newGapEnd);
+
+                int afterGapCount = _buffer.Length - _gapEndPos;
+                if (afterGapCount > 0)
+                    OnElementsMoved?.Invoke(_gapEndPos, newGapEnd, afterGapCount);
+
+                _buffer = newBuffer;
+                _gapEndPos = newGapEnd;
+            }
+            else
+            {
+                _buffer = new T[DefaultCapacity];
+                _gapStartPos = 0;
+                _gapEndPos = _buffer.Length;
+            }
+        }
+
+        public int IndexOf(T item)
+        {
+            int foundAt = Array.IndexOf(_buffer, item, 0, _gapStartPos);
+            if (foundAt > -1)
+                return foundAt;
+
+            foundAt = Array.IndexOf(_buffer, item, _gapEndPos, _buffer.Length - _gapEndPos);
+            if (foundAt > -1)
+                return foundAt - GapSize;
+
+            return -1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int AddressOf(int index)
+        {
+            return index >= _gapStartPos
+                ? index + GapSize
+                : index;
+        }
+        private void MoveGap(int index)
+        {
+            if (index == _gapStartPos)
+                return;
+            if (GapSize == 0)
+            {
+                _gapStartPos = _gapEndPos = index;
+                return;
+            }
+
+            if (index < _gapStartPos)
+            {
+                int offset = _gapStartPos - index;
+                int sizeDiff = GapSize < offset ? GapSize : offset;
+                Array.Copy(_buffer, index, _buffer, _gapEndPos - offset, offset);
+                OnElementsMoved?.Invoke(index, _gapEndPos - offset, offset);
+                _gapStartPos -= offset;
+                _gapEndPos -= offset;
+                Array.Clear(_buffer, index, sizeDiff);
+            }
+            else
+            {
+                int count = index - _gapStartPos;
+                int deltaIndex = index > _gapEndPos ? index : _gapEndPos;
+                Array.Copy(_buffer, _gapEndPos, _buffer, _gapStartPos, count);
+                OnElementsMoved?.Invoke(_gapEndPos, _gapStartPos, count);
+                _gapStartPos += count;
+                _gapEndPos += count;
+                Array.Clear(_buffer, deltaIndex, _gapEndPos - deltaIndex);
+            }
+        }
+
+        private void ResizeGap(int requiredGapSize)
+        {
+            if (requiredGapSize <= GapSize)
+                return;
+
+            int newCapacity = (Count + requiredGapSize) * 2;
+            if (newCapacity < DefaultCapacity)
+                newCapacity = DefaultCapacity;
+            SetCapacity(newCapacity);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void BoundsCheck(int index)
+        {
+            if (index < 0 || index >= Count)
+                throw new BufferAccessException(index, Count);
+        }
+
+    }
+}

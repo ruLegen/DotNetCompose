@@ -1,4 +1,5 @@
 ﻿using DotNetCompose.Runtime;
+using DotNetCompose.Runtime.Composer;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -15,22 +16,23 @@ namespace DotNetCompose.Playground
     {
         public partial class Builders
         {
-            public static void IgnoredComposable(IComposeContext _ctx, ComposableArgumentsState changed = default)
+            public static void IgnoredComposable(IComposerContext _ctx, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 Console.WriteLine("Print");
             }
 
-            public static void IgnoredComposable2(IComposeContext _ctx, ComposableArgumentsState changed = default)
+            public static void IgnoredComposable2(IComposerContext _ctx, ComposableArgumentsState changed = default, ComposableArgumentsDefaultState __defaultParamState = default)
             {
                 Console.WriteLine("Print2");
             }
         }
         [Composable]
-        public static void dd()
+        public static void dd<T>()
         {
             IgnoredComposable();
             IgnoredComposable2();
         }
+
 
 
         [Composable]
@@ -45,6 +47,24 @@ namespace DotNetCompose.Playground
         {
 
         }
+
+        [Composable]
+        public static void Unstable(int i, object obj)
+        {
+
+        }
+
+        [Composable]
+        public static void Stable(int i, string stable, int g, string kkk, string sdf)
+        {
+
+        }
+
+        [Composable]
+        public static void StableTestGeneric<T>(int i, T param2)
+        {
+
+        }
         [Composable]
         public static void EmptyComposable(int argInt)
         {
@@ -55,6 +75,11 @@ namespace DotNetCompose.Playground
 
             int rememberedInt = Composables.Remember(0, () => 3);
             string rememberedstring = Composables.Remember<string>(0, () => string.Empty);
+            Unstable(argInt, new object());
+            Stable(argInt, "", 3, "", "");
+            StableTestGeneric<int>(argInt, 3);
+            StableTestGeneric<object>(argInt, new object());
+
             ComposableTest(3, i =>
             {
                 int nonCaptured = i;

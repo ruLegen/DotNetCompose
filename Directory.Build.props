@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <DotNetComposeGenerateDiagnostics Condition="'$(DotNetComposeGenerateDiagnostics)' == ''">true</DotNetComposeGenerateDiagnostics>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="DotNetComposeGenerateDiagnostics" />
+    <CompilerVisibleProperty Include="ProjectDir" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>
