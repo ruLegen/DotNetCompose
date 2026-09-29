@@ -6,9 +6,8 @@ composability and state-driven rendering to the .NET ecosystem.
 
 ## Key Features
 
-- **`[Composable]` + Source Generator** — methods marked with `[Composable]` are transformed at compile time into composable functions with parameter change tracking, restartable groups, and recomposition. The class must be `partial`.
+- **`[Composable]` + Incremental Roslyn Generator** — methods marked with `[Composable]` are transformed at compile time into composable functions with parameter change tracking, restartable groups, and recomposition. The class must be `partial`.
 - **Declarative approach** — UI is described as a function of state; the library decides what and when to redraw.
-- **Incremental Roslyn Generator** — efficient code generation that re-runs only on changed syntax tree nodes.
 
 ## Default parameters
 
