@@ -31,7 +31,7 @@ composeView.SetContent(viewModel, CounterScreen.Builders.Content);
 
 Create a ViewModel through MAUI DI and pass it to `SetContent`. Snapshot reads trigger recomposition. `RememberState(initialValue)` is for state local to a composable. `DisposableEffect(key, setup)` owns subscriptions and other disposable resources for the time the call remains in composition.
 
-`TextField(value, onValueChange)` and `Switch(isChecked, onCheckedChange)` are controlled components. The caller owns their values and updates them in callbacks. `ForEach(items, key, content)` keeps each item's node identity when keys reorder. `Scroll` accepts exactly one composable child; pass a hoisted `ScrollState` to preserve its offset when its view is recreated. `Image` requires a `contentDescription`; pass `null` for decoration.
+`TextField(value, onValueChange)` and `Switch(isChecked, onCheckedChange)` are controlled components. The caller owns their values and updates them in callbacks. 
 
 `Modifier` is an immutable value type. `default` and `Modifier.Empty` are the same empty chain. Each call appends one persistent link, so branching a chain shares its prefix without copying the whole chain. Order matters: `Clickable(...).Padding(12)` includes the padding in the hit region; `Padding(12).Clickable(...)` excludes it. `DrawWithContent` works on `Canvas`; a native control cannot be drawn into a MAUI `ICanvas`.
 
@@ -47,4 +47,3 @@ The sample at `src/DotNetCompose.Maui.Sample` shows a form, native `Label`, comp
 dotnet run --project src/DotNetCompose.Maui.Sample/DotNetCompose.Maui.Sample.csproj -c Release
 ```
 
-The supported first slice does not include saved process state, deep links, or separate tab stacks.
