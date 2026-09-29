@@ -1,14 +1,17 @@
+using DotNetCompose.Maui.Modifiers;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Layouts;
 
-namespace DotNetCompose.Maui;
+namespace DotNetCompose.Maui.Drawing;
 
-internal sealed class CanvasLayout : Layout, IDisposable
+internal sealed class CanvasLayout : Microsoft.Maui.Controls.Layout, IDisposable
 {
     private readonly ObservedDrawable _drawable;
     private Modifier _modifier = Modifier.Empty;
-    private Action<MauiDrawScope> _onDraw = _ => { };
+    private Action<MauiDrawScope> _onDraw = _ =>
+    {
+    };
 
     internal CanvasLayout()
     {
@@ -18,8 +21,21 @@ internal sealed class CanvasLayout : Layout, IDisposable
     }
 
     internal GraphicsView CanvasView { get; }
-    internal Modifier Modifier => _modifier;
-    internal int InvalidationCount => _drawable.InvalidationCount;
+    internal Modifier Modifier
+    {
+        get
+        {
+            return _modifier;
+        }
+    }
+
+    internal int InvalidationCount
+    {
+        get
+        {
+            return _drawable.InvalidationCount;
+        }
+    }
 
     internal void Update(Modifier modifier, Action<MauiDrawScope> onDraw)
     {
@@ -29,7 +45,10 @@ internal sealed class CanvasLayout : Layout, IDisposable
         _drawable.Update(Draw);
     }
 
-    protected override ILayoutManager CreateLayoutManager() => new CanvasLayoutManager(this);
+    protected override ILayoutManager CreateLayoutManager()
+    {
+        return new CanvasLayoutManager(this);
+    }
 
     private void Draw(ICanvas canvas, RectF dirtyRect)
     {
@@ -107,7 +126,10 @@ internal sealed class CanvasLayout : Layout, IDisposable
         }
     }
 
-    public void Dispose() => _drawable.Dispose();
+    public void Dispose()
+    {
+        _drawable.Dispose();
+    }
 }
 
 internal sealed class CanvasLayoutManager(CanvasLayout layout) : LayoutManager(layout)
@@ -126,8 +148,14 @@ internal sealed class CanvasLayoutManager(CanvasLayout layout) : LayoutManager(l
                     height = size.Height;
                     break;
                 case FillElement fill:
-                    if (fill.Width && double.IsFinite(widthConstraint)) width = widthConstraint;
-                    if (fill.Height && double.IsFinite(heightConstraint)) height = heightConstraint;
+                    if (fill.Width && double.IsFinite(widthConstraint))
+                    {
+                        width = widthConstraint;
+                    }
+                    if (fill.Height && double.IsFinite(heightConstraint))
+                    {
+                        height = heightConstraint;
+                    }
                     break;
                 case PaddingElement padding:
                     width += padding.Left + padding.Right;

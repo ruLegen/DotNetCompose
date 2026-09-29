@@ -27,20 +27,39 @@ public sealed class MauiComposeView : ContentView, IDisposable
         ArgumentNullException.ThrowIfNull(content);
         VerifyAccess();
         if (_disposed)
+        {
             throw new ObjectDisposedException(nameof(MauiComposeView));
+        }
         _content = content;
         if (IsLoaded)
+        {
             MountOrUpdate();
+        }
     }
 
-    private void OnLoaded(object? sender, EventArgs args) => MountOrUpdate();
-    private void OnUnloaded(object? sender, EventArgs args) => Unmount();
+    public void SetContent<TViewModel>(TViewModel viewModel, ComposableAction<TViewModel> screen)
+    {
+        ArgumentNullException.ThrowIfNull(screen);
+        SetContent((context, changed, defaults) => screen(viewModel, context, changed, defaults));
+    }
+
+    private void OnLoaded(object? sender, EventArgs args)
+    {
+        MountOrUpdate();
+    }
+
+    private void OnUnloaded(object? sender, EventArgs args)
+    {
+        Unmount();
+    }
 
     private void MountOrUpdate()
     {
         VerifyAccess();
         if (_disposed || _content == null)
+        {
             return;
+        }
 
         if (_composition == null)
         {
@@ -68,20 +87,30 @@ public sealed class MauiComposeView : ContentView, IDisposable
     {
         SynchronizationContext? previous = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(_context);
-        try { action(); }
-        finally { SynchronizationContext.SetSynchronizationContext(previous); }
+        try
+        {
+            action();
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
     }
 
     private void VerifyAccess()
     {
         if (Handler is not null && Dispatcher.IsDispatchRequired)
+        {
             throw new InvalidOperationException("MauiComposeView must be used on its MAUI UI thread.");
+        }
     }
 
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
         VerifyAccess();
         _disposed = true;
         Loaded -= OnLoaded;
@@ -99,9 +128,17 @@ internal sealed class MauiDispatcherSynchronizationContext(IDispatcher dispatche
         {
             SynchronizationContext? previous = Current;
             SetSynchronizationContext(this);
-            try { callback(state); }
-            finally { SetSynchronizationContext(previous); }
+            try
+            {
+                callback(state);
+            }
+            finally
+            {
+                SetSynchronizationContext(previous);
+            }
         }))
+        {
             throw new InvalidOperationException("The MAUI dispatcher rejected composition work.");
+        }
     }
 }

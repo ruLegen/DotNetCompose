@@ -175,6 +175,30 @@ namespace DotNetCompose.Runtime
             return (T)slot!;
         }
 
+        [Composable(ComposableMode.Inline)]
+        public static SnapshotMutableState<T> RememberState<T>(T initialValue)
+        {
+            return Remember(0, () => CreateMutableState(initialValue));
+        }
+
+        [Composable(ComposableMode.NonRestartable)]
+        public static void DisposableEffect(object? key, Func<IDisposable> setup)
+        {
+            if (setup == null)
+            {
+                throw new ArgumentNullException(nameof(setup));
+            }
+            IComposerContext context = CurrentContext()
+                ?? throw new InvalidOperationException("DisposableEffect can only be used during composition.");
+
+            bool invalid = context.Changed(key);
+            object? slot = context.RememberedValue();
+            if (ReferenceEquals(slot, Empty) || invalid)
+            {
+                context.UpdateRememberedValue(new DisposableEffectJob(setup, context.ReportEffectError));
+            }
+        }
+
         [Composable(ComposableMode.NonRestartable)]
         public static void LaunchedEffect(object? key1, Func<CancellationToken, ValueTask> block)
         {

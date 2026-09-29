@@ -1,6 +1,6 @@
 root = true
 
-[src/DotNetCompose.{Playground,Runtime,Runtime.Tests,SourceGenerators,SourceGenerators.Tests,Tui,Tui.Sample,Tui.Tests}/**/*.cs]
+[src/DotNetCompose.{Playground,Runtime,Runtime.Tests,SourceGenerators,SourceGenerators.Tests,Tui,Tui.Sample,Tui.Tests,Maui,Maui.Sample,Maui.Tests}/**/*.cs]
 indent_style = space
 indent_size = 4
 tab_width = 4
@@ -13,3 +13,21 @@ csharp_preserve_single_line_blocks = true
 csharp_preserve_single_line_statements = false
 csharp_style_allow_embedded_statements_on_same_line_experimental = false
 dotnet_diagnostic.IDE2001.severity = warning
+
+# In MAUI code, keep implementation blocks expanded. Compact declarative auto-properties
+# can still be kept on one line; Roslyn's formatter does not distinguish them here.
+[src/DotNetCompose.{Maui,Maui.Sample,Maui.Tests}/**/*.cs]
+csharp_preserve_single_line_blocks = false
+csharp_style_expression_bodied_methods = false
+csharp_style_expression_bodied_constructors = false
+csharp_style_expression_bodied_operators = false
+csharp_style_expression_bodied_accessors = false
+csharp_style_expression_bodied_properties = false
+csharp_style_expression_bodied_indexers = false
+csharp_style_expression_bodied_lambdas = false
+csharp_prefer_braces = true
+dotnet_diagnostic.IDE0011.severity = warning
+dotnet_diagnostic.IDE0022.severity = warning
+dotnet_diagnostic.IDE0025.severity = warning
+dotnet_diagnostic.IDE0026.severity = warning
+dotnet_diagnostic.IDE0027.severity = warning

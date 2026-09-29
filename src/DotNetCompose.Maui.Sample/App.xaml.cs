@@ -1,16 +1,20 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
 namespace DotNetCompose.Maui.Sample;
 
 public partial class App : Application
 {
-	public App()
-	{
-		InitializeComponent();
-	}
+    private readonly IServiceProvider _services;
 
-	protected override Window CreateWindow(IActivationState? activationState)
-	{
-		return new Window(new AppShell());
-	}
+    public App(IServiceProvider services)
+    {
+        InitializeComponent();
+        _services = services;
+    }
+
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        MainPage page = new(_services);
+        Window window = new(page);
+        window.Destroying += (_, _) => page.Dispose();
+        return window;
+    }
 }

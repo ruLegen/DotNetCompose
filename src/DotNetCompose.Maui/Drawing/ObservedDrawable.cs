@@ -2,7 +2,7 @@ using DotNetCompose.Runtime.Snapshots;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 
-namespace DotNetCompose.Maui;
+namespace DotNetCompose.Maui.Drawing;
 
 internal sealed class ObservedDrawable : IDrawable, IDisposable
 {
@@ -24,7 +24,9 @@ internal sealed class ObservedDrawable : IDrawable, IDisposable
             lock (_gate)
             {
                 if (_disposed || !states.Any(state => _reads.Contains(state)))
+                {
                     return;
+                }
             }
             Invalidate();
         });
@@ -42,8 +44,12 @@ internal sealed class ObservedDrawable : IDrawable, IDisposable
         HashSet<object> reads = new(ReferenceEqualityComparer.Instance);
         Snapshot.Observe(state => reads.Add(state), null, () => _draw(canvas, dirtyRect));
         lock (_gate)
+        {
             if (!_disposed)
+            {
                 _reads = reads;
+            }
+        }
     }
 
     private void Invalidate()
@@ -52,13 +58,25 @@ internal sealed class ObservedDrawable : IDrawable, IDisposable
         if (_view.Handler is null)
         {
             if (!_disposed)
+            {
                 _view.Invalidate();
+            }
             return;
         }
         if (_view.Dispatcher.IsDispatchRequired)
-            _view.Dispatcher.Dispatch(() => { if (!_disposed) _view.Invalidate(); });
+        {
+            _view.Dispatcher.Dispatch(() =>
+            {
+                if (!_disposed)
+                {
+                    _view.Invalidate();
+                }
+            });
+        }
         else if (!_disposed)
+        {
             _view.Invalidate();
+        }
     }
 
     public void Dispose()
@@ -66,12 +84,16 @@ internal sealed class ObservedDrawable : IDrawable, IDisposable
         lock (_gate)
         {
             if (_disposed)
+            {
                 return;
+            }
             _disposed = true;
             _reads.Clear();
         }
         _observer.Dispose();
         if (ReferenceEquals(_view.Drawable, this))
+        {
             _view.Drawable = null!;
+        }
     }
 }

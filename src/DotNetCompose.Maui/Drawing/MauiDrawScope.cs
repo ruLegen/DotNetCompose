@@ -18,6 +18,9 @@ public sealed class MauiDrawScope
     public RectF Bounds { get; }
 
     /// <summary>Draws the wrapped content. A DrawWithContent callback controls when and how often this runs.</summary>
-    public void DrawContent() => (_drawContent ?? throw new InvalidOperationException(
-        "DrawContent is available only inside DrawWithContent."))();
+    public void DrawContent()
+    {
+        (_drawContent ?? throw new InvalidOperationException(
+            "DrawContent is available only inside DrawWithContent."))();
+    }
 }

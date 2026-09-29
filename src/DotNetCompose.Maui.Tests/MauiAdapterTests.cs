@@ -1,4 +1,6 @@
 using System.Reflection;
+using DotNetCompose.Maui.Drawing;
+using DotNetCompose.Maui.Modifiers;
 using DotNetCompose.Runtime;
 using DotNetCompose.Runtime.Composer;
 using DotNetCompose.Runtime.Snapshots;
