@@ -37,16 +37,6 @@ public static partial class App
 }
 ```
 
-`Header()` calls `Create()`; `Header(default)` passes `null` and does not call
-the provider. Default values do not receive preceding arguments. During
-recomposition, an unchanged default can be reused without calling `Create()`;
-provider code should therefore not depend on being called for side effects.
-The independent cache belongs to restartable and non-skippable methods. Inline
-and non-restartable methods evaluate omitted defaults whenever their caller runs.
-Read-only methods support only a regular `Create()` and do not create default
-groups or a cache. `[Default<Provider>]` is not supported in `ExplicitGroups`
-methods (diagnostic `DNC025`).
-
 ## Sample 
 There are some sample projects where you can try it out.
 - Basic TUI application (src/DotNetCompose.Tui.Sample)
