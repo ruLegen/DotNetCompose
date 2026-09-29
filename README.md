@@ -1,7 +1,7 @@
 # DotNetCompose
 
 A Jetpack Compose–inspired experiment in building a declarative, reactive UI
-framework for C#. Not a full port — rather an attempt to bring Compose-like
+for C#. Not a full port — rather an attempt to bring Compose-like
 composability and state-driven rendering to the .NET ecosystem.
 
 ## Key Features
