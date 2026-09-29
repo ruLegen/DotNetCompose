@@ -47,6 +47,11 @@ Read-only methods support only a regular `Create()` and do not create default
 groups or a cache. `[Default<Provider>]` is not supported in `ExplicitGroups`
 methods (diagnostic `DNC025`).
 
+## Sample 
+There are some sample projects where you can try it out.
+- Basic TUI application (src/DotNetCompose.Tui.Sample)
+- Basic MAUI application (src+DotNetCompose.Maui.Sample)
+
 ## Example (one composable calling another)
 
 ```csharp
