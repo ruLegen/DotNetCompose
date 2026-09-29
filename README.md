@@ -222,9 +222,9 @@ src/
 ├── DotNetCompose.Fody/             # Alternative Fody weaver
 ├── DotNetCompose.Playground/       # Demo project
 ├── DotNetCompose.Runtime.Tests/    # Runtime tests
-└── DotNetCompose.SourceGenerators.Tests/ # Generator tests
+├── DotNetCompose.SourceGenerators.Tests/ # Generator tests
+├── DotNetCompose.Runtime.Tests/    # Runtime tests
+└── ... in progress
 ```
 
 ---
-
-Work on the library is ongoing. Stay tuned.
