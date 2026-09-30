@@ -146,5 +146,7 @@ namespace DotNetCompose.Runtime.Snapshots
                 return new StateStateRecord(Snapshot.Current.Id, Value);
             }
         }
+
+        public static implicit operator T(SnapshotMutableState<T> s) => s.Value;
     }
 }
