@@ -7,6 +7,7 @@ namespace DotNetCompose.Maui.Sample.Screens.Home;
 public sealed class HomeViewModel(MauiNavigator navigator)
 {
     public SnapshotMutableState<string> ButtonText { get; } = Composables.CreateMutableState("OpenEditor");
+    public SnapshotMutableState<bool> IsInited { get; } = Composables.CreateMutableState(false);
 
     private Random _random = new(); 
     public void OpenEditor()
@@ -17,5 +18,13 @@ public sealed class HomeViewModel(MauiNavigator navigator)
     public void ChangeButtonText()
     {
         ButtonText.Value = $"Random {_random.Next()}";
+    }
+
+    public async Task Init(CancellationToken cancellationToken)
+    {
+        if (IsInited.Value)
+            return;
+        await Task.Delay(2000,cancellationToken);
+        IsInited.Value = true;
     }
 }
