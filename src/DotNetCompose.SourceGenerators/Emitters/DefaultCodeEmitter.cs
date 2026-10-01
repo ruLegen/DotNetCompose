@@ -68,40 +68,29 @@ namespace DotNetCompose.SourceGenerators.Emitters
                         sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
                     }
 
-                    sourceBuilder.AppendLine($"public partial class {Rewriter.BuildersClassName}");
-                    sourceBuilder.AppendLine("{");
-                    sourceBuilder.WithIndent(() =>
-                    {
-                        int currentIndent = sourceBuilder.Indent;
-                        foreach (SyntaxNode method in input.BuilderMethods)
-                        {
-                            SyntaxNode mappedMethod = NormalizeAndMap(
-                                method,
-                                currentIndent,
-                                input.SupportsEnhancedLineDirectives);
-                            sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
-                        }
+                    if (input.InstanceSessions.Any(session => session.StoredLambdas.Any()))
+                        EmitStoredLambdas(sourceBuilder, input.InstanceSessions, input.SupportsEnhancedLineDirectives);
 
-                        sourceBuilder.AppendLine($"static class {Rewriter.StoredLambdaClassName}");
+                    if (input.BuilderMethods.Any())
+                    {
+                        sourceBuilder.AppendLine($"public partial class {Rewriter.BuildersClassName}");
                         sourceBuilder.AppendLine("{");
                         sourceBuilder.WithIndent(() =>
                         {
                             int currentIndent = sourceBuilder.Indent;
-                            foreach (RewriterSession session in input.Sessions)
+                            foreach (SyntaxNode method in input.BuilderMethods)
                             {
-                                foreach (var storedLambda in session.StoredLambdas)
-                                {
-                                    SyntaxNode mappedMethod = NormalizeAndMap(
-                                        storedLambda.MethodDeclaration,
-                                        currentIndent,
-                                        input.SupportsEnhancedLineDirectives);
-                                    sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
-                                }
+                                SyntaxNode mappedMethod = NormalizeAndMap(
+                                    method,
+                                    currentIndent,
+                                    input.SupportsEnhancedLineDirectives);
+                                sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
                             }
+
+                            EmitStoredLambdas(sourceBuilder, input.BuilderSessions, input.SupportsEnhancedLineDirectives);
                         });
                         sourceBuilder.AppendLine("}");
-                    });
-                    sourceBuilder.AppendLine("}");
+                    }
                 });
                 sourceBuilder.AppendLine("}");
             });
@@ -112,6 +101,31 @@ namespace DotNetCompose.SourceGenerators.Emitters
                 @"[ \t]+(?=\r?$)",
                 string.Empty,
                 RegexOptions.Multiline);
+        }
+
+        private void EmitStoredLambdas(
+            IndentedTextWriter sourceBuilder,
+            ImmutableArray<RewriterSession> sessions,
+            bool supportsEnhancedLineDirectives)
+        {
+            sourceBuilder.AppendLine($"static class {Rewriter.StoredLambdaClassName}");
+            sourceBuilder.AppendLine("{");
+            sourceBuilder.WithIndent(() =>
+            {
+                int currentIndent = sourceBuilder.Indent;
+                foreach (RewriterSession session in sessions)
+                {
+                    foreach (var storedLambda in session.StoredLambdas)
+                    {
+                        SyntaxNode mappedMethod = NormalizeAndMap(
+                            storedLambda.MethodDeclaration,
+                            currentIndent,
+                            supportsEnhancedLineDirectives);
+                        sourceBuilder.AppendLineRaw(mappedMethod.ToFullString());
+                    }
+                }
+            });
+            sourceBuilder.AppendLine("}");
         }
 
         private SyntaxNode NormalizeAndMap(

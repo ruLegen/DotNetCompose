@@ -133,9 +133,6 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             ImmutableArray<SyntaxNode> builderMethods = rewrittenMethods
                 .Where(item => item.Symbol.IsStatic)
                 .Select(item => item.MethodBody!)
-                .Concat(rewrittenMethods
-                    .Where(item => !item.Symbol.IsStatic)
-                    .Select(item => (SyntaxNode)CreateInstanceBridge((MethodDeclarationSyntax)item.MethodBody!, item.Symbol)))
                 .ToImmutableArray();
 
             CodeGenerationInput input = new CodeGenerationInput(
@@ -147,7 +144,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                 Usings: usings,
                 InstanceMethods: instanceMethods,
                 BuilderMethods: builderMethods,
-                Sessions: rewrittenMethods.Select(p => p.Session).ToImmutableArray(),
+                InstanceSessions: rewrittenMethods.Where(p => !p.Symbol.IsStatic).Select(p => p.Session).ToImmutableArray(),
+                BuilderSessions: rewrittenMethods.Where(p => p.Symbol.IsStatic).Select(p => p.Session).ToImmutableArray(),
                 SupportsEnhancedLineDirectives: pipelineContext.SupportsEnhancedLineDirectives);
 
             var emitter = new DefaultCodeEmitter();
@@ -188,48 +186,6 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                                 SyntaxFactory.IdentifierName(Consts.EditorBrowsable.NeverField))))));
             return method.AddAttributeLists(
                 SyntaxFactory.AttributeList(SyntaxFactory.SingletonSeparatedList(attribute)));
-        }
-
-        private static MethodDeclarationSyntax CreateInstanceBridge(MethodDeclarationSyntax method, IMethodSymbol symbol)
-        {
-            string receiverName = Consts.Rewriter.InstanceReceiverName;
-            while (method.ParameterList.Parameters.Any(parameter => parameter.Identifier.ValueText == receiverName))
-                receiverName += "_";
-
-            ParameterSyntax receiver = SyntaxFactory.Parameter(SyntaxFactory.Identifier(receiverName))
-                .WithType(SyntaxFactory.ParseTypeName(symbol.ContainingType.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included))));
-            ParameterListSyntax parameters = method.ParameterList.WithParameters(
-                method.ParameterList.Parameters.Insert(0, receiver));
-
-            SimpleNameSyntax name = method.TypeParameterList == null
-                ? SyntaxFactory.IdentifierName(method.Identifier)
-                : SyntaxFactory.GenericName(method.Identifier,
-                    SyntaxFactory.TypeArgumentList(
-                        SyntaxFactory.SeparatedList<TypeSyntax>(method.TypeParameterList.Parameters
-                            .Select(parameter => SyntaxFactory.IdentifierName(parameter.Identifier) as TypeSyntax))));
-            InvocationExpressionSyntax invocation = SyntaxFactory.InvocationExpression(
-                SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    SyntaxFactory.IdentifierName(receiverName),
-                    name),
-                SyntaxFactory.ArgumentList(
-                    SyntaxFactory.SeparatedList(method.ParameterList.Parameters
-                        .Select(parameter => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(parameter.Identifier))))));
-            StatementSyntax statement = symbol.ReturnsVoid
-                ? (StatementSyntax)SyntaxFactory.ExpressionStatement(invocation)
-                : SyntaxFactory.ReturnStatement(invocation);
-
-            SyntaxTokenList modifiers = SyntaxFactory.TokenList(method.Modifiers.Where(token =>
-                token.IsKind(SyntaxKind.PublicKeyword) || token.IsKind(SyntaxKind.InternalKeyword) ||
-                token.IsKind(SyntaxKind.ProtectedKeyword) || token.IsKind(SyntaxKind.PrivateKeyword)))
-                .Add(SyntaxFactory.Token(SyntaxKind.StaticKeyword));
-            return method
-                .WithModifiers(modifiers)
-                .WithParameterList(parameters)
-                .WithBody(SyntaxFactory.Block(statement))
-                .WithExpressionBody(null)
-                .WithSemicolonToken(default);
         }
     }
 }

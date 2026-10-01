@@ -441,10 +441,18 @@ public class GeneratorRuntimeTests
             public partial class Derived : Base
             {
                 [Composable]
-                public override void Render<T>(T value) { Total += 10; }
+                public override void Render<T>(T value)
+                {
+                    Total += 10;
+                    base.Render<T>(value);
+                }
 
                 [Composable]
-                public override void Render(string value) { Total += 20; }
+                public sealed override void Render(string value)
+                {
+                    Total += 20;
+                    base.Render(value);
+                }
             }
 
             public static partial class Example
@@ -456,9 +464,9 @@ public class GeneratorRuntimeTests
                     using (Composition<object> composition = new Composition<object>(new GeneratorRuntimeTests.Applier()))
                     {
                         composition.SetContent((context, changed, defaults) =>
-                            Base.Builders.Call(instance, other, context, changed, defaults));
+                            instance.Call(other, context, changed, defaults));
                     }
-                    return instance.Total == 30 && other.Total == 1 ? 0 : instance.Total * 100 + other.Total;
+                    return instance.Total == 33 && other.Total == 1 ? 0 : instance.Total * 100 + other.Total;
                 }
             }
             """;
@@ -466,6 +474,129 @@ public class GeneratorRuntimeTests
         Type example = CompileExample(source);
         object? result = example.GetMethod("Run")!.Invoke(null, null);
         Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public void GeneratedInstanceRestartPreservesReceiverGenericArgumentsAndRememberedState()
+    {
+        const string source = """
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public partial class Box<T> where T : class
+            {
+                public readonly SnapshotMutableState<int> State = Composables.CreateMutableState(0);
+                public int Executions;
+                public int Seen;
+                public object Last;
+                public T Value;
+
+                [Composable]
+                public void Render<U>(T value, U marker) where U : struct
+                {
+                    Value = value;
+                    Seen = Read();
+                    Last = Composables.Remember(0, () => new object());
+                    Executions++;
+                }
+
+                [Composable(ComposableMode.ReadOnly)]
+                private int Read() { return State.Value; }
+            }
+
+            public static partial class Example
+            {
+                public static int Run()
+                {
+                    Box<string> first = new Box<string>();
+                    Box<string> second = new Box<string>();
+                    using var firstComposition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    using var secondComposition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    firstComposition.SetContent((context, changed, defaults) =>
+                        first.Render("first", 1, context, changed, defaults));
+                    secondComposition.SetContent((context, changed, defaults) =>
+                        second.Render("second", 2, context, changed, defaults));
+                    object firstRemembered = first.Last;
+                    object secondRemembered = second.Last;
+                    if (first.Executions != 1 || second.Executions != 1) return 1;
+
+                    first.State.Value = 3;
+                    if (!firstComposition.Recompose()) return 2;
+                    firstComposition.ApplyChanges();
+                    if (first.Executions != 2 || first.Seen != 3 || first.Value != "first" ||
+                        second.Executions != 1 || second.Seen != 0 ||
+                        !ReferenceEquals(firstRemembered, first.Last)) return 3;
+
+                    second.State.Value = 4;
+                    if (!secondComposition.Recompose()) return 4;
+                    secondComposition.ApplyChanges();
+                    return second.Executions == 2 && second.Seen == 4 && second.Value == "second" &&
+                        first.Executions == 2 && ReferenceEquals(secondRemembered, second.Last) ? 0 : 5;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void InstanceOnlyComposablesExecuteCapturedAndStoredLambdas()
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public partial class Example
+            {
+                public static int StoredCalls;
+                public readonly SnapshotMutableState<int> State = Composables.CreateMutableState(1);
+                public int Total;
+
+                [Composable(ComposableMode.NonSkippable)]
+                public void Root()
+                {
+                    int value = State.Value;
+                    Host(() => StoredCalls++);
+                    Host(() => Add(value));
+                }
+
+                [Composable(ComposableMode.NonSkippable)]
+                private void Host([Composable] Action content) { content(); }
+
+                [Composable(ComposableMode.NonSkippable)]
+                private void Add(int value) { Total += value; }
+
+                public static int Run()
+                {
+                    Example instance = new Example();
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    composition.SetContent(instance.Root);
+                    if (StoredCalls != 1 || instance.Total != 1) return 1;
+
+                    instance.State.Value = 2;
+                    if (!composition.Recompose()) return 2;
+                    composition.ApplyChanges();
+                    return StoredCalls == 2 && instance.Total == 3 ? 0 : 3;
+                }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        Assert.DoesNotContain("partial class Builders", generated);
+        Assert.Contains("static class __StoredLambda", generated);
+
+        Type example = CompileExample(source);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
     }
 
     [Fact]

@@ -98,14 +98,15 @@ public class ComposeGeneratorSnapshotTests
     }
 
     [Fact]
-    public void NonStaticClassComposableGeneratesOverloadAndBridge()
+    public void NonStaticClassComposableGeneratesOnlyInstanceOverload()
     {
         var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
         string generated = GeneratorTestHelper.RunSingleGenerator(source);
         ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         Assert.Contains("EditorBrowsableState.Never", generated);
-        Assert.Contains("__instance", generated);
+        Assert.DoesNotContain("__instance", generated);
+        Assert.DoesNotContain("partial class Builders", generated);
     }
 
     [Fact]

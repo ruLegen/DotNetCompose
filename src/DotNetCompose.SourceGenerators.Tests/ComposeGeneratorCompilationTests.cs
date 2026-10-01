@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.RegularExpressions;
 
 namespace DotNetCompose.SourceGenerators.Tests;
@@ -257,9 +258,10 @@ public class ComposeGeneratorCompilationTests
 
 
     [Fact]
-    public void InstanceComposable_GeneratesHiddenOverloadAndStaticBridge()
+    public void InstanceComposable_GeneratesOnlyHiddenInstanceOverload()
     {
         const string source = """
+            using System;
             using DotNetCompose.Runtime;
 
             namespace TestNs;
@@ -267,7 +269,7 @@ public class ComposeGeneratorCompilationTests
             public partial class Box<T> where T : class
             {
                 [Composable]
-                public virtual void Render<U>(U value) { }
+                public virtual void Render<U>(U value) where U : IComparable<U> { }
 
                 [Composable]
                 public void Calls(Box<T> other)
@@ -285,10 +287,72 @@ public class ComposeGeneratorCompilationTests
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         Assert.Contains("partial class Box<T> where T : class", generated);
         Assert.Contains("EditorBrowsableState.Never", generated);
-        Assert.Contains("static void Render<U>", generated);
-        Assert.Contains("global::TestNs.Box<T> __instance", generated);
+        Assert.Contains("public virtual void Render<U>", generated);
+        Assert.Contains("where U : IComparable<U>", generated);
+        Assert.DoesNotContain("partial class Builders", generated);
+        Assert.DoesNotContain("__instance", generated);
         Assert.Contains("this.Render(\"two\", __ctx", generated);
         Assert.Contains("other.Render(3, __ctx", generated);
+    }
+
+    [Fact]
+    public void MixedComposables_KeepMethodsAndStoredLambdasInTheirOwnContainers()
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+
+            namespace TestNs;
+
+            public partial class Mixed
+            {
+                [Composable]
+                private void InstanceHost([Composable] Action content) { content(); }
+
+                [Composable]
+                public void InstanceRoot(int value)
+                {
+                    InstanceHost(() => StaticLeaf<string>(1));
+                    InstanceHost(() => InstanceLeaf(value));
+                }
+
+                [Composable]
+                protected void InstanceLeaf(int value) { }
+
+                [Composable]
+                private static void StaticHost([Composable] Action content) { content(); }
+
+                [Composable]
+                public static void StaticRoot() { StaticHost(() => StaticLeaf<string>(2)); }
+
+                [Composable]
+                public static void StaticLeaf<U>(int value) where U : class { }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(source);
+        ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        ClassDeclarationSyntax containingType = CSharpSyntaxTree.ParseText(generated).GetRoot()
+            .DescendantNodes().OfType<ClassDeclarationSyntax>()
+            .Single(type => type.Identifier.ValueText == "Mixed");
+        ClassDeclarationSyntax builders = containingType.Members.OfType<ClassDeclarationSyntax>()
+            .Single(type => type.Identifier.ValueText == "Builders");
+        ClassDeclarationSyntax instanceLambdas = containingType.Members.OfType<ClassDeclarationSyntax>()
+            .Single(type => type.Identifier.ValueText == "__StoredLambda");
+        ClassDeclarationSyntax staticLambdas = builders.Members.OfType<ClassDeclarationSyntax>()
+            .Single(type => type.Identifier.ValueText == "__StoredLambda");
+
+        Assert.Equal(new[] { "InstanceHost", "InstanceRoot", "InstanceLeaf" },
+            containingType.Members.OfType<MethodDeclarationSyntax>().Select(method => method.Identifier.ValueText));
+        Assert.Equal(new[] { "StaticHost", "StaticRoot", "StaticLeaf" },
+            builders.Members.OfType<MethodDeclarationSyntax>().Select(method => method.Identifier.ValueText));
+        Assert.Single(instanceLambdas.Members.OfType<MethodDeclarationSyntax>());
+        Assert.Single(staticLambdas.Members.OfType<MethodDeclarationSyntax>());
+        Assert.Contains("private void InstanceHost", generated);
+        Assert.Contains("protected void InstanceLeaf", generated);
+        Assert.Contains("ComposeHelpers.GetLambda", generated);
+        Assert.DoesNotContain("__instance", generated);
     }
 
     [Fact]
