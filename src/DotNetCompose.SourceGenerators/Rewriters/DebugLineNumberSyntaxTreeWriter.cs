@@ -66,6 +66,52 @@ namespace DotNetCompose.SourceGenerators.Rewriters
         public override SyntaxNode VisitThrowStatement(ThrowStatementSyntax node) =>
             WithSourceLineDirective(node, base.VisitThrowStatement(node));
 
+        public override SyntaxNode VisitSimpleLambdaExpression(SimpleLambdaExpressionSyntax node)
+        {
+            var processed = (SimpleLambdaExpressionSyntax)base.VisitSimpleLambdaExpression(node)!;
+            return processed.WithBody(MapLambdaBody(node.Body, processed.Body));
+        }
+
+        public override SyntaxNode VisitParenthesizedLambdaExpression(ParenthesizedLambdaExpressionSyntax node)
+        {
+            var processed = (ParenthesizedLambdaExpressionSyntax)base.VisitParenthesizedLambdaExpression(node)!;
+            return processed.WithBody(MapLambdaBody(node.Body, processed.Body));
+        }
+
+        public override SyntaxNode VisitAnonymousMethodExpression(AnonymousMethodExpressionSyntax node)
+        {
+            var processed = (AnonymousMethodExpressionSyntax)base.VisitAnonymousMethodExpression(node)!;
+            return processed.WithBlock((BlockSyntax)MapLambdaBody(node.Block, processed.Block));
+        }
+
+        private CSharpSyntaxNode MapLambdaBody(CSharpSyntaxNode source, CSharpSyntaxNode processed)
+        {
+            if (!TryGetLocation(source, out MappedLocation location))
+                return processed;
+
+            if (processed is BlockSyntax block)
+            {
+                // A mapped declaration/return can otherwise spill into the
+                // callback's braces and create points on unrelated source lines.
+                SyntaxTriviaList hidden = SyntaxFactory.ParseLeadingTrivia(
+                    "\r\n" + _directiveIndentation + "#line hidden\r\n");
+                return block
+                    .WithOpenBraceToken(block.OpenBraceToken.WithLeadingTrivia(
+                        hidden.AddRange(block.OpenBraceToken.LeadingTrivia)))
+                    .WithCloseBraceToken(block.CloseBraceToken.WithLeadingTrivia(
+                        hidden.AddRange(block.CloseBraceToken.LeadingTrivia)));
+            }
+
+            LinePosition position = _normalizedText.Lines.GetLinePosition(source.GetFirstToken().SpanStart);
+            int characterOffset = _normalizedText.Lines[position.Line].ToString().TakeWhile(char.IsWhiteSpace).Count();
+            // The expression used to follow => on the same line. Give its new
+            // line an explicit indentation/offset so enhanced mapping stays exact.
+            SyntaxTriviaList leading = processed.GetLeadingTrivia().AddRange(SyntaxFactory.ParseLeadingTrivia(
+                "\r\n" + _directiveIndentation + CreateDirective(location, source, characterOffset) + "\r\n" +
+                new string(' ', characterOffset)));
+            return (CSharpSyntaxNode)AppendHiddenDirective(processed.WithLeadingTrivia(leading));
+        }
+
         private static bool RequiresAnchor(ExpressionStatementSyntax node) =>
             node.DescendantNodesAndSelf().Any(item =>
                 item.GetAnnotations("complex-composable-call").Any() ||
@@ -145,10 +191,12 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             return processed.ReplaceToken(lastToken, lastToken.WithTrailingTrivia(trailing));
         }
 
-        private string CreateDirective(MappedLocation location, SyntaxNode generatedNode)
+        private string CreateDirective(MappedLocation location, SyntaxNode generatedNode, int? expressionOffset = null)
         {
-            string pathLiteral = SyntaxFactory.Literal(location.Path).ToFullString();
-            int characterOffset = _normalizedText.Lines
+            // #line filenames preserve backslashes literally, unlike C# string
+            // expressions. Escaping them creates a different PDB document path.
+            string pathLiteral = "\"" + location.Path + "\"";
+            int characterOffset = expressionOffset ?? _normalizedText.Lines
                 .GetLinePosition(generatedNode.GetFirstToken().SpanStart)
                 .Character;
             return _supportsEnhancedLineDirectives

@@ -77,7 +77,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 ArgumentSyntax arg = a.Argument;
                 bool isComposable = a.IsComposable;
                 if (!isComposable)
-                    return arg;
+                    return (ArgumentSyntax)new SourceLocationAnnotationRewriter().Visit(arg)!;
                 if (context.IsReadOnly && !a.IsReadOnly)
                 {
                     context.Diagnostics.Report(DiagnosticInfo.Create(

@@ -1408,6 +1408,78 @@ public class GeneratorRuntimeTests
         Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedCallbacksPreserveDelegateAndEffectBehavior(bool generateDiagnostics)
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public static partial class Example
+            {
+                public static int Counter, Projected, Local, Launches, Setups, Disposals, Resources;
+
+                [Composable]
+                public static void Screen()
+                {
+                    int value = 3;
+                    Host(() => { if (value > 0) Counter += value; },
+                        item => item * value,
+                        () => delegate { Counter += value + 1; });
+                    Func<int> local = () => value + 2;
+                    Local = local();
+                    Composables.LaunchedEffect("launch", async token =>
+                    {
+                        await Task.CompletedTask;
+                        Launches++;
+                    });
+                    Composables.DisposableEffect("cleanup", () => Disposals++);
+                    Composables.DisposableEffect("resource", () =>
+                    {
+                        Setups++;
+                        return new Cleanup(() => Resources++);
+                    });
+                }
+
+                [Composable]
+                public static void Host(Action callback, Func<int, int> project, Func<Action> create)
+                {
+                    callback();
+                    Projected = project(7);
+                    create()();
+                }
+
+                private sealed class Cleanup : IDisposable
+                {
+                    private readonly Action action;
+                    public Cleanup(Action action) { this.action = action; }
+                    public void Dispose() { action(); }
+                }
+
+                public static int Run()
+                {
+                    using (var composition = new Composition<object>(new GeneratorRuntimeTests.Applier()))
+                    {
+                        composition.SetContent((ctx, changed, defaults) => Builders.Screen(ctx, changed, defaults));
+                        if (Counter != 7 || Projected != 21 || Local != 5) return 1;
+                        if (Launches != 1 || Setups != 1 || Disposals != 0 || Resources != 0) return 2;
+                    }
+                    return Disposals == 1 && Resources == 1 ? 0 : 3;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source, generateDiagnostics);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
     private static Type CompileExample(string source, bool? generateDiagnostics = null)
     {
         IEnumerable<string> paths = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
