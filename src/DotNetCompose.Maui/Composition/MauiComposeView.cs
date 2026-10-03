@@ -6,7 +6,7 @@ using Microsoft.Maui.Dispatching;
 namespace DotNetCompose.Maui;
 
 /// <summary>Hosts a DotNetCompose composition inside an existing MAUI page.</summary>
-public sealed class MauiComposeView : ContentView, IDisposable
+public sealed partial class MauiComposeView : ContentView, IDisposable
 {
     private readonly Grid _root = new();
     private MauiDispatcherSynchronizationContext? _context;
@@ -56,31 +56,71 @@ public sealed class MauiComposeView : ContentView, IDisposable
     private void MountOrUpdate()
     {
         VerifyAccess();
-        if (_disposed || _content == null)
+        if (_disposed)
         {
             return;
         }
 
-        if (_composition == null)
+        if (_context == null)
         {
             _context = new MauiDispatcherSynchronizationContext(Dispatcher);
             _recomposer = new Recomposer(_context);
-            _composition = new Composition<MauiNode>(new MauiApplier(_root), _recomposer);
         }
-        RunWithContext(() => _composition.SetContent(_content));
+        AttachHotReload();
+        if (_content == null)
+        {
+            return;
+        }
+        RunWithContext(() =>
+        {
+            _composition ??= new Composition<MauiNode>(new MauiApplier(_root), _recomposer!);
+            try
+            {
+                _composition.SetContent(_content);
+            }
+            catch (Exception exception)
+            {
+                Composition<MauiNode> failed = _composition;
+                _composition = null;
+                try
+                {
+                    failed.Dispose();
+                }
+                catch (Exception cleanupException)
+                {
+                    throw new AggregateException(exception, cleanupException);
+                }
+                throw;
+            }
+        });
     }
 
     private void Unmount()
     {
         VerifyAccess();
-        RunWithContext(() =>
+        DetachHotReload();
+        Composition<MauiNode>? composition = _composition;
+        Recomposer? recomposer = _recomposer;
+        _composition = null;
+        _recomposer = null;
+        try
         {
-            _composition?.Dispose();
-            _composition = null;
-            _recomposer?.Dispose();
-            _recomposer = null;
-        });
-        _context = null;
+            RunWithContext(() =>
+            {
+                try
+                {
+                    composition?.Dispose();
+                }
+                finally
+                {
+                    recomposer?.Dispose();
+                }
+            });
+        }
+        finally
+        {
+            _context = null;
+        }
     }
 
     private void RunWithContext(Action action)
@@ -99,7 +139,7 @@ public sealed class MauiComposeView : ContentView, IDisposable
 
     private void VerifyAccess()
     {
-        if (Handler is not null && Dispatcher.IsDispatchRequired)
+        if ((Handler is not null || _context is not null) && Dispatcher.IsDispatchRequired)
         {
             throw new InvalidOperationException("MauiComposeView must be used on its MAUI UI thread.");
         }
@@ -115,8 +155,14 @@ public sealed class MauiComposeView : ContentView, IDisposable
         _disposed = true;
         Loaded -= OnLoaded;
         Unloaded -= OnUnloaded;
-        Unmount();
-        _content = null;
+        try
+        {
+            Unmount();
+        }
+        finally
+        {
+            _content = null;
+        }
     }
 }
 

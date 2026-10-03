@@ -4,7 +4,7 @@ using DotNetCompose.Maui.Sample.Screens.EditorGraph;
 
 namespace DotNetCompose.Maui.Sample.Screens.Home;
 
-public sealed class HomeViewModel(MauiNavigator navigator)
+public sealed partial class HomeViewModel(MauiNavigator navigator)
 {
     public SnapshotMutableState<string> ButtonText { get; } = Composables.CreateMutableState("OpenEditor");
     public SnapshotMutableState<bool> IsInited { get; } = Composables.CreateMutableState(false);
@@ -26,5 +26,10 @@ public sealed class HomeViewModel(MauiNavigator navigator)
             return;
         await Task.Delay(2000,cancellationToken);
         IsInited.Value = true;
+    }
+
+    [Composable(ComposableMode.Inline)]
+    public void ComposableTest()
+    {
     }
 }

@@ -55,7 +55,7 @@ internal static partial class HomeScreen
             spacing: 12,
             content: () =>
             {
-                Ui.Text("MAUI Compose sample", fontSize: 24);
+                Ui.Text("tSasd ls j;laskjde", fontSize: 24);
                 Ui.Text(string.Format("Ellapsed: {0} sec", seconds.Value), fontSize: 24);
                 Ui.NativeView(
                     factory: () => new Label(),
@@ -81,14 +81,6 @@ internal static partial class HomeScreen
                    Ui.Text("Operation in progress");
                 }
             });
-    }
-
-    private class ActionDisposable(Action a) : IDisposable
-    {
-        public void Dispose()
-        {
-            a();
-        }
     }
 }
 
