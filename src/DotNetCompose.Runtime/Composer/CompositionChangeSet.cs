@@ -20,7 +20,10 @@ namespace DotNetCompose.Runtime.Composer
         InsertTopDown,
         InsertBottomUp,
         RemoveNode,
-        MoveNode
+        MoveNode,
+        ReuseNode,
+        DeactivateNode,
+        ReleaseNode
     }
 
     /// <summary>An immutable operation. Positions refer to the sequence at this operation's execution.</summary>
@@ -115,6 +118,9 @@ namespace DotNetCompose.Runtime.Composer
         internal static CompositionOperation MoveNode(int nodeIndex, int sourceNodeIndex, int count) =>
             new CompositionOperation(CompositionOperationKind.MoveNode, nodeIndex: nodeIndex,
                 sourceNodeIndex: sourceNodeIndex, count: count);
+
+        internal static CompositionOperation NodeLifecycle(CompositionOperationKind kind, CompositionGroup group) =>
+            new CompositionOperation(kind, key: group.Key, group: group);
 
         internal CompositionOperation PublicView() =>
             new CompositionOperation(Kind, GroupIndex, SourceGroupIndex, NodeIndex, SourceNodeIndex,

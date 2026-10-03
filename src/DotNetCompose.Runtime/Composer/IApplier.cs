@@ -25,8 +25,11 @@ namespace DotNetCompose.Runtime.Composer
 
         void Apply(Action<TNode, object?> block, object? value);
 
+        /// <summary>Notifies the current node of reuse before applying its updates.</summary>
+        /// <remarks>Overrides are responsible for forwarding node lifecycle callbacks.</remarks>
         void Reuse()
         {
+            (Current as IComposeNodeLifecycleCallback)?.OnReuse();
         }
     }
 }

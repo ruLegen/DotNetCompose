@@ -21,6 +21,9 @@ namespace DotNetCompose.Runtime.Composer
         void StartMovableGroup(int key);
         void StartMovableGroup(int key, object? dataKey) => StartMovableGroup(key);
         void EndMovableGroup(int key);
+        void StartReusableGroup(int key, object? dataKey) => throw new NotSupportedException();
+        void EndReusableGroup(int key) => throw new NotSupportedException();
+        void DeactivateToEndGroup() => throw new NotSupportedException();
 
         bool Changed<T>(T value);
         bool ChangedDefaultMask(ComposableArgumentsDefaultState mask, int count);
@@ -31,6 +34,7 @@ namespace DotNetCompose.Runtime.Composer
 
         void CreateNode<T>(System.Func<T> factory) where T : class;
         void StartNode(int key = 0) => throw new NotSupportedException();
+        void StartReusableNode(int key = 0) => throw new NotSupportedException();
         void UseNode() => throw new NotSupportedException();
         void EndNode() => throw new NotSupportedException();
         void ApplyNode<T, TValue>(TValue value, Action<T, TValue> block) => ApplyNode<T>(node => block(node, value), value);
@@ -51,5 +55,6 @@ namespace DotNetCompose.Runtime.Composer
         bool Inserting { get; }
         bool IsComposing { get; }
         void ReportEffectError(Exception error) => throw error;
+        void RecordSideEffect(Action effect) => throw new NotSupportedException();
     }
 }

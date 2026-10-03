@@ -351,3 +351,13 @@ ASALocalRun/
 # files (the database, daemon.pid, sockets, logs) never show up in git.
 *
 !.gitignore
+# Runtime effects and reusable composition sources and regressions.
+!src/
+!src/DotNetCompose.Runtime/
+!src/DotNetCompose.Runtime/Composer/
+!src/DotNetCompose.Runtime/Composables.SideEffects.cs
+!src/DotNetCompose.Runtime/Composables.Reusable.cs
+!src/DotNetCompose.Runtime/Composer/IComposeNodeLifecycleCallback.cs
+!src/DotNetCompose.Runtime.Tests/
+!src/DotNetCompose.Runtime.Tests/SideEffectTests.cs
+!src/DotNetCompose.Runtime.Tests/CompositionReusingTests.cs

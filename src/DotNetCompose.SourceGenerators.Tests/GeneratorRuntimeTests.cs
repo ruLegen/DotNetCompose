@@ -1480,6 +1480,187 @@ public class GeneratorRuntimeTests
         Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSideEffectsSupportSpansAndSkippedParents(bool generateDiagnostics)
+    {
+        const string source = """
+            using System;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+            using DotNetCompose.SourceGenerators.Tests;
+
+            namespace Integration;
+
+            public static partial class SpanHost
+            {
+                [Composable(ComposableMode.NonRestartable)]
+                public static void Publish(ReadOnlySpan<object?> keys, Action effect)
+                {
+                    Composables.SideEffect(keys, effect);
+                }
+            }
+
+            public static partial class Example
+            {
+                public static int Value, Always, Keyed, Multiple, ChildEffects;
+                public static readonly SnapshotMutableState<int> State = Composables.CreateMutableState(0);
+
+                [Composable]
+                public static void Screen()
+                {
+                    int value = State.Value;
+                    Composables.SideEffect(() => Always++);
+                    Composables.SideEffect(value, () => { Value = value; Keyed++; });
+                    SpanHost.Publish([value, "fixed"], () => Multiple++);
+                    Child(5);
+                }
+
+                [Composable]
+                public static void Child(int value)
+                {
+                    Composables.SideEffect(() => ChildEffects += value);
+                }
+
+                public static int Run()
+                {
+                    using var composition = new Composition<object>(new GeneratorRuntimeTests.Applier());
+                    ComposableAction content = (c, changed, defaults) => Builders.Screen(c, changed, defaults);
+                    composition.ComposeContent(content);
+                    if (Always != 0 || Keyed != 0 || Multiple != 0 || ChildEffects != 0) return 1;
+                    composition.ApplyChanges();
+                    if (Always != 1 || Keyed != 1 || Multiple != 1 || ChildEffects != 5) return 2;
+                    State.Value = 1;
+                    if (!composition.Recompose()) return 3;
+                    if (Value != 0 || Always != 1) return 4;
+                    composition.ApplyChanges();
+                    if (Value != 1 || Always != 2 || Keyed != 2 || Multiple != 2 || ChildEffects != 5) return 5;
+                    composition.ComposeContent(content);
+                    composition.ApplyChanges();
+                    return Always == 3 && Keyed == 2 && Multiple == 2 && ChildEffects == 5 ? 0 : 6;
+                }
+            }
+            """;
+
+        string generated = GeneratorTestHelper.RunGenerator(source, generateDiagnostics: generateDiagnostics)
+            .Single(item => item.HintName.Contains("SpanHost")).Source;
+        Assert.DoesNotContain("StartRestartableGroup", generated);
+        Assert.DoesNotContain(".Skipping", generated);
+        Assert.DoesNotContain("UpdateScope", generated);
+        Type example = CompileExample(source, generateDiagnostics);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedReusableContentRecreatesStateAndRefreshesRestartScopes(bool generateDiagnostics)
+    {
+        const string source = """
+            using System;
+            using System.Collections.Generic;
+            using DotNetCompose.Runtime;
+            using DotNetCompose.Runtime.Composer;
+            using DotNetCompose.Runtime.Snapshots;
+
+            namespace Integration;
+
+            public static partial class Example
+            {
+                public static int Key, Executions, Factories, Reuses, Deactivations, Releases, Effects, Consumed;
+                public static bool Active = true;
+                public static object Last;
+                public static readonly SnapshotMutableState<int> State = Composables.CreateMutableState(0);
+                public static readonly ProvidableCompositionLocal<int> Local = Composables.CompositionLocalOf(() => -1);
+
+                public sealed class Node : IComposeNodeLifecycleCallback
+                {
+                    public readonly List<Node> Children = new();
+                    public int Value;
+                    public void OnReuse() => Reuses++;
+                    public void OnDeactivate() => Deactivations++;
+                    public void OnRelease() => Releases++;
+                }
+
+                public sealed class Applier : IApplier<Node>
+                {
+                    public readonly Node Root = new();
+                    private readonly Stack<Node> path = new();
+                    public Node Current => path.Count == 0 ? Root : path.Peek();
+                    public void OnBeginChanges() { }
+                    public void OnEndChanges() { }
+                    public void Down(Node node) => path.Push(node);
+                    public void Up() => path.Pop();
+                    public void InsertTopDown(int index, Node node) => Current.Children.Insert(index, node);
+                    public void InsertBottomUp(int index, Node node) { }
+                    public void Remove(int index, int count) => Current.Children.RemoveRange(index, count);
+                    public void Move(int from, int to, int count) => throw new NotSupportedException();
+                    public void Clear() { path.Clear(); Root.Children.Clear(); }
+                    public void Apply(Action<Node, object?> block, object? value) => block(Current, value);
+                }
+
+                [Composable]
+                public static void Root()
+                {
+                    Composables.ReusableContentHost(Active, () =>
+                        Composables.ReusableContent(Key, () =>
+                            Composables.CompositionLocalProvider(Local.Provides(Key), () => Screen(5))));
+                }
+
+                [Composable]
+                public static void Screen(int stable)
+                {
+                    Executions++;
+                    int value = State.Value;
+                    Consumed = Local.Current();
+                    Last = Composables.Remember("state", () => new object());
+                    Composables.SideEffect("effect", () => Effects++);
+                    Composables.ReusableComposeNode(() => { Factories++; return new Node(); },
+                        node => node.Value = stable + value,
+                        () => Composables.ReusableComposeNode(() => { Factories++; return new Node(); },
+                            node => node.Value = stable + value));
+                }
+
+                public static int Run()
+                {
+                    var applier = new Applier();
+                    using (var composition = new Composition<Node>(applier))
+                    {
+                        ComposableAction content = (c, changed, defaults) => Builders.Root(c, changed, defaults);
+                        composition.SetContent(content);
+                        object first = Last;
+                        Node parent = applier.Root.Children[0], child = parent.Children[0];
+                        if (Executions != 1 || Factories != 2 || Effects != 1 || Consumed != 0) return 1;
+                        Key++;
+                        composition.SetContent(content);
+                        if (ReferenceEquals(first, Last) || Executions != 2 || Factories != 2 || Reuses != 2 ||
+                            Effects != 2 || Consumed != 1) return 2;
+                        object second = Last;
+                        State.Value = 1;
+                        if (!composition.Recompose()) return 3;
+                        composition.ApplyChanges();
+                        if (Executions != 3 || !ReferenceEquals(second, Last) || parent.Value != 6 || child.Value != 6) return 4;
+                        Active = false;
+                        composition.SetContent(content);
+                        if (Deactivations != 2 || Releases != 0) return 5;
+                        State.Value = 2;
+                        if (composition.Recompose()) return 6;
+                        Active = true;
+                        composition.SetContent(content);
+                        if (ReferenceEquals(second, Last) || Executions != 4 || Factories != 2 || Reuses != 4 ||
+                            !ReferenceEquals(parent, applier.Root.Children[0]) || !ReferenceEquals(child, parent.Children[0])) return 7;
+                    }
+                    return Releases == 2 ? 0 : 8;
+                }
+            }
+            """;
+
+        Type example = CompileExample(source, generateDiagnostics);
+        Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
     private static Type CompileExample(string source, bool? generateDiagnostics = null)
     {
         IEnumerable<string> paths = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
