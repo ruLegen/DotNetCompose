@@ -73,7 +73,8 @@ public static class GeneratorTestHelper
         string source,
         LanguageVersion langVersion = LanguageVersion.Latest,
         bool? generateDiagnostics = null,
-        string path = "")
+        string path = "",
+        string? useStackAllocForArgumentStates = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source, Encoding.UTF8),
             CSharpParseOptions.Default.WithLanguageVersion(langVersion),
@@ -84,26 +85,33 @@ public static class GeneratorTestHelper
             References,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var driver = CreateGeneratorDriver(langVersion, generateDiagnostics);
+        var driver = CreateGeneratorDriver(langVersion, generateDiagnostics, useStackAllocForArgumentStates);
 
         return (compilation, driver);
     }
 
     public static GeneratorDriver CreateGeneratorDriver(
         LanguageVersion langVersion = LanguageVersion.Latest,
-        bool? generateDiagnostics = null)
+        bool? generateDiagnostics = null,
+        string? useStackAllocForArgumentStates = null)
     {
         var generator = new ComposeSourceGenerator();
-        AnalyzerConfigOptionsProvider? optionsProvider = generateDiagnostics.HasValue
-            ? new TestAnalyzerConfigOptionsProvider(new Dictionary<string, string>
-            {
-                ["build_property.DotNetComposeGenerateDiagnostics"] = generateDiagnostics.Value ? "true" : "false"
-            })
-            : null;
+        AnalyzerConfigOptionsProvider optionsProvider = CreateOptionsProvider(generateDiagnostics, useStackAllocForArgumentStates);
         return CSharpGeneratorDriver.Create(
             new[] { generator.AsSourceGenerator() },
             parseOptions: CSharpParseOptions.Default.WithLanguageVersion(langVersion),
             optionsProvider: optionsProvider);
+    }
+
+    public static AnalyzerConfigOptionsProvider CreateOptionsProvider(
+        bool? generateDiagnostics = null, string? useStackAllocForArgumentStates = null)
+    {
+        var values = new Dictionary<string, string>();
+        if (generateDiagnostics.HasValue)
+            values["build_property.DotNetComposeGenerateDiagnostics"] = generateDiagnostics.Value ? "true" : "false";
+        if (useStackAllocForArgumentStates != null)
+            values["build_property.DotNetComposeUseStackAllocForArgumentStates"] = useStackAllocForArgumentStates;
+        return new TestAnalyzerConfigOptionsProvider(values);
     }
 
     public static IReadOnlyList<(string HintName, string Source)> RunGenerator(
@@ -112,7 +120,9 @@ public static class GeneratorTestHelper
         bool? generateDiagnostics = null,
         string path = "")
     {
-        var (compilation, driver) = CreateDriver(source, langVersion, generateDiagnostics, path);
+        // Existing source snapshots describe the explicit stackalloc mode.
+        var (compilation, driver) = CreateDriver(source, langVersion, generateDiagnostics, path,
+            useStackAllocForArgumentStates: "true");
         driver = driver.RunGenerators(compilation);
         var runResult = driver.GetRunResult();
         return runResult.Results

@@ -1,6 +1,7 @@
 using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Emitters;
 using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Helpers;
 using DotNetCompose.SourceGenerators.Rewriters;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -75,7 +76,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         Consts.Rewriter.ChangedParamName,
                         Consts.Rewriter.DefaultParamName,
                         Consts.Rewriter.StoredLambdaClassName,
-                        Consts.Rewriter.BuildersClassName);
+                        Consts.Rewriter.BuildersClassName,
+                        ArgumentStateBuffer.SelectStorage(compilation, (CSharpParseOptions)m.SyntaxTree.Options,
+                            pipelineContext.UseStackAllocForArgumentStates));
 
                     string methodName = m.Identifier.ValueText;
                     string methodIdentity = m.GetMethodID(semanticModel);

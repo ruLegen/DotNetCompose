@@ -5,6 +5,7 @@
 
   <ItemGroup>
     <CompilerVisibleProperty Include="DotNetComposeGenerateDiagnostics" />
+    <CompilerVisibleProperty Include="DotNetComposeUseStackAllocForArgumentStates" />
     <CompilerVisibleProperty Include="ProjectDir" />
   </ItemGroup>
 </Project>

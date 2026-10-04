@@ -295,7 +295,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 invocationExpression.ArgumentList.Arguments,
                 argumentIndices,
                 methodCtx,
-                semanticModel);
+                semanticModel,
+                options.ArgumentStateBufferStorage);
 
             int defaultCount = parameterInfos.Count(p => p.DefaultProviderType != null);
             bool anyShouldUseDefault = false;
@@ -325,13 +326,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             {
                 IEnumerable<ExpressionSyntax> byteExprs = defaultStateBytes.Select(b => (ExpressionSyntax)
                     SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(b)));
-                StackAllocArrayCreationExpressionSyntax arrayExpr = SyntaxFactory.StackAllocArrayCreationExpression(
-                    SyntaxFactory.ArrayType(
-                        SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
-                        SyntaxFactory.SingletonList(SyntaxFactory.ArrayRankSpecifier())),
-                    SyntaxFactory.InitializerExpression(
-                        SyntaxKind.ArrayInitializerExpression,
-                        SyntaxFactory.SeparatedList(byteExprs)));
+                ExpressionSyntax arrayExpr = ArgumentStateBuffer.Create(byteExprs, options.ArgumentStateBufferStorage);
                 ObjectCreationExpressionSyntax stateCreation = SyntaxFactory.ObjectCreationExpression(
                     SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName))
                     .WithArgumentList(SyntaxFactory.ArgumentList(

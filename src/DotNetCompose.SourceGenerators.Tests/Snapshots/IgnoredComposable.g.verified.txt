@@ -34,7 +34,7 @@ namespace TestNs
                     __dncOutcome = global::DotNetCompose.Runtime.Diagnostics.ComposableExecutionOutcome.Executed;
                     if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
                     {
-                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[0]);
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, global::System.ReadOnlySpan<byte>.Empty);
                     }
                 }
                 finally

@@ -55,7 +55,7 @@ internal static partial class HomeScreen
             spacing: 12,
             content: () =>
             {
-                Ui.Text("tSasd ls j;laskjde", fontSize: 24);
+                Ui.Text("000000000000000000000000000eload", fontSize: 24);
                 Ui.Text(string.Format("Ellapsed: {0} sec", seconds.Value), fontSize: 24);
                 Ui.NativeView(
                     factory: () => new Label(),

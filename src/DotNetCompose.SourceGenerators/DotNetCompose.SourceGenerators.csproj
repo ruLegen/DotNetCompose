@@ -18,6 +18,7 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" GeneratePathProperty="true" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="DotNetCompose.SourceGenerators.Tests" />
     <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>

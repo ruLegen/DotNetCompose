@@ -41,6 +41,37 @@ There are some sample projects where you can try it out.
 - Basic TUI application (src/DotNetCompose.Tui.Sample)
 - Basic MAUI application (src+DotNetCompose.Maui.Sample)
 
+## Argument state buffers and Hot Reload
+
+The source generator tracks argument changes and omitted default arguments in
+temporary buffers. Configure their storage in the consuming project's `.csproj`
+or `Directory.Build.props`, including when using DotNetCompose from NuGet:
+
+```xml
+<PropertyGroup>
+  <DotNetComposeUseStackAllocForArgumentStates>false</DotNetComposeUseStackAllocForArgumentStates>
+</PropertyGroup>
+```
+
+When unset, the setting follows the consuming compilation's optimization level:
+Debug avoids explicit `stackalloc`, while Release uses it. Explicit `true` always
+uses `stackalloc`; explicit `false` always avoids it. Empty or invalid boolean
+values use the automatic mode. The build configuration of the generator itself
+does not affect this choice.
+
+Without `stackalloc`, C# 12+ targets supporting inline arrays use collection
+expressions passed directly to `Span<byte>` or `ReadOnlySpan<byte>`. This allows
+the compiler to use local inline arrays without heap allocation. Older language
+versions or targets use `byte[]` buffers instead. Empty buffers allocate nothing.
+
+The setting covers argument change states, default masks, restart lambdas, and
+argument states reported to diagnostics. `DotNetComposeGenerateDiagnostics`
+independently controls whether diagnostics are generated.
+
+Avoiding generated `stackalloc` removes the ENC0044 blocker for Hot Reload;
+other standard C# Hot Reload restrictions still apply. User-written `stackalloc`
+is unaffected.
+
 ## Example (one composable calling another)
 
 ```csharp

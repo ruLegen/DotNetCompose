@@ -1,4 +1,5 @@
 using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -96,8 +97,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             foreach (MethodDeclarationSyntaxExtensions.MethodParameterInfo parameter in methodContext.Parameters)
                 restartArguments.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(parameter.Name)));
             restartArguments.Add(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(restartContextName)));
-            restartArguments.Add(SyntaxFactory.Argument(BuildRestartChangedExpression(restartChangedNames)));
-            restartArguments.Add(SyntaxFactory.Argument(BuildRestartDefaultExpression(restartDefaultNames)));
+            restartArguments.Add(SyntaxFactory.Argument(BuildRestartChangedExpression(restartChangedNames, options.ArgumentStateBufferStorage)));
+            restartArguments.Add(SyntaxFactory.Argument(BuildRestartDefaultExpression(restartDefaultNames, options.ArgumentStateBufferStorage)));
 
             InvocationExpressionSyntax selfCall = SyntaxFactory.InvocationExpression(methodNameExpression)
                 .WithArgumentList(
@@ -144,7 +145,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             return SyntaxFactory.Block(SyntaxFactory.SingletonList(tryFinallyStatement));
         }
 
-        private static ExpressionSyntax BuildRestartChangedExpression(IReadOnlyList<string> captureNames)
+        private static ExpressionSyntax BuildRestartChangedExpression(
+            IReadOnlyList<string> captureNames, ArgumentStateBufferStorage bufferStorage)
         {
             if (captureNames.Count == 0)
             {
@@ -154,19 +156,25 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     SyntaxFactory.IdentifierName(Consts.ComposableArgumentsState.ForceField));
             }
 
-            string values = string.Join(", ", captureNames);
-            return SyntaxFactory.ParseExpression(
-                $"{Consts.ComposableArgumentsState.FullName}.{Consts.ComposableArgumentsState.ForcedMethod}(stackalloc byte[] {{ {values} }})");
+            ExpressionSyntax buffer = ArgumentStateBuffer.Create(
+                captureNames.Select(name => SyntaxFactory.IdentifierName(name)), bufferStorage);
+            return SyntaxFactory.InvocationExpression(
+                    SyntaxFactory.ParseExpression($"{Consts.ComposableArgumentsState.FullName}.{Consts.ComposableArgumentsState.ForcedMethod}"))
+                .WithArgumentList(SyntaxFactory.ArgumentList(
+                    SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(buffer))));
         }
 
-        private static ExpressionSyntax BuildRestartDefaultExpression(IReadOnlyList<string> captureNames)
+        private static ExpressionSyntax BuildRestartDefaultExpression(
+            IReadOnlyList<string> captureNames, ArgumentStateBufferStorage bufferStorage)
         {
             if (captureNames.Count == 0)
                 return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
 
-            string values = string.Join(", ", captureNames);
-            return SyntaxFactory.ParseExpression(
-                $"new {Consts.ComposableArgumentsDefaultState.FullName}(stackalloc byte[] {{ {values} }})");
+            ExpressionSyntax buffer = ArgumentStateBuffer.Create(
+                captureNames.Select(name => SyntaxFactory.IdentifierName(name)), bufferStorage, readOnly: true);
+            return SyntaxFactory.ObjectCreationExpression(SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName))
+                .WithArgumentList(SyntaxFactory.ArgumentList(
+                    SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(buffer))));
         }
 
         private static string AllocateName(HashSet<string> usedNames, string baseName)

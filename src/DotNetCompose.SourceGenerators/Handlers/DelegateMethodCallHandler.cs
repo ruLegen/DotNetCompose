@@ -87,7 +87,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                     ? System.Array.Empty<int>()
                     : ArgumentResolver.BindArgumentIndices(invocation, delegateMethod, semanticModel),
                 methodCtx,
-                semanticModel);
+                semanticModel,
+                options.ArgumentStateBufferStorage);
 
             ExpressionSyntax result = null;
             if (delegateMethodCallInfo.IsSimpleMemberAccessCall)
