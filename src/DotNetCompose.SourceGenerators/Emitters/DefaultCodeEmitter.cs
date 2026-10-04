@@ -41,15 +41,9 @@ namespace DotNetCompose.SourceGenerators.Emitters
             sourceBuilder.AppendLine("#line hidden");
             sourceBuilder.AppendLine();
 
-            foreach (UsingDirectiveSyntax usingDirective in input.Usings)
-            {
-                sourceBuilder.AppendLine(usingDirective.WithoutTrivia().ToFullString());
-            }
-
+            EmitImports(sourceBuilder, input.SourceContext.FileExterns, input.SourceContext.FileUsings);
             sourceBuilder.AppendLine();
-            sourceBuilder.AppendLine($"namespace {input.Namespace}");
-            sourceBuilder.AppendLine("{");
-            sourceBuilder.WithIndent(() =>
+            EmitNamespaceScopes(sourceBuilder, input.SourceContext.Namespaces, 0, () =>
             {
                 string typeParameters = input.TypeParameters?.WithoutTrivia().ToFullString() ?? string.Empty;
                 string constraints = string.Join(" ", input.TypeConstraints.Select(item => item.WithoutTrivia().ToFullString()));
@@ -94,7 +88,6 @@ namespace DotNetCompose.SourceGenerators.Emitters
                 });
                 sourceBuilder.AppendLine("}");
             });
-            sourceBuilder.AppendLine("}");
 
             return Regex.Replace(
                 sourceBuilder.InnerWriter.ToString(),
@@ -103,12 +96,46 @@ namespace DotNetCompose.SourceGenerators.Emitters
                 RegexOptions.Multiline);
         }
 
+        private static void EmitNamespaceScopes(
+            IndentedTextWriter writer,
+            ImmutableArray<SourceNamespaceScope> namespaces,
+            int index,
+            Action emitType)
+        {
+            if (index == namespaces.Length)
+            {
+                emitType();
+                return;
+            }
+
+            SourceNamespaceScope scope = namespaces[index];
+            writer.AppendLine($"namespace {scope.Name}");
+            writer.AppendLine("{");
+            writer.WithIndent(() =>
+            {
+                EmitImports(writer, scope.Externs, scope.Usings);
+                EmitNamespaceScopes(writer, namespaces, index + 1, emitType);
+            });
+            writer.AppendLine("}");
+        }
+
+        private static void EmitImports(
+            IndentedTextWriter writer,
+            ImmutableArray<ExternAliasDirectiveSyntax> externs,
+            ImmutableArray<UsingDirectiveSyntax> usings)
+        {
+            foreach (ExternAliasDirectiveSyntax directive in externs)
+                writer.AppendLine(directive.WithoutTrivia().ToFullString());
+            foreach (UsingDirectiveSyntax directive in usings)
+                writer.AppendLine(directive.WithoutTrivia().ToFullString());
+        }
+
         private void EmitStoredLambdas(
             IndentedTextWriter sourceBuilder,
             ImmutableArray<RewriterSession> sessions,
             bool supportsEnhancedLineDirectives)
         {
-            sourceBuilder.AppendLine($"static class {Rewriter.StoredLambdaClassName}");
+            sourceBuilder.AppendLine($"static partial class {Rewriter.StoredLambdaClassName}");
             sourceBuilder.AppendLine("{");
             sourceBuilder.WithIndent(() =>
             {

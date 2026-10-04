@@ -515,7 +515,7 @@ namespace DotNetCompose.Playground
                     }
                 }
             }
-            static class __StoredLambda
+            static partial class __StoredLambda
             {
                 public static void __Lambda_4_0(int i, DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {

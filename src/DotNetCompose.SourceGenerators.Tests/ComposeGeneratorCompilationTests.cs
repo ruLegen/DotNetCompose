@@ -425,7 +425,7 @@ public class ComposeGeneratorCompilationTests
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         Assert.Equal(1, generated.Split("GetReadonlyLambda").Length - 1);
-        Assert.Contains("static class __StoredLambda", generated);
+        Assert.Contains("static partial class __StoredLambda", generated);
         Assert.Contains("__StoredLambda", generated);
     }
 

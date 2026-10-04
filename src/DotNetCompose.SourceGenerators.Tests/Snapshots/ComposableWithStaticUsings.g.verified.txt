@@ -73,7 +73,7 @@ namespace TestNs
                     }
                 }
             }
-            static class __StoredLambda
+            static partial class __StoredLambda
             {
             }
         }

@@ -476,31 +476,16 @@ namespace DotNetCompose.SourceGenerators.Handlers
                         .WithTypeArgumentList(
                             SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(methodSymbol.TypeArguments.Select(a =>
                             {
-                                return SyntaxFactory.ParseTypeName(a.ToDisplayString());
+                                return SyntaxFactory.ParseTypeName(a.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
                             }))));
             }
             else
             {
                 newIdentifierName = SyntaxFactory.IdentifierName(methodSymbol.Name);
             }
-            NameSyntax newQualifiedName = SyntaxFactory.ParseName(typeName);
-
-            ExpressionSyntax newExpression;
-            if (newQualifiedName is QualifiedNameSyntax qns)
-            {
-                newExpression = SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    qns.Left,
-                    (IdentifierNameSyntax)qns.Right);
-            }
-            else
-            {
-                newExpression = SyntaxFactory.IdentifierName(typeName);
-            }
-
-            newExpression = SyntaxFactory.MemberAccessExpression(
+            ExpressionSyntax newExpression = SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                newExpression,
+                SyntaxFactory.ParseExpression(typeName),
                 newIdentifierName);
 
             return node.WithExpression(newExpression);

@@ -593,7 +593,7 @@ public class GeneratorRuntimeTests
 
         string generated = GeneratorTestHelper.RunSingleGenerator(source);
         Assert.DoesNotContain("partial class Builders", generated);
-        Assert.Contains("static class __StoredLambda", generated);
+        Assert.Contains("static partial class __StoredLambda", generated);
 
         Type example = CompileExample(source);
         Assert.Equal(0, (int)example.GetMethod("Run")!.Invoke(null, null)!);

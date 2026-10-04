@@ -6,12 +6,11 @@ using System.Collections.Immutable;
 namespace DotNetCompose.SourceGenerators.Emitters
 {
     internal record CodeGenerationInput(
-        string Namespace,
+        SourceDeclarationContext SourceContext,
         string TypeName,
         string Accessibility,
         TypeParameterListSyntax? TypeParameters,
         SyntaxList<TypeParameterConstraintClauseSyntax> TypeConstraints,
-        ImmutableArray<UsingDirectiveSyntax> Usings,
         ImmutableArray<SyntaxNode> InstanceMethods,
         ImmutableArray<SyntaxNode> BuilderMethods,
         ImmutableArray<RewriterSession> InstanceSessions,
