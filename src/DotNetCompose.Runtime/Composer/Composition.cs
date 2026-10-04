@@ -26,6 +26,8 @@ namespace DotNetCompose.Runtime.Composer
         private ComposableAction? _content;
         private ComposableAction? _pendingContent;
         private List<object?> _created = new List<object?>();
+        private readonly List<Action> _sideEffects = new List<Action>();
+        private readonly List<CompositionGroup> _faultedNodes = new List<CompositionGroup>();
         private volatile bool _busy;
         private int _committedVersion;
         private bool _faulted;
@@ -108,7 +110,7 @@ namespace DotNetCompose.Runtime.Composer
                 CompositionDiagnosticsRuntime.BeginCompositionPass(this, recompose);
             try
             {
-                using Composer<TNode> composer = new Composer<TNode>(SlotTable, _computingInvalid,
+                using Composer<TNode> composer = new Composer<TNode>(SlotTable, _computingInvalid, _sideEffects,
                     error => _recomposer?.ReportEffectError(this, error));
                 _created = composer.CreatedValues;
                 _handledWrites = composer.HandledWrites;
@@ -173,6 +175,9 @@ namespace DotNetCompose.Runtime.Composer
                 }
                 List<IRememberObserver> before = Observers(_root);
                 List<IRememberObserver> after = Observers(_pendingRoot);
+                List<IRememberObserver> resetBefore = new List<IRememberObserver>();
+                List<IRememberObserver> resetAfter = new List<IRememberObserver>();
+                CollectResetObservers(_pendingRoot!, resetBefore, resetAfter);
                 _root = _pendingRoot;
                 _content = _pendingContent;
                 _committedVersion = SlotTable.Version;
@@ -182,11 +187,15 @@ namespace DotNetCompose.Runtime.Composer
                 lock (_gate)
                     _observed = observed;
                 changes.Consume();
+                List<Action> sideEffects = _sideEffects;
+                // The queue remains owned by this apply; reentry is blocked until its finally.
                 ClearPending();
                 applying = true;
-                DispatchRemember(before, after);
+                DispatchRemember(before, after, resetBefore, resetAfter);
                 AbandonCreated(after);
                 _created.Clear();
+                foreach (Action effect in sideEffects)
+                    effect();
                 if (CompositionDiagnosticsRuntime.IsSupported)
                     CompositionDiagnosticsRuntime.CompleteApplyChanges(this, changes.Count);
             }
@@ -201,6 +210,7 @@ namespace DotNetCompose.Runtime.Composer
             }
             finally
             {
+                _sideEffects.Clear();
                 _busy = false;
             }
             if (HasInvalidations)
@@ -228,6 +238,9 @@ namespace DotNetCompose.Runtime.Composer
 
         private void CancelPending()
         {
+            _sideEffects.Clear();
+            if (_faulted)
+                CompositionChangeBuilder.CollectNodes(_pendingRoot, _faultedNodes);
             _snapshot?.Dispose();
             _snapshot = null;
             PendingChanges?.Consume();
@@ -258,6 +271,8 @@ namespace DotNetCompose.Runtime.Composer
         {
             group.Previous = null;
             group.Updates.Clear();
+            group.Reused = false;
+            group.ResetSlots = false;
             foreach (CompositionGroup child in group.Children)
                 CommitGroups(child);
         }
@@ -282,15 +297,58 @@ namespace DotNetCompose.Runtime.Composer
             return result;
         }
 
-        private static void DispatchRemember(List<IRememberObserver> old, List<IRememberObserver> next)
+        private static void CollectResetObservers(CompositionGroup group,
+            List<IRememberObserver> before, List<IRememberObserver> after)
+        {
+            if (group.ResetSlots)
+            {
+                if (group.Previous != null)
+                    foreach (object? value in group.Previous.Slots)
+                        if (value is IRememberObserver observer)
+                            before.Add(observer);
+                foreach (object? value in group.Slots)
+                    if (value is IRememberObserver observer)
+                        after.Add(observer);
+            }
+            foreach (CompositionGroup child in group.Children)
+                CollectResetObservers(child, before, after);
+        }
+
+        private static void DispatchRemember(List<IRememberObserver> old, List<IRememberObserver> next,
+            List<IRememberObserver>? resetBefore = null, List<IRememberObserver>? resetAfter = null)
         {
             List<IRememberObserver> added = new List<IRememberObserver>(next);
+            // Reset occurrences cannot cancel each other, even if a factory returns the same object.
+            List<bool> forced = new List<bool>(next.Count);
+            foreach (IRememberObserver observer in next)
+            {
+                int resetIndex = resetAfter?.FindIndex(item => ReferenceEquals(item, observer)) ?? -1;
+                forced.Add(resetIndex >= 0);
+                if (resetIndex >= 0)
+                    resetAfter!.RemoveAt(resetIndex);
+            }
             List<IRememberObserver> removed = new List<IRememberObserver>();
             foreach (IRememberObserver observer in old)
             {
-                int index = added.FindIndex(item => ReferenceEquals(item, observer));
+                int resetIndex = resetBefore?.FindIndex(item => ReferenceEquals(item, observer)) ?? -1;
+                if (resetIndex >= 0)
+                {
+                    resetBefore!.RemoveAt(resetIndex);
+                    removed.Add(observer);
+                    continue;
+                }
+                int index = -1;
+                for (int i = 0; i < added.Count; i++)
+                    if (!forced[i] && ReferenceEquals(added[i], observer))
+                    {
+                        index = i;
+                        break;
+                    }
                 if (index >= 0)
+                {
                     added.RemoveAt(index);
+                    forced.RemoveAt(index);
+                }
                 else
                     removed.Add(observer);
             }
@@ -344,32 +402,52 @@ namespace DotNetCompose.Runtime.Composer
             }
             finally
             {
+                _sideEffects.Clear();
+                _sideEffects.Capacity = 0;
                 try
                 {
                     DispatchRemember(Observers(_root), new List<IRememberObserver>());
                 }
                 finally
                 {
-                    _root = null;
-                    _content = null;
-                    if (CompositionDiagnosticsRuntime.IsSupported)
-                        CompositionDiagnosticsRuntime.ReportCompositionDisposed(this);
-                    lock (_gate)
-                    {
-                        _changed.Clear();
-                        _observed.Clear();
-                    }
                     try
                     {
-                        _applier.Clear();
+                        List<CompositionGroup> nodes = new List<CompositionGroup>();
+                        CompositionChangeBuilder.CollectNodes(_root, nodes);
+                        nodes.AddRange(_faultedNodes);
+                        _faultedNodes.Clear();
+                        Exception? releaseError = null;
+                        for (int i = nodes.Count - 1; i >= 0; i--)
+                        {
+                            try { nodes[i].Node.Release(); }
+                            catch (Exception error) { releaseError ??= error; }
+                        }
+                        if (releaseError != null)
+                            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(releaseError).Throw();
                     }
                     finally
                     {
-                        using ComposerSlotTable.Writer writer = SlotTable.OpenWriter();
-                        while (SlotTable.Size > 0)
+                        _root = null;
+                        _content = null;
+                        if (CompositionDiagnosticsRuntime.IsSupported)
+                            CompositionDiagnosticsRuntime.ReportCompositionDisposed(this);
+                        lock (_gate)
                         {
-                            writer.Reposition(0);
-                            writer.RemoveGroup();
+                            _changed.Clear();
+                            _observed.Clear();
+                        }
+                        try
+                        {
+                            _applier.Clear();
+                        }
+                        finally
+                        {
+                            using ComposerSlotTable.Writer writer = SlotTable.OpenWriter();
+                            while (SlotTable.Size > 0)
+                            {
+                                writer.Reposition(0);
+                                writer.RemoveGroup();
+                            }
                         }
                     }
                 }

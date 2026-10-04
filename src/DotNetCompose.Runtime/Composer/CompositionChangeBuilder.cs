@@ -19,6 +19,36 @@ namespace DotNetCompose.Runtime.Composer
             else
                 DiffGroup(old, next, 0);
             DiffNodes(old?.Children ?? new List<CompositionGroup>(), next.Children);
+            AddNodeLifecycleChanges(old, next);
+        }
+
+        private void AddNodeLifecycleChanges(CompositionGroup? old, CompositionGroup next)
+        {
+            List<CompositionGroup> before = new List<CompositionGroup>();
+            List<CompositionGroup> after = new List<CompositionGroup>();
+            CollectNodes(old, before);
+            CollectNodes(next, after);
+            Dictionary<NodeReference, CompositionGroup> retained = new Dictionary<NodeReference, CompositionGroup>();
+            foreach (CompositionGroup group in after)
+                retained.Add(group.Node, group);
+            for (int i = before.Count - 1; i >= 0; i--)
+            {
+                CompositionGroup group = before[i];
+                if (!retained.TryGetValue(group.Node, out CompositionGroup? replacement))
+                    Operations.Add(CompositionOperation.NodeLifecycle(CompositionOperationKind.ReleaseNode, group));
+                else if (!group.Deactivated && replacement.Deactivated)
+                    Operations.Add(CompositionOperation.NodeLifecycle(CompositionOperationKind.DeactivateNode, group));
+            }
+        }
+
+        internal static void CollectNodes(CompositionGroup? group, List<CompositionGroup> result)
+        {
+            if (group == null)
+                return;
+            if (group.IsNode)
+                result.Add(group);
+            foreach (CompositionGroup child in group.Children)
+                CollectNodes(child, result);
         }
 
         private static void WriteNew(ComposerSlotTable.Writer writer, CompositionGroup group)
@@ -139,6 +169,8 @@ namespace DotNetCompose.Runtime.Composer
                 {
                     int start = Operations.Count;
                     Operations.Add(CompositionOperation.Down(node, nodeIndex));
+                    if (node.Reused && node.Node.Value is IComposeNodeLifecycleCallback)
+                        Operations.Add(CompositionOperation.NodeLifecycle(CompositionOperationKind.ReuseNode, node));
                     foreach (NodeUpdate update in node.Updates)
                         Operations.Add(CompositionOperation.UpdateNode(node, nodeIndex, update));
                     DiffNodes(old?.Children ?? new List<CompositionGroup>(), node.Children);

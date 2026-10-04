@@ -6,15 +6,15 @@ using System.Collections.Immutable;
 namespace DotNetCompose.SourceGenerators.Emitters
 {
     internal record CodeGenerationInput(
-        string Namespace,
+        SourceDeclarationContext SourceContext,
         string TypeName,
         string Accessibility,
         TypeParameterListSyntax? TypeParameters,
         SyntaxList<TypeParameterConstraintClauseSyntax> TypeConstraints,
-        ImmutableArray<UsingDirectiveSyntax> Usings,
         ImmutableArray<SyntaxNode> InstanceMethods,
         ImmutableArray<SyntaxNode> BuilderMethods,
-        ImmutableArray<RewriterSession> Sessions,
+        ImmutableArray<RewriterSession> InstanceSessions,
+        ImmutableArray<RewriterSession> BuilderSessions,
         bool SupportsEnhancedLineDirectives);
 
     internal interface ICodeEmitter

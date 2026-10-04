@@ -345,9 +345,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
             bool emitEndLabel)
         {
             string[] states = stateVariables.ToArray();
-            ExpressionSyntax stateSpan = states.Length == 0
-                ? SyntaxFactory.ParseExpression("stackalloc byte[0]")
-                : SyntaxFactory.ParseExpression($"stackalloc byte[] {{ {string.Join(", ", states)} }}");
+            ExpressionSyntax stateSpan = ArgumentStateBuffer.Create(
+                states.Select(name => SyntaxFactory.IdentifierName(name)),
+                context.Options.ArgumentStateBufferStorage, readOnly: true);
 
             InvocationExpressionSyntax end = SyntaxFactory.InvocationExpression(
                     SyntaxFactory.MemberAccessExpression(

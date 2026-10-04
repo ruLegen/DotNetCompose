@@ -198,7 +198,23 @@ namespace DotNetCompose.Runtime
                 context.UpdateRememberedValue(new DisposableEffectJob(setup, context.ReportEffectError));
             }
         }
+        [Composable(ComposableMode.NonRestartable)]
+        public static void DisposableEffect(object? key, Action action)
+        {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+            IComposerContext context = CurrentContext()
+                ?? throw new InvalidOperationException("DisposableEffect can only be used during composition.");
 
+            bool invalid = context.Changed(key);
+            object? slot = context.RememberedValue();
+            if (ReferenceEquals(slot, Empty) || invalid)
+            {
+                context.UpdateRememberedValue(new DisposableEffectAction(action, context.ReportEffectError));
+            }
+        }
         [Composable(ComposableMode.NonRestartable)]
         public static void LaunchedEffect(object? key1, Func<CancellationToken, ValueTask> block)
         {

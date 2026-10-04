@@ -7,7 +7,8 @@ namespace DotNetCompose.SourceGenerators
         string ChangedVarName,
         string DefaultParamName,
         string StoredLambdaClassName,
-        string BuildersClassName
+        string BuildersClassName,
+        ArgumentStateBufferStorage ArgumentStateBufferStorage = ArgumentStateBufferStorage.StackAlloc
     )
     {
         public static readonly RewriterOptions Default = new(

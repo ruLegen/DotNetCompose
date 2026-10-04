@@ -11,7 +11,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         WellKnownFunctionRegistry WellKnownRegistry,
         bool GenerateDiagnostics,
         string ProjectDirectory,
-        bool SupportsEnhancedLineDirectives
+        bool SupportsEnhancedLineDirectives,
+        bool? UseStackAllocForArgumentStates,
+        bool GenerateDiagnosticsLineNumbers
     );
 
     internal interface IOutputHandler

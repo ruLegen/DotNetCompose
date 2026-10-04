@@ -72,6 +72,13 @@ namespace DotNetCompose.Runtime.Composer
                     RequireIndex(operation.SourceNodeIndex, in operation);
                     RequirePositiveCount(in operation);
                     return;
+                case CompositionOperationKind.ReuseNode:
+                case CompositionOperationKind.DeactivateNode:
+                case CompositionOperationKind.ReleaseNode:
+                    RequireGroup(in operation);
+                    if (!operation.Group!.IsNode)
+                        throw Incomplete(in operation);
+                    return;
                 default:
                     throw new NotSupportedException($"Composition operation {operation.Kind} is not supported.");
             }

@@ -38,4 +38,33 @@ namespace DotNetCompose.Runtime.Effects
             OnForgotten();
         }
     }
+
+
+    internal sealed class DisposableEffectAction : IRememberObserver
+    {
+        private Action? _action;
+        private readonly Action<Exception> _errorSink;
+
+        internal DisposableEffectAction(Action? action, Action<Exception> errorSink)
+        {
+            _action = action;
+            _errorSink = errorSink;
+        }
+
+        public void OnRemembered()
+        {
+        }
+
+        public void OnForgotten()
+        {
+            Action? action = _action;
+            _action = null;
+            action?.Invoke();
+        }
+
+        public void OnAbandoned()
+        {
+            OnForgotten();
+        }
+    }
 }

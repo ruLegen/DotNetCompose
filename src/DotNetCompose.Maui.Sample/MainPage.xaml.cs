@@ -27,15 +27,7 @@ public partial class MainPage : ContentPage, IDisposable
 
         HorizontalStackLayout controls = new();
         Button reload = new() { Text = "Reload host" };
-        reload.Clicked += (_, _) =>
-        {
-            root.Remove(_compose);
-            Dispatcher.Dispatch(() =>
-            {
-                root.Add(_compose);
-                Grid.SetRow(_compose, 1);
-            });
-        };
+        reload.Clicked += (_, _) => _compose.Reload();
         Button theme = new() { Text = "Light / Dark" };
         theme.Clicked += (_, _) =>
         {

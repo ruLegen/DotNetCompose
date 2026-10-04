@@ -27,7 +27,6 @@ namespace DotNetCompose.SourceGenerators
             public const string DefaultParamName = "__defaultParamState";
             public const string StoredLambdaClassName = "__StoredLambda";
             public const string BuildersClassName = "Builders";
-            public const string InstanceReceiverName = "__instance";
             public const string LambdaValueName = "a";
             public static readonly Func<int, int, string> LambdaName = (methodIndex, lambdaIndex) =>
                 $"__Lambda_{(uint)methodIndex}_{(uint)lambdaIndex}";

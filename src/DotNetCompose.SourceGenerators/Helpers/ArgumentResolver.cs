@@ -76,7 +76,8 @@ namespace DotNetCompose.SourceGenerators.Helpers
             SeparatedSyntaxList<ArgumentSyntax> args,
             int[] argumentIndices,
             MethodGenerationContext methodCtx,
-            SemanticModel semanticModel)
+            SemanticModel semanticModel,
+            ArgumentStateBufferStorage bufferStorage)
         {
             using ListPoolObject<ExpressionSyntax> stateExprs = ListPool<ExpressionSyntax>.Get();
             bool hasKnownState = false;
@@ -160,15 +161,7 @@ namespace DotNetCompose.SourceGenerators.Helpers
                 SyntaxFactory.ParseTypeName(ComposableArgumentsState.FullName))
                 .WithArgumentList(SyntaxFactory.ArgumentList(
                     SyntaxFactory.SingletonSeparatedList(
-                        SyntaxFactory.Argument(
-                            SyntaxFactory.StackAllocArrayCreationExpression(
-                                SyntaxFactory.ArrayType(
-                                    SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
-                                    SyntaxFactory.SingletonList(
-                                        SyntaxFactory.ArrayRankSpecifier())),
-                                SyntaxFactory.InitializerExpression(
-                                    SyntaxKind.ArrayInitializerExpression,
-                                    SyntaxFactory.SeparatedList(stateExprs)))))));
+                        SyntaxFactory.Argument(ArgumentStateBuffer.Create(stateExprs, bufferStorage)))));
         }
     }
 }

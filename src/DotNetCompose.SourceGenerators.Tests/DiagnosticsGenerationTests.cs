@@ -22,6 +22,83 @@ public sealed class DiagnosticsGenerationTests
         }
         """;
 
+    private const string CallbackSource = """
+        using System;
+        using System.Threading.Tasks;
+        using DotNetCompose.Runtime;
+
+        namespace Integration
+        {
+
+        public static partial class Example
+        {
+            public static int Count;
+
+            [Composable]
+            public static void Screen(int value)
+            {
+                Composables.LaunchedEffect(value, async token =>
+                {
+                    int delay = 1;
+                    await Task.Delay(delay, token);
+                    while (!token.IsCancellationRequested)
+                    {
+                        value++;
+                        await Task.Delay(1, token);
+                    }
+                });
+                Composables.DisposableEffect(value, () =>
+                {
+                    value += 2;
+                });
+                Composables.DisposableEffect(value, () =>
+                {
+                    Action nested = () =>
+                    {
+                        value += 3;
+                    };
+                    return new Cleanup(nested);
+                });
+                Button(() =>
+                {
+                    if (value > 0)
+                        value += 4;
+                    Action anonymous = delegate
+                    {
+                        value += 5;
+                    };
+                    anonymous();
+                });
+                Button(() => value += 6);
+                Button(delegate { value += 7; });
+                Button(static () => Count++);
+                Project(item => item + value + 10);
+                AsyncButton(async () => await Task.Delay(2));
+                Func<int, int> project = item => item + value + 20;
+                Func<int> read = () => value + 30;
+                Func<Action> create = () => () => { value += 8; };
+                Func<int> throwing = () => { throw new InvalidOperationException(); };
+            }
+
+            [Composable]
+            public static void Button(Action action) { }
+
+            [Composable]
+            public static void Project(Func<int, int> project) { }
+
+            [Composable]
+            public static void AsyncButton(Func<Task> action) { }
+
+            private sealed class Cleanup : IDisposable
+            {
+                private readonly Action action;
+                public Cleanup(Action action) { this.action = action; }
+                public void Dispose() { action(); }
+            }
+        }
+        }
+        """;
+
     [Fact]
     public void DiagnosticsAreGeneratedByDefault()
     {
@@ -127,7 +204,7 @@ public sealed class DiagnosticsGenerationTests
         string mappedLine = lines[directiveIndex + 1];
         int expectedOffset = mappedLine.TakeWhile(char.IsWhiteSpace).Count();
         Assert.Equal(
-            $"#line (10, 9) - (10, 19) {expectedOffset} \"C:\\\\project with spaces\\\\Greeting.cs\"",
+            $"#line (10, 9) - (10, 19) {expectedOffset} \"{path}\"",
             lines[directiveIndex].TrimStart());
         Assert.Contains("#line hidden", generated);
         Assert.DoesNotContain("CompositionDiagnosticsRuntime", generated);
@@ -143,7 +220,7 @@ public sealed class DiagnosticsGenerationTests
             generateDiagnostics: false,
             path: path);
 
-        Assert.Contains("#line 10 \"C:\\\\project with spaces\\\\Greeting.cs\"", generated);
+        Assert.Contains($"#line 10 \"{path}\"", generated);
         Assert.DoesNotContain("#line (", generated);
     }
 
@@ -393,6 +470,120 @@ public sealed class DiagnosticsGenerationTests
             point => IsVisibleAt(point, nestedLine, nestedColumn));
         Assert.Contains(generatedMethods,
             point => IsVisibleAt(point, ifLine, ifColumn));
+    }
+
+    [Theory]
+    [InlineData(false, LanguageVersion.Latest)]
+    [InlineData(true, LanguageVersion.Latest)]
+    [InlineData(false, LanguageVersion.CSharp9)]
+    [InlineData(true, LanguageVersion.CSharp9)]
+    public void PortablePdbMapsOrdinaryCallbacksIncludingAsyncAndExpressionBodies(
+        bool generateDiagnostics,
+        LanguageVersion languageVersion)
+    {
+        const string path = @"C:\project with spaces\Callbacks.cs";
+        var (compilation, driver) = GeneratorTestHelper.CreateDriver(
+            CallbackSource,
+            langVersion: languageVersion,
+            generateDiagnostics: generateDiagnostics,
+            path: path);
+        driver.RunGeneratorsAndUpdateCompilation(compilation, out Compilation output, out _);
+        using MemoryStream pe = new MemoryStream();
+        using MemoryStream pdb = new MemoryStream();
+        EmitResult result = output.Emit(
+            pe,
+            pdb,
+            options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
+        Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
+
+        pe.Position = 0;
+        pdb.Position = 0;
+        using PEReader peReader = new PEReader(pe, PEStreamOptions.LeaveOpen);
+        using MetadataReaderProvider provider = MetadataReaderProvider.FromPortablePdbStream(pdb);
+        MetadataReader assemblyReader = peReader.GetMetadataReader();
+        MetadataReader pdbReader = provider.GetMetadataReader();
+        var generatedPoints = GetGeneratedCallbackPoints(assemblyReader, pdbReader);
+        string[] statements =
+        {
+            "int delay = 1", "await Task.Delay(delay, token);", "while (!token.IsCancellationRequested)",
+            "value++;", "await Task.Delay(1, token);", "value += 2;", "value += 3;",
+            "return new Cleanup(nested);", "if (value > 0)", "value += 4;", "value += 5;",
+            "anonymous();", "value += 6", "value += 7;", "Count++", "item + value + 10",
+            "await Task.Delay(2)", "item + value + 20", "value + 30", "value += 8;",
+            "throw new InvalidOperationException();"
+        };
+        foreach (string statement in statements)
+        {
+            (int line, int column) = FindSourcePosition(CallbackSource, statement);
+            Assert.True(generatedPoints.Any(item => item.Path == path && !item.Point.IsHidden &&
+                item.Point.StartLine == line &&
+                (languageVersion == LanguageVersion.CSharp9 || item.Point.StartColumn == column)),
+                $"Missing generated callback mapping for '{statement}' at {line}:{column}." + Environment.NewLine +
+                string.Join(Environment.NewLine, generatedPoints.Where(item => !item.Point.IsHidden)
+                    .Select(item => $"{item.Method}: {item.Path} {item.Point.StartLine}:{item.Point.StartColumn}")));
+        }
+
+        (int awaitLine, int awaitColumn) = FindSourcePosition(CallbackSource, "await Task.Delay(delay, token);");
+        Assert.Contains(generatedPoints, item => item.Method == "MoveNext" && item.Path == path &&
+            !item.Point.IsHidden && item.Point.StartLine == awaitLine &&
+            (languageVersion == LanguageVersion.CSharp9 || item.Point.StartColumn == awaitColumn));
+
+        foreach (string statement in new[] { "value += 3;", "value += 5;" })
+        {
+            (int line, int column) = FindSourcePosition(CallbackSource, statement);
+            string callbackMethod = Assert.Single(generatedPoints, item => item.Path == path &&
+                !item.Point.IsHidden && item.Point.StartLine == line &&
+                (languageVersion == LanguageVersion.CSharp9 || item.Point.StartColumn == column)).Method;
+            Assert.All(generatedPoints.Where(item => item.Method == callbackMethod && !item.Point.IsHidden),
+                item => Assert.Equal(line, item.Point.StartLine));
+        }
+
+        SequencePoint[] screen = GetSequencePoints(assemblyReader, pdbReader,
+            "Integration.Example+Builders", "Screen");
+        foreach (string call in new[] { "Composables.LaunchedEffect(value", "Composables.DisposableEffect(value", "Button(() =>" })
+        {
+            (int line, int column) = FindSourcePosition(CallbackSource, call);
+            SequencePoint point = Assert.Single(screen, point => !point.IsHidden && point.StartLine == line);
+            if (languageVersion != LanguageVersion.CSharp9)
+            {
+                Assert.Equal(column, point.StartColumn);
+                Assert.Equal(line, point.EndLine);
+            }
+        }
+
+        string generated = GeneratorTestHelper.RunSingleGenerator(CallbackSource,
+            langVersion: languageVersion, generateDiagnostics: generateDiagnostics, path: path);
+        Assert.DoesNotContain("StartReplaceableGroup", generated);
+        Assert.DoesNotContain("StartMovableGroup", generated);
+    }
+
+    private static (string Method, string Path, SequencePoint Point)[] GetGeneratedCallbackPoints(
+        MetadataReader assemblyReader,
+        MetadataReader pdbReader)
+    {
+        var points = new List<(string Method, string Path, SequencePoint Point)>();
+        foreach (MethodDefinitionHandle methodHandle in assemblyReader.MethodDefinitions)
+        {
+            MethodDefinition method = assemblyReader.GetMethodDefinition(methodHandle);
+            // Include only callback closures/state machines owned by Builders;
+            // the original Screen method also has valid points, but is never run.
+            if (!GetTypeName(assemblyReader, method.GetDeclaringType())
+                .StartsWith("Integration.Example+Builders+", StringComparison.Ordinal))
+                continue;
+
+            int row = MetadataTokens.GetRowNumber(methodHandle);
+            MethodDebugInformation information = pdbReader.GetMethodDebugInformation(
+                MetadataTokens.MethodDebugInformationHandle(row));
+            foreach (SequencePoint point in information.GetSequencePoints())
+            {
+                DocumentHandle document = point.Document.IsNil ? information.Document : point.Document;
+                string path = document.IsNil ? string.Empty : pdbReader.GetString(pdbReader.GetDocument(document).Name);
+                points.Add((assemblyReader.GetString(method.Name), path, point));
+            }
+        }
+
+        Assert.NotEmpty(points);
+        return points.ToArray();
     }
 
     private static bool IsGreetingUserSpan(SequencePoint point) =>

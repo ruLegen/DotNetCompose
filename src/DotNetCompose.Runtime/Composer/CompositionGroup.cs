@@ -14,7 +14,9 @@ namespace DotNetCompose.Runtime.Composer
         Movable,
         Restart,
         Node,
-        Provider
+        Provider,
+        Reusable,
+        ReusableNode
     }
 
     internal sealed class ReferenceComparer : IEqualityComparer<object>
@@ -31,6 +33,10 @@ namespace DotNetCompose.Runtime.Composer
         internal int Key;
         internal CompositionGroupKind Kind;
         internal object? ObjectKey;
+        internal object? ReuseKey;
+        internal bool Deactivated;
+        internal bool Reused;
+        internal bool ResetSlots;
         internal CompositionGroup? Previous;
         internal GroupAnchor Anchor = GroupAnchor.Empty;
         internal GroupAnchor TemporaryAnchor = GroupAnchor.Empty;
@@ -41,7 +47,7 @@ namespace DotNetCompose.Runtime.Composer
         internal NodeReference Node = new NodeReference();
         internal List<NodeUpdate> Updates = new List<NodeUpdate>();
         internal CompositionLocalScope Locals = CompositionLocalScope.Empty;
-        internal bool IsNode => Kind == CompositionGroupKind.Node;
+        internal bool IsNode => Kind is CompositionGroupKind.Node or CompositionGroupKind.ReusableNode;
         internal int Size
         {
             get
@@ -58,6 +64,8 @@ namespace DotNetCompose.Runtime.Composer
             Key = old.Key,
             Kind = old.Kind,
             ObjectKey = old.ObjectKey,
+            ReuseKey = old.ReuseKey,
+            Deactivated = old.Deactivated,
             Previous = old,
             Anchor = old.Anchor,
             Node = old.Node,
@@ -70,6 +78,15 @@ namespace DotNetCompose.Runtime.Composer
     {
         internal object? Value;
         internal Func<object>? Factory;
+        private bool _released;
+
+        internal void Release()
+        {
+            if (_released || Value == null)
+                return;
+            _released = true;
+            (Value as IComposeNodeLifecycleCallback)?.OnRelease();
+        }
     }
 
     internal sealed class NodeUpdate

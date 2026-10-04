@@ -90,6 +90,24 @@ namespace DotNetCompose.SourceGenerators.Rewriters
             return base.VisitInvocationExpression(node);
         }
 
+        public override SyntaxNode VisitSimpleLambdaExpression(SimpleLambdaExpressionSyntax node)
+        {
+            var processed = (SimpleLambdaExpressionSyntax)base.VisitSimpleLambdaExpression(node)!;
+            return processed.WithBody(SourceLocationAnnotationRewriter.Annotate(node.Body, processed.Body));
+        }
+
+        public override SyntaxNode VisitParenthesizedLambdaExpression(ParenthesizedLambdaExpressionSyntax node)
+        {
+            var processed = (ParenthesizedLambdaExpressionSyntax)base.VisitParenthesizedLambdaExpression(node)!;
+            return processed.WithBody(SourceLocationAnnotationRewriter.Annotate(node.Body, processed.Body));
+        }
+
+        public override SyntaxNode VisitAnonymousMethodExpression(AnonymousMethodExpressionSyntax node)
+        {
+            var processed = (AnonymousMethodExpressionSyntax)base.VisitAnonymousMethodExpression(node)!;
+            return processed.WithBlock(SourceLocationAnnotationRewriter.Annotate(node.Block, processed.Block));
+        }
+
         public override SyntaxNode? VisitConditionalAccessExpression(ConditionalAccessExpressionSyntax node)
         {
             var replacement = _callInterceptor.TryInterceptConditionalAccess(node, Ctx);

@@ -10,12 +10,13 @@ namespace DotNetCompose.Runtime.Composer
     {
         private sealed class Frame
         {
-            internal Frame(CompositionGroup group, CompositionLocalScope locals, bool providersInvalid)
+            internal Frame(CompositionGroup group, CompositionLocalScope locals, bool providersInvalid, bool reusing = false)
             {
                 Group = group;
                 OldChildren = group.Previous?.Children ?? new List<CompositionGroup>();
                 Locals = locals;
                 ProvidersInvalid = providersInvalid;
+                Reusing = reusing;
             }
             internal readonly CompositionGroup Group;
             internal readonly List<CompositionGroup> OldChildren;
@@ -28,6 +29,7 @@ namespace DotNetCompose.Runtime.Composer
             internal bool Skipped;
             internal CompositionLocalScope Locals;
             internal bool ProvidersInvalid;
+            internal bool Reusing;
         }
 
         private readonly ComposerSlotTable _table;
@@ -36,17 +38,26 @@ namespace DotNetCompose.Runtime.Composer
         private readonly Action<Exception> _effectErrorSink;
         private readonly Stack<Frame> _stack = new Stack<Frame>();
         internal readonly List<object?> CreatedValues = new List<object?>();
+        private readonly List<Action> _sideEffects;
         internal readonly HashSet<object> HandledWrites = new HashSet<object>(ReferenceComparer.Instance);
         private bool _closed;
-        internal Composer(ComposerSlotTable table, HashSet<object> invalid, Action<Exception>? effectErrorSink = null)
+        internal Composer(ComposerSlotTable table, HashSet<object> invalid, List<Action> sideEffects,
+            Action<Exception>? effectErrorSink = null)
         {
             _table = table;
+            _sideEffects = sideEffects;
             _reader = table.OpenReader();
             _invalid = invalid;
             _effectErrorSink = effectErrorSink ?? (error => throw error);
         }
 
         public void ReportEffectError(Exception error) => _effectErrorSink(error);
+
+        public void RecordSideEffect(Action effect)
+        {
+            _ = Current;
+            _sideEffects.Add(effect ?? throw new ArgumentNullException(nameof(effect)));
+        }
 
         private Frame Current
         {
@@ -167,13 +178,20 @@ namespace DotNetCompose.Runtime.Composer
             Frame parent = Current;
             if (parent.Skipped)
                 throw new InvalidOperationException("Cannot emit children after skipping a group.");
-            CompositionGroup? old = Match(parent, key, kind, dataKey);
+            CompositionGroup? old = parent.Reusing && kind == CompositionGroupKind.Node
+                ? null : Match(parent, key, kind, dataKey);
             CompositionGroup group = old == null
                 ? new CompositionGroup { Key = key, Kind = kind, ObjectKey = dataKey }
                 : CompositionGroup.Draft(old);
             group.Locals = parent.Locals;
+            group.Deactivated = false;
+            if (parent.Reusing)
+            {
+                group.Restart = null;
+                group.ResetSlots = true;
+            }
             parent.Group.Children.Add(group);
-            _stack.Push(new Frame(group, parent.Locals, parent.ProvidersInvalid));
+            _stack.Push(new Frame(group, parent.Locals, parent.ProvidersInvalid, parent.Reusing));
         }
 
         private CompositionGroup End(CompositionGroupKind kind, int? key = null)
@@ -213,11 +231,60 @@ namespace DotNetCompose.Runtime.Composer
         public void StartMovableGroup(int key) => StartMovableGroup(key, null);
         public void StartMovableGroup(int key, object? dataKey) => Start(key, CompositionGroupKind.Movable, dataKey);
         public void EndMovableGroup(int key) => End(CompositionGroupKind.Movable, key);
+        public void StartReusableGroup(int key, object? dataKey)
+        {
+            Start(key, CompositionGroupKind.Reusable);
+            Frame frame = Current;
+            CompositionGroup? old = frame.Group.Previous;
+            frame.Reusing |= old != null && (old.Deactivated || !Equals(old.ReuseKey, dataKey));
+            frame.Group.ResetSlots = frame.Reusing;
+            frame.Group.ReuseKey = dataKey;
+        }
+
+        public void EndReusableGroup(int key) => End(CompositionGroupKind.Reusable, key);
+
+        public void DeactivateToEndGroup()
+        {
+            Frame frame = Current;
+            if (frame.Group.Kind != CompositionGroupKind.Reusable || frame.SlotCursor != 0 ||
+                frame.Group.Children.Count != 0 || frame.Skipped)
+                throw new InvalidOperationException("Deactivate before traversing reusable content.");
+            frame.Group.Deactivated = true;
+            frame.Group.ResetSlots = frame.Group.Previous?.Deactivated == false;
+            if (frame.Group.Previous != null)
+                foreach (CompositionGroup child in frame.OldChildren)
+                    frame.Group.Children.Add(Deactivate(child));
+            frame.Skipped = true;
+        }
+
+        private static CompositionGroup Deactivate(CompositionGroup old)
+        {
+            if (old.Deactivated)
+                return old;
+            CompositionGroup group = CompositionGroup.Draft(old);
+            group.Deactivated = true;
+            group.ResetSlots = true;
+            group.Restart = null;
+            group.Locals = CompositionLocalScope.Empty;
+            // Retain structure and node references, but no remembered values or read dependencies.
+            foreach (object? ignored in old.Slots)
+                group.Slots.Add(ComposerSlotTable.Empty);
+            foreach (CompositionGroup child in old.Children)
+                group.Children.Add(Deactivate(child));
+            return group;
+        }
+
         public void StartNode(int key = 0) => Start(key, CompositionGroupKind.Node);
-        public void EndNode() => End(CompositionGroupKind.Node);
+        public void StartReusableNode(int key = 0) => Start(key, CompositionGroupKind.ReusableNode);
+        public void EndNode()
+        {
+            if (!Current.Group.IsNode)
+                throw new InvalidOperationException("No node group is active.");
+            End(Current.Group.Kind);
+        }
         public bool Inserting => Current.Group.Previous == null;
         public bool IsComposing => !_closed && _stack.Count > 0;
-        public bool Skipping => !Inserting && !Current.ProvidersInvalid && !Current.Group.Previous!.Reads.Overlaps(_invalid);
+        public bool Skipping => !Inserting && !Current.Reusing && !Current.ProvidersInvalid && !Current.Group.Previous!.Reads.Overlaps(_invalid);
         public bool DefaultsInvalid
         {
             get
@@ -239,7 +306,7 @@ namespace DotNetCompose.Runtime.Composer
         {
             Frame frame = Current;
             int offset = frame.SlotCursor++;
-            object? value = frame.Group.Previous == null ? ComposerSlotTable.Empty
+            object? value = frame.Group.Previous == null || frame.Reusing ? ComposerSlotTable.Empty
                 : _reader.GroupGet(_table.IndexOf(frame.Group.Anchor), offset);
             frame.Group.Slots.Add(value);
             frame.LastSlot = offset;
@@ -304,6 +371,7 @@ namespace DotNetCompose.Runtime.Composer
             if (!frame.Group.IsNode || frame.NodeChosen || Inserting)
                 throw new InvalidOperationException("Unexpected UseNode.");
             frame.NodeChosen = true;
+            frame.Group.Reused = frame.Reusing;
         }
 
         public void ApplyNode<T>(Action<T> block, object? value)
@@ -418,6 +486,8 @@ namespace DotNetCompose.Runtime.Composer
         public void SkipToGroupEnd()
         {
             Frame frame = Current;
+            if (frame.Reusing)
+                throw new InvalidOperationException("Cannot skip content while reusing it.");
             CompositionGroup old = frame.Group.Previous ?? throw new InvalidOperationException("Cannot skip a new group.");
             if (frame.Group.Children.Count != 0 || frame.Skipped)
                 throw new InvalidOperationException("Skip must precede child traversal.");
@@ -436,6 +506,8 @@ namespace DotNetCompose.Runtime.Composer
 
         private CompositionGroup RecomposeChild(CompositionGroup old)
         {
+            if (old.Deactivated)
+                return old;
             if (old.Restart != null && old.Reads.Overlaps(_invalid))
             {
                 CompositionGroup containerOld = new CompositionGroup();

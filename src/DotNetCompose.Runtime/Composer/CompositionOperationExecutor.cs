@@ -53,6 +53,15 @@ namespace DotNetCompose.Runtime.Composer
                 case CompositionOperationKind.MoveNode:
                     MoveNode(applier, operation.SourceNodeIndex!.Value, operation.NodeIndex!.Value, operation.Count);
                     return;
+                case CompositionOperationKind.ReuseNode:
+                    applier.Reuse();
+                    return;
+                case CompositionOperationKind.DeactivateNode:
+                    (operation.Group!.Node.Value as IComposeNodeLifecycleCallback)?.OnDeactivate();
+                    return;
+                case CompositionOperationKind.ReleaseNode:
+                    operation.Group!.Node.Release();
+                    return;
                 default:
                     throw new NotSupportedException($"Composition operation {operation.Kind} is not supported.");
             }

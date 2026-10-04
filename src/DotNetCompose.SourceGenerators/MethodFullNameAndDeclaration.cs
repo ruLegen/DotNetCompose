@@ -7,7 +7,8 @@ namespace DotNetCompose.SourceGenerators
         : IEquatable<MethodFullNameAndDeclaration>
     {
         public bool Equals(MethodFullNameAndDeclaration? other)
-            => other is not null && FullName == other.FullName && ContentHash == other.ContentHash;
-        public override int GetHashCode() => (FullName, ContentHash).GetHashCode();
+            => other is not null && FullName == other.FullName && ContentHash == other.ContentHash
+                && ReferenceEquals(Declaration, other.Declaration);
+        public override int GetHashCode() => (FullName, ContentHash, Declaration).GetHashCode();
     }
 }

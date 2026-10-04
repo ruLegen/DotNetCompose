@@ -73,7 +73,9 @@ public static class GeneratorTestHelper
         string source,
         LanguageVersion langVersion = LanguageVersion.Latest,
         bool? generateDiagnostics = null,
-        string path = "")
+        string path = "",
+        string? useStackAllocForArgumentStates = null,
+        string? generateDiagnosticsLineNumbers = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source, Encoding.UTF8),
             CSharpParseOptions.Default.WithLanguageVersion(langVersion),
@@ -84,35 +86,51 @@ public static class GeneratorTestHelper
             References,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var driver = CreateGeneratorDriver(langVersion, generateDiagnostics);
+        var driver = CreateGeneratorDriver(langVersion, generateDiagnostics, useStackAllocForArgumentStates,
+            generateDiagnosticsLineNumbers);
 
         return (compilation, driver);
     }
 
     public static GeneratorDriver CreateGeneratorDriver(
         LanguageVersion langVersion = LanguageVersion.Latest,
-        bool? generateDiagnostics = null)
+        bool? generateDiagnostics = null,
+        string? useStackAllocForArgumentStates = null,
+        string? generateDiagnosticsLineNumbers = null)
     {
         var generator = new ComposeSourceGenerator();
-        AnalyzerConfigOptionsProvider? optionsProvider = generateDiagnostics.HasValue
-            ? new TestAnalyzerConfigOptionsProvider(new Dictionary<string, string>
-            {
-                ["build_property.DotNetComposeGenerateDiagnostics"] = generateDiagnostics.Value ? "true" : "false"
-            })
-            : null;
+        AnalyzerConfigOptionsProvider optionsProvider = CreateOptionsProvider(generateDiagnostics, useStackAllocForArgumentStates,
+            generateDiagnosticsLineNumbers);
         return CSharpGeneratorDriver.Create(
             new[] { generator.AsSourceGenerator() },
             parseOptions: CSharpParseOptions.Default.WithLanguageVersion(langVersion),
             optionsProvider: optionsProvider);
     }
 
+    public static AnalyzerConfigOptionsProvider CreateOptionsProvider(
+        bool? generateDiagnostics = null, string? useStackAllocForArgumentStates = null,
+        string? generateDiagnosticsLineNumbers = null)
+    {
+        var values = new Dictionary<string, string>();
+        if (generateDiagnostics.HasValue)
+            values["build_property.DotNetComposeGenerateDiagnostics"] = generateDiagnostics.Value ? "true" : "false";
+        if (useStackAllocForArgumentStates != null)
+            values["build_property.DotNetComposeUseStackAllocForArgumentStates"] = useStackAllocForArgumentStates;
+        if (generateDiagnosticsLineNumbers != null)
+            values["build_property.DotNetComposeGenerateDiagnosticsLineNumbers"] = generateDiagnosticsLineNumbers;
+        return new TestAnalyzerConfigOptionsProvider(values);
+    }
+
     public static IReadOnlyList<(string HintName, string Source)> RunGenerator(
         string source,
         LanguageVersion langVersion = LanguageVersion.Latest,
         bool? generateDiagnostics = null,
-        string path = "")
+        string path = "",
+        string? generateDiagnosticsLineNumbers = null)
     {
-        var (compilation, driver) = CreateDriver(source, langVersion, generateDiagnostics, path);
+        // Existing source snapshots describe the explicit stackalloc mode.
+        var (compilation, driver) = CreateDriver(source, langVersion, generateDiagnostics, path,
+            useStackAllocForArgumentStates: "true", generateDiagnosticsLineNumbers: generateDiagnosticsLineNumbers);
         driver = driver.RunGenerators(compilation);
         var runResult = driver.GetRunResult();
         return runResult.Results
@@ -125,9 +143,10 @@ public static class GeneratorTestHelper
         string source,
         LanguageVersion langVersion = LanguageVersion.Latest,
         bool? generateDiagnostics = null,
-        string path = "")
+        string path = "",
+        string? generateDiagnosticsLineNumbers = null)
     {
-        var results = RunGenerator(source, langVersion, generateDiagnostics, path);
+        var results = RunGenerator(source, langVersion, generateDiagnostics, path, generateDiagnosticsLineNumbers);
         Assert.Single(results);
         return results[0].Source;
     }
@@ -166,7 +185,7 @@ public static class GeneratorTestHelper
         string inputFileName = sourceFileName + ".cs";
         string outputFileName = verifyFileName + ".g";
         string source = LoadSource(inputFileName);
-        string result = RunSingleGenerator(source);
+        string result = RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName(outputFileName);
     }
 

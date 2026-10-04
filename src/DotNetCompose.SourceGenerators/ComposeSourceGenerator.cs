@@ -45,12 +45,22 @@ namespace DotNetCompose.SourceGenerators
                         bool.TryParse(configured, out bool parsed))
                         generateDiagnostics = parsed;
                     source.Left.GlobalOptions.TryGetValue("build_property.ProjectDir", out string? projectDirectory);
+                    bool generateDiagnosticsLineNumbers = source.Left.GlobalOptions.TryGetValue(
+                        "build_property.DotNetComposeGenerateDiagnosticsLineNumbers", out string? lineNumbers) &&
+                        bool.TryParse(lineNumbers, out bool includeLineNumbers) && includeLineNumbers;
+                    bool? useStackAllocForArgumentStates = null;
+                    if (source.Left.GlobalOptions.TryGetValue(
+                            "build_property.DotNetComposeUseStackAllocForArgumentStates", out string? allocationMode) &&
+                        bool.TryParse(allocationMode, out bool useStackAlloc))
+                        useStackAllocForArgumentStates = useStackAlloc;
                     bool supportsEnhancedLineDirectives = source.Right is CSharpParseOptions csharp &&
                         csharp.LanguageVersion >= LanguageVersion.CSharp10;
                     return new GeneratorBuildOptions(
                         generateDiagnostics,
                         projectDirectory ?? string.Empty,
-                        supportsEnhancedLineDirectives);
+                        supportsEnhancedLineDirectives,
+                        useStackAllocForArgumentStates,
+                        generateDiagnosticsLineNumbers);
                 });
 
             IncrementalValuesProvider<MethodFullNameAndDeclaration> composableMethodsDeclarations = context
@@ -303,7 +313,9 @@ namespace DotNetCompose.SourceGenerators
                     source.Left.Left,
                     source.Right.GenerateDiagnostics,
                     source.Right.ProjectDirectory,
-                    source.Right.SupportsEnhancedLineDirectives)
+                    source.Right.SupportsEnhancedLineDirectives,
+                    source.Right.UseStackAllocForArgumentStates,
+                    source.Right.GenerateDiagnosticsLineNumbers)
             );
 
             IncrementalValuesProvider<Diagnostic> compilationDiagnostics = context.CompilationProvider
@@ -357,7 +369,9 @@ namespace DotNetCompose.SourceGenerators
         private sealed record GeneratorBuildOptions(
             bool GenerateDiagnostics,
             string ProjectDirectory,
-            bool SupportsEnhancedLineDirectives);
+            bool SupportsEnhancedLineDirectives,
+            bool? UseStackAllocForArgumentStates,
+            bool GenerateDiagnosticsLineNumbers);
 
         private static MethodResult MethodDiagnostic(
             MethodFullNameAndDeclaration method,

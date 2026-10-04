@@ -12,7 +12,7 @@ public class ComposeGeneratorSnapshotTests
     public Task EmptyComposable()
     {
         var source = GeneratorTestHelper.LoadSource("EmptyComposable.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("EmptyComposable.g");
     }
 
@@ -20,7 +20,7 @@ public class ComposeGeneratorSnapshotTests
     public Task ComposableWithLambdas()
     {
         var source = GeneratorTestHelper.LoadSource("ComposableWithLambdas.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("ComposableWithLambdas.g");
     }
 
@@ -28,7 +28,7 @@ public class ComposeGeneratorSnapshotTests
     public Task IgnoredComposable()
     {
         var source = GeneratorTestHelper.LoadSource("IgnoredComposable.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("IgnoredComposable.g");
     }
 
@@ -36,7 +36,7 @@ public class ComposeGeneratorSnapshotTests
     public Task ComposableWithGenerics()
     {
         var source = GeneratorTestHelper.LoadSource("ComposableWithGenerics.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("ComposableWithGenerics.g");
     }
 
@@ -44,7 +44,7 @@ public class ComposeGeneratorSnapshotTests
     public Task ComposableLambdaParameter()
     {
         var source = GeneratorTestHelper.LoadSource("ComposableLambdaParameter.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("ComposableLambdaParameter.g");
     }
 
@@ -52,7 +52,7 @@ public class ComposeGeneratorSnapshotTests
     public Task MultipleComposableMethods()
     {
         var source = GeneratorTestHelper.LoadSource("MultipleComposableMethods.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("MultipleComposableMethods.g");
     }
 
@@ -60,7 +60,7 @@ public class ComposeGeneratorSnapshotTests
     public Task ComposableWithStaticUsings()
     {
         var source = GeneratorTestHelper.LoadSource("ComposableWithStaticUsings.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("ComposableWithStaticUsings.g");
     }
 
@@ -68,7 +68,7 @@ public class ComposeGeneratorSnapshotTests
     public Task ComposableInAnotherClass()
     {
         var source = GeneratorTestHelper.LoadSource("ComposableInAnotherClass.cs");
-        var results = GeneratorTestHelper.RunGenerator(source);
+        var results = GeneratorTestHelper.RunGenerator(source, generateDiagnosticsLineNumbers: "true");
         Assert.Equal(2, results.Count);
         return Verifier.Verify(results).UseFileName("ComposableInAnotherClass.g");
     }
@@ -77,7 +77,7 @@ public class ComposeGeneratorSnapshotTests
     public Task AnotherClassFile()
     {
         var source = GeneratorTestHelper.LoadSource("AnotherClassFile.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("AnotherClassFile.g");
     }
 
@@ -85,7 +85,7 @@ public class ComposeGeneratorSnapshotTests
     public Task FullTestClass()
     {
         var source = GeneratorTestHelper.LoadSource("FullTestClass.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("FullTestClass.g");
     }
 
@@ -93,26 +93,27 @@ public class ComposeGeneratorSnapshotTests
     public Task ComposableWithDefault()
     {
         var source = GeneratorTestHelper.LoadSource("ComposableWithDefault.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("ComposableWithDefault.g");
     }
 
     [Fact]
-    public void NonStaticClassComposableGeneratesOverloadAndBridge()
+    public void NonStaticClassComposableGeneratesOnlyInstanceOverload()
     {
         var source = GeneratorTestHelper.LoadSource("NotStaticClass.cs");
         string generated = GeneratorTestHelper.RunSingleGenerator(source);
         ImmutableArray<Diagnostic> diagnostics = GeneratorTestHelper.GetOutputCompilationDiagnostics(source);
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         Assert.Contains("EditorBrowsableState.Never", generated);
-        Assert.Contains("__instance", generated);
+        Assert.DoesNotContain("__instance", generated);
+        Assert.DoesNotContain("partial class Builders", generated);
     }
 
     [Fact]
     public Task CompositionLocalProvider()
     {
         var source = GeneratorTestHelper.LoadSource("CompositionLocalProvider.cs");
-        var result = GeneratorTestHelper.RunSingleGenerator(source);
+        var result = GeneratorTestHelper.RunSingleGenerator(source, generateDiagnosticsLineNumbers: "true");
         return Verifier.Verify(result).UseFileName("CompositionLocalProvider.g");
     }
 }

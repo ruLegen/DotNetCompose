@@ -107,7 +107,7 @@ namespace TestNs
             #line hidden
                     if (global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.IsSupported && __dncDiagnostics.IsActive)
                     {
-                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, stackalloc byte[0]);
+                        global::DotNetCompose.Runtime.Diagnostics.CompositionDiagnosticsRuntime.End(__dncDiagnostics, __dncOutcome, __changed.IsForced, global::System.ReadOnlySpan<byte>.Empty);
                     }
                 }
                 finally
@@ -122,7 +122,7 @@ namespace TestNs
                     }
                 }
             }
-            static class __StoredLambda
+            static partial class __StoredLambda
             {
                 public static void __Lambda_0_0(DotNetCompose.Runtime.Composer.IComposerContext __ctx, DotNetCompose.Runtime.ComposableArgumentsState __changed, DotNetCompose.Runtime.ComposableArgumentsDefaultState __defaultParamState)
                 {

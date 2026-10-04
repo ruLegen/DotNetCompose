@@ -77,7 +77,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 ArgumentSyntax arg = a.Argument;
                 bool isComposable = a.IsComposable;
                 if (!isComposable)
-                    return arg;
+                    return (ArgumentSyntax)new SourceLocationAnnotationRewriter().Visit(arg)!;
                 if (context.IsReadOnly && !a.IsReadOnly)
                 {
                     context.Diagnostics.Report(DiagnosticInfo.Create(
@@ -295,7 +295,8 @@ namespace DotNetCompose.SourceGenerators.Handlers
                 invocationExpression.ArgumentList.Arguments,
                 argumentIndices,
                 methodCtx,
-                semanticModel);
+                semanticModel,
+                options.ArgumentStateBufferStorage);
 
             int defaultCount = parameterInfos.Count(p => p.DefaultProviderType != null);
             bool anyShouldUseDefault = false;
@@ -325,13 +326,7 @@ namespace DotNetCompose.SourceGenerators.Handlers
             {
                 IEnumerable<ExpressionSyntax> byteExprs = defaultStateBytes.Select(b => (ExpressionSyntax)
                     SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(b)));
-                StackAllocArrayCreationExpressionSyntax arrayExpr = SyntaxFactory.StackAllocArrayCreationExpression(
-                    SyntaxFactory.ArrayType(
-                        SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ByteKeyword)),
-                        SyntaxFactory.SingletonList(SyntaxFactory.ArrayRankSpecifier())),
-                    SyntaxFactory.InitializerExpression(
-                        SyntaxKind.ArrayInitializerExpression,
-                        SyntaxFactory.SeparatedList(byteExprs)));
+                ExpressionSyntax arrayExpr = ArgumentStateBuffer.Create(byteExprs, options.ArgumentStateBufferStorage);
                 ObjectCreationExpressionSyntax stateCreation = SyntaxFactory.ObjectCreationExpression(
                     SyntaxFactory.ParseTypeName(Consts.ComposableArgumentsDefaultState.FullName))
                     .WithArgumentList(SyntaxFactory.ArgumentList(
@@ -481,31 +476,16 @@ namespace DotNetCompose.SourceGenerators.Handlers
                         .WithTypeArgumentList(
                             SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(methodSymbol.TypeArguments.Select(a =>
                             {
-                                return SyntaxFactory.ParseTypeName(a.ToDisplayString());
+                                return SyntaxFactory.ParseTypeName(a.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
                             }))));
             }
             else
             {
                 newIdentifierName = SyntaxFactory.IdentifierName(methodSymbol.Name);
             }
-            NameSyntax newQualifiedName = SyntaxFactory.ParseName(typeName);
-
-            ExpressionSyntax newExpression;
-            if (newQualifiedName is QualifiedNameSyntax qns)
-            {
-                newExpression = SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    qns.Left,
-                    (IdentifierNameSyntax)qns.Right);
-            }
-            else
-            {
-                newExpression = SyntaxFactory.IdentifierName(typeName);
-            }
-
-            newExpression = SyntaxFactory.MemberAccessExpression(
+            ExpressionSyntax newExpression = SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                newExpression,
+                SyntaxFactory.ParseExpression(typeName),
                 newIdentifierName);
 
             return node.WithExpression(newExpression);

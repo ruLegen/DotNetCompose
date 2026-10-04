@@ -4,7 +4,9 @@ using DotNetCompose.Maui.Sample.Screens.EditorGraph.Editor;
 using DotNetCompose.Maui.Sample.Screens.EditorGraph.Preview;
 using DotNetCompose.Maui.Sample.Screens.Home;
 using DotNetCompose.Runtime;
+using DotNetCompose.Runtime.Snapshots;
 using Microsoft.Maui.Graphics;
+using System.Diagnostics;
 using Ui = DotNetCompose.Maui.MauiUi;
 
 namespace DotNetCompose.Maui.Sample.Screens;
@@ -28,18 +30,56 @@ internal static partial class HomeScreen
     [Composable]
     public static void Content(HomeViewModel viewModel)
     {
+        SnapshotMutableState<bool> isAsynInProgress = Composables.RememberState(false);
+        SnapshotMutableState<int> seconds = Composables.RememberState(0);
+
+        Composables.LaunchedEffect(viewModel, async (t) =>
+        {
+            await viewModel.Init(t);
+            while (!t.IsCancellationRequested)
+            {
+                await Task.Delay(1000,t);
+                seconds.Value++;
+            }
+        });
+
+        Composables.DisposableEffect(viewModel, () =>
+        {
+            Debug.WriteLine($"========== Disposed");
+        });
+
+
+        bool isInited = viewModel.IsInited;
         Ui.Column(
             modifier: Modifier.Empty.Padding(24),
             spacing: 12,
             content: () =>
             {
-                Ui.Text("MAUI Compose sample", fontSize: 24);
+                Ui.Text("000000000000000000000000000eload", fontSize: 24);
+                Ui.Text(string.Format("Ellapsed: {0} sec", seconds.Value), fontSize: 24);
                 Ui.NativeView(
                     factory: () => new Label(),
                     update: label => label.Text = "Native MAUI Label");
 
-                Ui.Button(viewModel.OpenEditor, content: () => Ui.Text(viewModel.ButtonText.Value));
-                Ui.Button(viewModel.ChangeButtonText, content: () => Ui.Text("Change"));
+                if (!isInited)
+                {
+                    Ui.Text("Please wait, Initializing...", fontSize: 24);
+                }
+                Ui.Button(viewModel.OpenEditor, enabled: isInited, content: () => Ui.Text(viewModel.ButtonText));
+                Ui.Button(viewModel.ChangeButtonText, enabled: isInited, content: () => Ui.Text("Change"));
+
+                Ui.Button(async () => 
+                {
+                    isAsynInProgress.Value = true;
+                    await Task.Delay(1000);
+                    isAsynInProgress.Value = false;
+
+                }, enabled: !isAsynInProgress, content: () => Ui.Text("StartAsync"));
+
+                if (isAsynInProgress)
+                {
+                   Ui.Text("Operation in progress");
+                }
             });
     }
 }

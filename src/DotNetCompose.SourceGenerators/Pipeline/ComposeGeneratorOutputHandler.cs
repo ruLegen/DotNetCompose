@@ -1,6 +1,7 @@
 using DotNetCompose.SourceGenerators.Diagnostics;
 using DotNetCompose.SourceGenerators.Emitters;
 using DotNetCompose.SourceGenerators.Extensions;
+using DotNetCompose.SourceGenerators.Helpers;
 using DotNetCompose.SourceGenerators.Rewriters;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -20,22 +21,15 @@ namespace DotNetCompose.SourceGenerators.Pipeline
     {
         public void Handle(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input, PipelineContext context)
         {
-            string typeName = input.ClassName;
             DiagnosticReporter reporter = new DiagnosticReporter();
-            string sourceCode = GenerateComposableMethods(input, compilation, reporter, context);
+            foreach (var source in GenerateComposableMethods(input, compilation, reporter, context))
+                spc.AddSource(source.HintName, SourceText.From(source.Code, Encoding.UTF8));
 
             foreach (DiagnosticInfo diag in reporter.ToImmutable())
                 spc.ReportDiagnostic(diag.ToDiagnostic());
-
-            if (!string.IsNullOrEmpty(sourceCode))
-            {
-                string hintName = new string(typeName.Select(character => char.IsLetterOrDigit(character) ? character : '_').ToArray());
-                spc.AddSource($"{hintName}.DuplicatedMethods.g.cs",
-                    SourceText.From(sourceCode, Encoding.UTF8));
-            }
         }
 
-        private static string GenerateComposableMethods(
+        private static IEnumerable<(string HintName, string Code)> GenerateComposableMethods(
             ClassAndComposablesMethods classAndComposablesMethods,
             Compilation compilation,
             IDiagnosticReporter diagnostics,
@@ -43,28 +37,13 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         {
             ImmutableArray<MethodFullNameAndDeclaration> typeMethods = classAndComposablesMethods.Methods;
             if (!typeMethods.Any())
-                return string.Empty;
+                yield break;
 
-            MethodDeclarationSyntax firstMethod = typeMethods.First().Declaration!;
-            SemanticModel firstSemanticModel = compilation.GetSemanticModel(firstMethod.SyntaxTree);
-            IMethodSymbol methodSymbol = firstSemanticModel.GetDeclaredSymbol(firstMethod);
-            INamedTypeSymbol containingType = methodSymbol?.ContainingType;
-
-            if (containingType == null)
-                return string.Empty;
-
-            string namespaceName = containingType.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-            string typeName = containingType.Name;
-            string accessibility = containingType.DeclaredAccessibility.ToString().ToLower();
-            TypeDeclarationSyntax? typeDeclaration = firstMethod.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
-
-            SyntaxNode root = firstMethod.SyntaxTree.GetRoot();
-            ImmutableArray<UsingDirectiveSyntax> usings = root.DescendantNodes()
-                .OfType<UsingDirectiveSyntax>()
-                .Distinct(UsingDerectiveComparerByName.Default)
-                .ToImmutableArray();
-
+            // Number methods once for the whole type so lambda names cannot collide across parts.
             var rewrittenMethods = typeMethods.Select(m => m.Declaration!)
+                .OrderBy(m => m.SyntaxTree.FilePath, StringComparer.Ordinal)
+                .ThenBy(m => GetTreeIndex(compilation, m.SyntaxTree))
+                .ThenBy(m => m.SpanStart)
                 .Select((m, methodIndex) =>
                 {
                     SemanticModel semanticModel = compilation.GetSemanticModel(m.SyntaxTree);
@@ -75,7 +54,9 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         Consts.Rewriter.ChangedParamName,
                         Consts.Rewriter.DefaultParamName,
                         Consts.Rewriter.StoredLambdaClassName,
-                        Consts.Rewriter.BuildersClassName);
+                        Consts.Rewriter.BuildersClassName,
+                        ArgumentStateBuffer.SelectStorage(compilation, (CSharpParseOptions)m.SyntaxTree.Options,
+                            pipelineContext.UseStackAllocForArgumentStates));
 
                     string methodName = m.Identifier.ValueText;
                     string methodIdentity = m.GetMethodID(semanticModel);
@@ -98,7 +79,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         pipelineContext.GenerateDiagnostics,
                         RewriterSession.DeterministicHash64(diagnosticsIdentity),
                         sourcePath,
-                        sourceSpan.StartLinePosition.Line + 1);
+                        pipelineContext.GenerateDiagnosticsLineNumbers ? sourceSpan.StartLinePosition.Line + 1 : 0);
 
                     int initialGroupId = RewriterSession.DeterministicHash(methodIdentity);
                     RewriterSession session = new RewriterSession(
@@ -118,41 +99,56 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                     pair.Options, pair.MethodCtx, pair.Session, pair.SemanticModel, pair.Method,
                     pipelineContext.MethodCallHandlers, pipelineContext.WellKnownRegistry,
                     pipelineContext.Strategies);
-                return (pair.Session, pair.Symbol, MethodBody: pair.Session.HasErrors ? null : body);
+                return (pair.Session, pair.Symbol,
+                    Declaration: pair.Method.Ancestors().OfType<TypeDeclarationSyntax>().First(),
+                    MethodBody: pair.Session.HasErrors ? null : body);
             })
             .Where(x => x.MethodBody != null)
             .ToImmutableArray();
 
-            if (!rewrittenMethods.Any())
-                return string.Empty;
+            // A partial declaration retains its own imports, constraints and stored lambdas.
+            foreach (var part in rewrittenMethods.GroupBy(item => item.Declaration))
+            {
+                TypeDeclarationSyntax declaration = part.Key;
+                INamedTypeSymbol containingType = part.First().Symbol.ContainingType;
+                var input = new CodeGenerationInput(
+                    SourceContext: SourceDeclarationContext.Create(declaration),
+                    TypeName: declaration.Identifier.Text,
+                    Accessibility: containingType.DeclaredAccessibility.ToString().ToLower(),
+                    TypeParameters: declaration.TypeParameterList,
+                    TypeConstraints: declaration.ConstraintClauses,
+                    InstanceMethods: part.Where(item => !item.Symbol.IsStatic)
+                        .Select(item => (SyntaxNode)AddEditorBrowsable((MethodDeclarationSyntax)item.MethodBody!))
+                        .ToImmutableArray(),
+                    BuilderMethods: part.Where(item => item.Symbol.IsStatic).Select(item => item.MethodBody!)
+                        .ToImmutableArray(),
+                    InstanceSessions: part.Where(item => !item.Symbol.IsStatic).Select(item => item.Session).ToImmutableArray(),
+                    BuilderSessions: part.Where(item => item.Symbol.IsStatic).Select(item => item.Session).ToImmutableArray(),
+                    SupportsEnhancedLineDirectives: pipelineContext.SupportsEnhancedLineDirectives);
 
-            ImmutableArray<SyntaxNode> instanceMethods = rewrittenMethods
-                .Where(item => !item.Symbol.IsStatic)
-                .Select(item => (SyntaxNode)AddEditorBrowsable((MethodDeclarationSyntax)item.MethodBody!))
-                .ToImmutableArray();
-            ImmutableArray<SyntaxNode> builderMethods = rewrittenMethods
-                .Where(item => item.Symbol.IsStatic)
-                .Select(item => item.MethodBody!)
-                .Concat(rewrittenMethods
-                    .Where(item => !item.Symbol.IsStatic)
-                    .Select(item => (SyntaxNode)CreateInstanceBridge((MethodDeclarationSyntax)item.MethodBody!, item.Symbol)))
-                .ToImmutableArray();
-
-            CodeGenerationInput input = new CodeGenerationInput(
-                Namespace: namespaceName,
-                TypeName: typeName,
-                Accessibility: accessibility,
-                TypeParameters: typeDeclaration?.TypeParameterList,
-                TypeConstraints: typeDeclaration?.ConstraintClauses ?? default,
-                Usings: usings,
-                InstanceMethods: instanceMethods,
-                BuilderMethods: builderMethods,
-                Sessions: rewrittenMethods.Select(p => p.Session).ToImmutableArray(),
-                SupportsEnhancedLineDirectives: pipelineContext.SupportsEnhancedLineDirectives);
-
-            var emitter = new DefaultCodeEmitter();
-            return emitter.Emit(input);
+                yield return (CreateHintName(classAndComposablesMethods.ClassName, containingType,
+                    declaration, compilation, pipelineContext.ProjectDirectory), new DefaultCodeEmitter().Emit(input));
+            }
         }
+
+        private static string CreateHintName(string typeName, INamedTypeSymbol symbol,
+            TypeDeclarationSyntax declaration, Compilation compilation, string projectDirectory)
+        {
+            string path = MakeProjectRelativePath(declaration.SyntaxTree.FilePath, projectDirectory).Replace('\\', '/');
+            // In-memory trees may lack paths or share one; distinguish those without hashing their contents.
+            if (string.IsNullOrEmpty(path) || compilation.SyntaxTrees.Count(tree => tree.FilePath == declaration.SyntaxTree.FilePath) > 1)
+                path += "#tree" + GetTreeIndex(compilation, declaration.SyntaxTree);
+            int ordinal = symbol.DeclaringSyntaxReferences
+                .Where(reference => reference.SyntaxTree == declaration.SyntaxTree)
+                .OrderBy(reference => reference.Span.Start)
+                .TakeWhile(reference => reference.Span.Start != declaration.SpanStart).Count();
+            string prefix = new string(typeName.Select(character => char.IsLetterOrDigit(character) ? character : '_').ToArray());
+            long hash = RewriterSession.DeterministicHash64(typeName + "\n" + path);
+            return $"{prefix}.{hash:x16}.{ordinal}.DuplicatedMethods.g.cs";
+        }
+
+        private static int GetTreeIndex(Compilation compilation, SyntaxTree tree)
+            => compilation.SyntaxTrees.TakeWhile(candidate => candidate != tree).Count();
 
         private static string MakeProjectRelativePath(string path, string projectDirectory)
         {
@@ -188,48 +184,6 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                                 SyntaxFactory.IdentifierName(Consts.EditorBrowsable.NeverField))))));
             return method.AddAttributeLists(
                 SyntaxFactory.AttributeList(SyntaxFactory.SingletonSeparatedList(attribute)));
-        }
-
-        private static MethodDeclarationSyntax CreateInstanceBridge(MethodDeclarationSyntax method, IMethodSymbol symbol)
-        {
-            string receiverName = Consts.Rewriter.InstanceReceiverName;
-            while (method.ParameterList.Parameters.Any(parameter => parameter.Identifier.ValueText == receiverName))
-                receiverName += "_";
-
-            ParameterSyntax receiver = SyntaxFactory.Parameter(SyntaxFactory.Identifier(receiverName))
-                .WithType(SyntaxFactory.ParseTypeName(symbol.ContainingType.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included))));
-            ParameterListSyntax parameters = method.ParameterList.WithParameters(
-                method.ParameterList.Parameters.Insert(0, receiver));
-
-            SimpleNameSyntax name = method.TypeParameterList == null
-                ? SyntaxFactory.IdentifierName(method.Identifier)
-                : SyntaxFactory.GenericName(method.Identifier,
-                    SyntaxFactory.TypeArgumentList(
-                        SyntaxFactory.SeparatedList<TypeSyntax>(method.TypeParameterList.Parameters
-                            .Select(parameter => SyntaxFactory.IdentifierName(parameter.Identifier) as TypeSyntax))));
-            InvocationExpressionSyntax invocation = SyntaxFactory.InvocationExpression(
-                SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    SyntaxFactory.IdentifierName(receiverName),
-                    name),
-                SyntaxFactory.ArgumentList(
-                    SyntaxFactory.SeparatedList(method.ParameterList.Parameters
-                        .Select(parameter => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(parameter.Identifier))))));
-            StatementSyntax statement = symbol.ReturnsVoid
-                ? (StatementSyntax)SyntaxFactory.ExpressionStatement(invocation)
-                : SyntaxFactory.ReturnStatement(invocation);
-
-            SyntaxTokenList modifiers = SyntaxFactory.TokenList(method.Modifiers.Where(token =>
-                token.IsKind(SyntaxKind.PublicKeyword) || token.IsKind(SyntaxKind.InternalKeyword) ||
-                token.IsKind(SyntaxKind.ProtectedKeyword) || token.IsKind(SyntaxKind.PrivateKeyword)))
-                .Add(SyntaxFactory.Token(SyntaxKind.StaticKeyword));
-            return method
-                .WithModifiers(modifiers)
-                .WithParameterList(parameters)
-                .WithBody(SyntaxFactory.Block(statement))
-                .WithExpressionBody(null)
-                .WithSemicolonToken(default);
         }
     }
 }
