@@ -41,7 +41,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         {
             var handlers = _handlerFactories.ConvertAll(f => f()).AsReadOnly();
             var wellKnownRegistry = BuildWellKnownRegistry();
-            var context = new PipelineContext(_strategies, handlers, wellKnownRegistry, true, string.Empty, true, null);
+            var context = new PipelineContext(_strategies, handlers, wellKnownRegistry, true, string.Empty, true, null, false);
             var outputHandlers = _outputHandlers.ToImmutableArray();
             return new PipelineInstance(context, outputHandlers);
         }
@@ -74,14 +74,15 @@ namespace DotNetCompose.SourceGenerators.Pipeline
 
             public void Execute(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input,
                 bool generateDiagnostics, string projectDirectory, bool supportsEnhancedLineDirectives,
-                bool? useStackAllocForArgumentStates)
+                bool? useStackAllocForArgumentStates, bool generateDiagnosticsLineNumbers)
             {
                 PipelineContext invocationContext = Context with
                 {
                     GenerateDiagnostics = generateDiagnostics,
                     ProjectDirectory = projectDirectory,
                     SupportsEnhancedLineDirectives = supportsEnhancedLineDirectives,
-                    UseStackAllocForArgumentStates = useStackAllocForArgumentStates
+                    UseStackAllocForArgumentStates = useStackAllocForArgumentStates,
+                    GenerateDiagnosticsLineNumbers = generateDiagnosticsLineNumbers
                 };
                 foreach (IOutputHandler handler in _outputHandlers)
                     handler.Handle(spc, compilation, input, invocationContext);
@@ -94,6 +95,6 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         PipelineContext Context { get; }
         void Execute(SourceProductionContext spc, Compilation compilation, ClassAndComposablesMethods input,
             bool generateDiagnostics, string projectDirectory, bool supportsEnhancedLineDirectives,
-            bool? useStackAllocForArgumentStates);
+            bool? useStackAllocForArgumentStates, bool generateDiagnosticsLineNumbers);
     }
 }

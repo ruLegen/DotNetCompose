@@ -12,7 +12,8 @@ namespace DotNetCompose.SourceGenerators.Pipeline
         bool GenerateDiagnostics,
         string ProjectDirectory,
         bool SupportsEnhancedLineDirectives,
-        bool? UseStackAllocForArgumentStates
+        bool? UseStackAllocForArgumentStates,
+        bool GenerateDiagnosticsLineNumbers
     );
 
     internal interface IOutputHandler

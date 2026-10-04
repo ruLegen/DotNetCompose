@@ -1,10 +1,12 @@
 <Project>
   <PropertyGroup>
     <DotNetComposeGenerateDiagnostics Condition="'$(DotNetComposeGenerateDiagnostics)' == ''">true</DotNetComposeGenerateDiagnostics>
+    <DotNetComposeGenerateDiagnosticsLineNumbers Condition="'$(DotNetComposeGenerateDiagnosticsLineNumbers)' == ''">false</DotNetComposeGenerateDiagnosticsLineNumbers>
   </PropertyGroup>
 
   <ItemGroup>
     <CompilerVisibleProperty Include="DotNetComposeGenerateDiagnostics" />
+    <CompilerVisibleProperty Include="DotNetComposeGenerateDiagnosticsLineNumbers" />
     <CompilerVisibleProperty Include="DotNetComposeUseStackAllocForArgumentStates" />
     <CompilerVisibleProperty Include="ProjectDir" />
   </ItemGroup>

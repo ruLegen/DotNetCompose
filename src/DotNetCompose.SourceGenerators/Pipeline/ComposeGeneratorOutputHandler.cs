@@ -79,7 +79,7 @@ namespace DotNetCompose.SourceGenerators.Pipeline
                         pipelineContext.GenerateDiagnostics,
                         RewriterSession.DeterministicHash64(diagnosticsIdentity),
                         sourcePath,
-                        sourceSpan.StartLinePosition.Line + 1);
+                        pipelineContext.GenerateDiagnosticsLineNumbers ? sourceSpan.StartLinePosition.Line + 1 : 0);
 
                     int initialGroupId = RewriterSession.DeterministicHash(methodIdentity);
                     RewriterSession session = new RewriterSession(
